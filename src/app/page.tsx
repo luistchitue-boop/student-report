@@ -1,0 +1,47 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+
+const reports = [
+  { id: "term-2", name: "Term 2 · Academic report", date: "18 Jun 2026", size: "1.8 MB", url: "https://example.com/reports/term-2-academic-report.pdf" },
+  { id: "term-1", name: "Term 1 · Academic report", date: "28 Mar 2026", size: "1.5 MB", url: "https://example.com/reports/term-1-academic-report.pdf" },
+  { id: "attendance", name: "Attendance overview · 2026", date: "12 Jun 2026", size: "820 KB", url: "https://example.com/reports/attendance-overview-2026.pdf" },
+];
+
+export default function Home() {
+  const [reportList, setReportList] = useState(reports);
+  const [selectedReport, setSelectedReport] = useState(reports[0]);
+  const [phone, setPhone] = useState("");
+  const [channel, setChannel] = useState<"whatsapp" | "sms" | "email">("whatsapp");
+  const [email, setEmail] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [newReport, setNewReport] = useState({ name: "", url: "" });
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  async function sendReport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus("sending"); setMessage("");
+    try {
+      const response = await fetch("/api/send-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone, email, channel, reportUrl: selectedReport.url, reportName: selectedReport.name }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to send report");
+      setStatus("sent"); setMessage("Report sent successfully");
+    } catch (error) { setStatus("error"); setMessage(error instanceof Error ? error.message : "Unable to send report"); }
+  }
+
+  function addReport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const report = { id: `report-${Date.now()}`, name: newReport.name, date: "Today", size: "PDF link", url: newReport.url };
+    setReportList((current) => [report, ...current]);
+    setSelectedReport(report); setNewReport({ name: "", url: "" }); setShowAdd(false);
+  }
+
+  return (
+    <div className="app-shell"><aside className="sidebar"><div className="brand"><span className="brand-mark">A</span><span>AEph <small>REPORTS</small></span></div><nav><a className="nav-active" href="#reports"><span>▦</span> Reports</a><a href="#activity"><span>↗</span> Activity</a></nav><div className="sidebar-footer"><div className="help-mark">?</div><div><strong>Need a hand?</strong><small>Read the sending guide</small></div></div></aside>
+      <main className="main-content"><header className="topbar"><div><p className="eyebrow">SCHOOL OFFICE / 2026</p><h1>Report delivery</h1></div><div className="profile"><span className="status-dot" /> Connected <span className="avatar">LT</span></div></header><section className="welcome"><div><p className="eyebrow accent">{channel === "email" ? "EMAIL DELIVERY" : channel === "sms" ? "SMS DELIVERY" : "WHATSAPP DELIVERY"}</p><h2>Send a report,<br /><em>without the chase.</em></h2><p className="lede">Share secure PDF links with families in a few quiet clicks.</p></div><div className="whatsapp-glyph">◔</div></section>
+        <section className="workspace" id="reports"><div className="section-heading"><div><p className="eyebrow">YOUR LIBRARY</p><h3>Available reports <span>{String(reportList.length).padStart(2, "0")}</span></h3></div><button className="outline-button" type="button" onClick={() => setShowAdd((current) => !current)}>＋ Add report</button></div>{showAdd && <form className="add-report" onSubmit={addReport}><input required placeholder="Report name" value={newReport.name} onChange={(event) => setNewReport({ ...newReport, name: event.target.value })} /><input required type="url" placeholder="https://your-vercel-domain.com/report.pdf" value={newReport.url} onChange={(event) => setNewReport({ ...newReport, url: event.target.value })} /><button className="send-button" type="submit">Add link</button></form>}<div className="reports-list">{reportList.map((report) => <button type="button" className={`report-row ${selectedReport.id === report.id ? "selected" : ""}`} key={report.id} onClick={() => { setSelectedReport(report); setStatus("idle"); }}><span className="pdf-icon">PDF</span><span className="report-details"><strong>{report.name}</strong><small>Added {report.date} · {report.size}</small></span><span className="row-arrow">{selectedReport.id === report.id ? "✓" : "→"}</span></button>)}</div></section>
+        <section className="send-panel" id="activity"><div className="panel-heading"><div><p className="eyebrow">READY TO SHARE</p><h3>Send selected report</h3></div><span className="selected-label">{selectedReport.name}</span></div><div className="channel-switch" role="group" aria-label="Delivery channel"><button type="button" className={channel === "whatsapp" ? "active" : ""} onClick={() => setChannel("whatsapp")}>WhatsApp</button><button type="button" className={channel === "sms" ? "active" : ""} onClick={() => setChannel("sms")}>SMS</button><button type="button" className={channel === "email" ? "active" : ""} onClick={() => setChannel("email")}>Email</button></div><form onSubmit={sendReport}>{channel === "email" ? <><label htmlFor="email">Parent or guardian email address</label><div className="send-controls"><input id="email" type="email" required placeholder="parent@example.com" value={email} onChange={(event) => setEmail(event.target.value)} /><button className="send-button" type="submit" disabled={status === "sending"}>{status === "sending" ? "Sending..." : "Send by Email  →"}</button></div></> : <><label htmlFor="phone">Parent or guardian {channel === "sms" ? "SMS" : "WhatsApp"} number</label><div className="send-controls"><input id="phone" type="tel" required placeholder="+244 9XX XXX XXX" value={phone} onChange={(event) => setPhone(event.target.value)} /><button className="send-button" type="submit" disabled={status === "sending"}>{status === "sending" ? "Sending..." : `Send by ${channel === "sms" ? "SMS" : "WhatsApp"}  →`}</button></div></>}<p className={`form-status ${status}`}>{message || (channel === "email" ? "The report link will be included in the email." : "Include the country code, for example +244.")}</p></form></section><footer><span>PDF links are hosted securely on Vercel.</span><span>Last delivery: today, 09:42</span></footer></main>
+    </div>
+  );
+}
