@@ -2,10 +2,13 @@
 
 import { FormEvent, useState } from "react";
 
+const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
+const reportUrl = (slug: string) => `${appUrl}/reports/${slug}.pdf`;
+
 const reports = [
-  { id: "term-2", name: "Term 2 · Academic report", date: "18 Jun 2026", size: "1.8 MB", url: "https://example.com/reports/term-2-academic-report.pdf" },
-  { id: "term-1", name: "Term 1 · Academic report", date: "28 Mar 2026", size: "1.5 MB", url: "https://example.com/reports/term-1-academic-report.pdf" },
-  { id: "attendance", name: "Attendance overview · 2026", date: "12 Jun 2026", size: "820 KB", url: "https://example.com/reports/attendance-overview-2026.pdf" },
+  { id: "weekly", name: "Relatorio academico semanal", date: "Today", size: "PDF link", url: reportUrl("relatorio-academico-semanal") },
+  { id: "term-1", name: "Relatorio academico do primeiro trimestre", date: "28 Mar 2026", size: "1.5 MB", url: reportUrl("relatorio-primeiro-trimestre") },
+  { id: "attendance", name: "Resumo de presencas · 2026", date: "12 Jun 2026", size: "820 KB", url: reportUrl("resumo-presencas-2026") },
 ];
 
 export default function Home() {

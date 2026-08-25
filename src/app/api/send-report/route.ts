@@ -12,21 +12,22 @@ export async function POST(request: Request) {
     if (channel !== "whatsapp" && channel !== "sms" && channel !== "email") return NextResponse.json({ error: "Unsupported delivery channel." }, { status: 400 });
     if ((channel === "email" && !email) || (channel !== "email" && !phone) || !reportUrl || !reportName) return NextResponse.json({ error: "Recipient, report URL, and report name are required." }, { status: 400 });
     if (channel === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
-    const parsedUrl = new URL(reportUrl);
-    if (parsedUrl.protocol !== "https:" || !reportUrl.toLowerCase().endsWith(".pdf")) return NextResponse.json({ error: "Report URL must be a secure HTTPS PDF link." }, { status: 400 });
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+    const resolvedReportUrl = new URL(reportUrl, appUrl).toString();
+    const parsedUrl = new URL(resolvedReportUrl);
+    if (parsedUrl.protocol !== "https:" || !resolvedReportUrl.toLowerCase().endsWith(".pdf")) return NextResponse.json({ error: "Report URL must be a secure HTTPS PDF link." }, { status: 400 });
     if (channel === "email") {
       const { RESEND_API_KEY: apiKey, RESEND_FROM_EMAIL: fromEmail } = process.env;
       if (!apiKey || !fromEmail) return NextResponse.json({ error: "Email is not configured. Add RESEND_API_KEY and RESEND_FROM_EMAIL." }, { status: 500 });
       const safeName = escapeHtml("Relatorio academico semanal");
-      const safeReportUrl = escapeHtml(reportUrl);
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+      const safeReportUrl = escapeHtml(resolvedReportUrl);
       const logoUrl = `${appUrl.replace(/\/$/, "")}/school-logo.png`;
       const resend = new Resend(apiKey);
       const result = await resend.emails.send({
         from: fromEmail,
         to: email,
         subject: `O seu relatório escolar está pronto | ${reportName}`,
-        text: `Caro encarregado de educação,\n\nTemos o prazer de partilhar o relatório ${reportName}. A nossa equipa preparou este documento com todo o cuidado para lhe dar uma visão clara da aprendizagem e do progresso do seu educando.\n\nAbrir o relatório: ${reportUrl}\n\nCom os melhores cumprimentos,\nNova Escola Politecnica do Huambo`,
+        text: `Caro encarregado de educação,\n\nTemos o prazer de partilhar o relatório ${reportName}. A nossa equipa preparou este documento com todo o cuidado para lhe dar uma visão clara da aprendizagem e do progresso do seu educando.\n\nAbrir o relatório: ${resolvedReportUrl}\n\nCom os melhores cumprimentos,\nNova Escola Politecnica do Huambo`,
         html: `<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safeName}</title></head><body style="margin:0;padding:0;background:#fff9df;font-family:Arial,Helvetica,sans-serif;color:#173044"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff9df;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff"><tr><td style="background:#d9edf3;padding:24px 32px;border-bottom:4px solid #f3c0bd"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td valign="middle"><img src="${logoUrl}" width="56" height="56" alt="Logótipo da Nova Escola Politecnica do Huambo" style="display:block;width:56px;height:56px;object-fit:contain"></td><td valign="middle" style="padding-left:14px"><div style="font-size:18px;font-weight:bold;color:#173044;letter-spacing:.2px">Nova Escola Politecnica do Huambo</div><div style="font-size:10px;letter-spacing:2px;color:#176b8b;margin-top:4px">Garantindo um ensino de qualidade no huambo</div></td></tr></table></td></tr><tr><td style="padding:38px 40px 34px"><div style="font-size:11px;letter-spacing:2px;color:#176b8b;font-weight:bold">RELATÓRIO ESCOLAR</div><h1 style="font-size:26px;line-height:1.25;color:#173044;margin:12px 0 18px">O seu relatório está pronto para leitura</h1><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 18px">Caro encarregado de educação,</p><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 24px">Temos o prazer de partilhar o relatório abaixo. A nossa equipa preparou este documento com todo o cuidado para lhe dar uma visão clara da aprendizagem e do progresso do seu educando.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff1c2;border-left:4px solid #f3c0bd;margin:0 0 28px"><tr><td style="padding:18px 20px"><div style="font-size:10px;letter-spacing:1.5px;color:#71808a">RELATÓRIO</div><div style="font-size:16px;font-weight:bold;color:#173044;margin-top:7px">${safeName}</div></td></tr></table><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td style="border-radius:2px;background:#176b8b"><a href="${safeReportUrl}" style="display:inline-block;padding:14px 22px;color:#ffffff;text-decoration:none;font-size:13px;font-weight:bold">Abrir relatório &nbsp;→</a></td></tr></table><p style="font-size:12px;line-height:1.6;color:#71808a;margin:24px 0 0">Para sua segurança, este link abre o relatório a partir do nosso armazenamento seguro de documentos. Se o botão não funcionar, copie e cole este endereço no seu navegador:<br><a href="${safeReportUrl}" style="color:#176b8b;word-break:break-all">${safeReportUrl}</a></p><p style="font-size:15px;line-height:1.7;color:#405564;margin:28px 0 0">Com os melhores cumprimentos,<br><strong>Nova Escola Politecnica do Huambo</strong><br><a href="https://neph.ao" style="color:#f3c0bd;text-decoration:none">neph.ao</a></p></td></tr><tr><td style="background:#173044;padding:22px 32px;color:#d5dfe0;font-size:11px;line-height:1.6">Nova Escola Politecnica do Huambo<br>Esta mensagem foi enviada pela secretaria da escola relativamente a um relatório escolar.</td></tr></table></td></tr></table></body></html>`,
       });
       if (result.error) return NextResponse.json({ error: `Email error: ${result.error.message}` }, { status: 502 });
@@ -45,11 +46,11 @@ export async function POST(request: Request) {
     const normalizedPhone = phone.replace(/[^\d+]/g, "");
     const isWhatsApp = channel === "whatsapp";
     if (!isWhatsApp && smsContentSid && messagingServiceSid) {
-      const result = await twilio(accountSid, authToken).messages.create({ to: normalizedPhone, messagingServiceSid, contentSid: smsContentSid, contentVariables: JSON.stringify({ "1": reportName, "2": reportUrl }) });
+      const result = await twilio(accountSid, authToken).messages.create({ to: normalizedPhone, messagingServiceSid, contentSid: smsContentSid, contentVariables: JSON.stringify({ "1": reportName, "2": resolvedReportUrl }) });
       return NextResponse.json({ sid: result.sid });
     }
     if (!from) return NextResponse.json({ error: "Twilio sender is not configured." }, { status: 500 });
-    const result = await twilio(accountSid, authToken).messages.create({ from: isWhatsApp && !from.startsWith("whatsapp:") ? `whatsapp:${from}` : from, to: isWhatsApp ? `whatsapp:${normalizedPhone}` : normalizedPhone, body: `Your student report is ready: ${reportName}\n${reportUrl}`, ...(isWhatsApp ? { mediaUrl: [reportUrl] } : {}) });
+    const result = await twilio(accountSid, authToken).messages.create({ from: isWhatsApp && !from.startsWith("whatsapp:") ? `whatsapp:${from}` : from, to: isWhatsApp ? `whatsapp:${normalizedPhone}` : normalizedPhone, body: `Your student report is ready: ${reportName}\n${resolvedReportUrl}`, ...(isWhatsApp ? { mediaUrl: [resolvedReportUrl] } : {}) });
     return NextResponse.json({ sid: result.sid });
   } catch (error) {
     console.error("Twilio send failed", error);
