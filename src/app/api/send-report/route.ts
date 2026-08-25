@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     if (channel === "email") {
       const { RESEND_API_KEY: apiKey, RESEND_FROM_EMAIL: fromEmail } = process.env;
       if (!apiKey || !fromEmail) return NextResponse.json({ error: "Email is not configured. Add RESEND_API_KEY and RESEND_FROM_EMAIL." }, { status: 500 });
-      const safeName = escapeHtml(reportName);
+      const safeName = escapeHtml("Relatorio academico semanal");
       const safeReportUrl = escapeHtml(reportUrl);
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
       const logoUrl = `${appUrl.replace(/\/$/, "")}/school-logo.png`;
