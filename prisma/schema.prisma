@@ -49,6 +49,85 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
+  teacher       Teacher?
+}
+
+enum FaultType {
+  FALTA_DE_MATERIAL
+  AUSENCIA_NA_SALA
+}
+
+model Teacher {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  name      String
+  role      String   @default("COORDENADOR")
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  turmas  Turma[]
+}
+
+model Turma {
+  id           String   @id @default(cuid())
+  name         String
+  code         String?  @unique
+  schedule     String?
+  coordinatorId String?
+  createdAt    DateTime @default(now())
+
+  coordinator Teacher? @relation(fields: [coordinatorId], references: [id], onDelete: SetNull)
+  students    Student[]
+}
+
+model Student {
+  id          String   @id @default(cuid())
+  turmaId     String
+  name        String
+  age         Int?
+  attendance  String?  @default("P")
+  createdAt   DateTime @default(now())
+
+  turma       Turma         @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  grades      Grade[]
+  absences    Absence[]
+  notes       StudentNote[]
+}
+
+model Grade {
+  id        String   @id @default(cuid())
+  studentId String
+  subject   String
+  value     Float
+  term      String
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Absence {
+  id         String    @id @default(cuid())
+  studentId  String
+  subject    String
+  dia        DateTime
+  tempo      String
+  faultType  FaultType @default(FALTA_DE_MATERIAL)
+  notes      String?   @db.Text
+  createdAt  DateTime  @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, subject, dia])
+}
+
+model StudentNote {
+  id        String   @id @default(cuid())
+  studentId String
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {

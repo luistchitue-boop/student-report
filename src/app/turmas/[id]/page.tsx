@@ -3,17 +3,17 @@ import { notFound } from "next/navigation";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
-import { turmas } from "../page";
+import { getCoordinatorTurmaById, buildStudentSlug } from "@/lib/teacher-data";
 
 export default async function TurmaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
 
-  if (!session) {
+  if (!session?.user?.id) {
     redirect("/auth/signin");
   }
 
   const { id } = await params;
-  const turma = turmas.find((entry) => entry.id === id);
+  const turma = await getCoordinatorTurmaById(session.user.id, id);
 
   if (!turma) {
     notFound();
@@ -45,14 +45,14 @@ export default async function TurmaDetailPage({ params }: { params: Promise<{ id
 
           <div style={{ display: "grid", gap: "0.75rem" }}>
             {turma.roster.map((student) => (
-              <Link key={student.name} href={`/turmas/${turma.id}/${encodeURIComponent(student.name.toLowerCase().replace(/\s+/g, "-"))}`} style={{ textDecoration: "none", color: "inherit" }}>
+              <Link key={student.id} href={`/turmas/${turma.id}/${encodeURIComponent(buildStudentSlug(student.name))}`} style={{ textDecoration: "none", color: "inherit" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", background: "#f7f8f4", border: "1px solid #e0e5de", padding: "0.9rem 1rem", flexWrap: "wrap", cursor: "pointer" }}>
                   <div>
                     <strong style={{ display: "block" }}>{student.name}</strong>
                     <small style={{ color: "#68756d" }}>{student.age} anos</small>
                   </div>
-                  <span style={{ background: student.attendance === "Presente" ? "#eaf5ea" : student.attendance === "Ausente" ? "#f7e7e3" : "#f6f0d7", color: "#37433d", borderRadius: 999, padding: "0.35rem 0.7rem", fontSize: "0.75rem", fontWeight: 800 }}>
-                    {student.attendance}
+                  <span style={{ background: student.attendance === "P" ? "#eaf5ea" : student.attendance === "F" ? "#f7e7e3" : "#f6f0d7", color: "#37433d", borderRadius: 999, padding: "0.35rem 0.7rem", fontSize: "0.75rem", fontWeight: 800 }}>
+                    {student.attendance === "P" ? "Presente" : student.attendance === "F" ? "Ausente" : student.attendance}
                   </span>
                 </div>
               </Link>
