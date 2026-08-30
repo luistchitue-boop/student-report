@@ -34,7 +34,7 @@ export default function SignIn() {
       <div className="auth-card">
         <div className="auth-header">
           <h1>AEph Reports</h1>
-          <p>Sign in to your account</p>
+          <p>Entre na sua conta</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -43,7 +43,7 @@ export default function SignIn() {
             <input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder="voce@exemplo.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -52,11 +52,11 @@ export default function SignIn() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">Senha</label>
             <input
               id="password"
               type="password"
-              placeholder="Your password"
+              placeholder="A sua senha"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -67,13 +67,13 @@ export default function SignIn() {
           {error && <div className="error-message">{error}</div>}
 
           <button type="submit" className="send-button" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? "A entrar..." : "Entrar"}
           </button>
         </form>
 
         <div className="auth-footer">
           <p>
-            Need an account? Contact your school administrator.
+            Precisa de uma conta? Contacte o administrador da escola.
           </p>
         </div>
       </div>
@@ -90,20 +90,20 @@ export default function SignIn() {
 
         .auth-card {
           background: white;
-          border-radius: 12px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          border-radius: 16px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
           width: 100%;
-          max-width: 400px;
-          padding: 2rem;
+          max-width: 420px;
+          padding: 1.25rem;
         }
 
         .auth-header {
           text-align: center;
-          margin-bottom: 2rem;
+          margin-bottom: 1.5rem;
         }
 
         .auth-header h1 {
-          font-size: 1.5rem;
+          font-size: clamp(1.5rem, 4vw, 2rem);
           font-weight: 700;
           color: #1a1a1a;
           margin: 0 0 0.5rem 0;
