@@ -17,11 +17,23 @@ export default function SignIn() {
     setLoading(true);
 
     try {
-      await signIn("credentials", {
+      const result = await signIn("credentials", {
         email,
         password,
-        callbackUrl: "/",
+        redirect: false,
       });
+
+      if (result?.error) {
+        setError(
+          result.error === "CredentialsSignin"
+            ? "Email ou senha invalidos."
+            : `Nao foi possivel iniciar sessao: ${result.error}`
+        );
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred. Please try again.");
     } finally {

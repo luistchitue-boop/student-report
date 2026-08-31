@@ -31,8 +31,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("Email and password are required")
         }
 
+        const email = String(credentials.email).trim().toLowerCase()
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
         })
 
         if (!user) {
