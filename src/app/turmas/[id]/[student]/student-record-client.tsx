@@ -11,8 +11,8 @@ const faultTypes = ["Falta de material", "Ausência na sala"];
 
 const emptyGrades = Object.fromEntries(subjects.map((subject) => [subject, ""]));
 
-export function StudentRecordClient({ turma, student }: { turma: { id: string; name: string; schedule: string; students: number }; student: { id: string; name: string; age: number; attendance: string } }) {
-  const [tab, setTab] = useState<"notas" | "faltas" | "relatorio">("notas");
+export function StudentRecordClient({ turma, student }: { turma: { id: string; name: string; schedule: string; students: number }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> } }) {
+  const [tab, setTab] = useState<"notas" | "faltas" | "relatorio" | "contactos">("notas");
   const [gradeStart, setGradeStart] = useState<string>("");
   const [gradeEnd, setGradeEnd] = useState<string>("");
   const [reportStart, setReportStart] = useState<string>("");
@@ -344,6 +344,9 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
               <button type="button" onClick={() => setTab("relatorio")} style={{ border: tab === "relatorio" ? "none" : "1px solid #dfe5df", background: tab === "relatorio" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
                 Relatório
               </button>
+              <button type="button" onClick={() => setTab("contactos")} style={{ border: tab === "contactos" ? "none" : "1px solid #dfe5df", background: tab === "contactos" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+                Contactos
+              </button>
             </div>
 
             {tab === "notas" && (
@@ -513,6 +516,29 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
                     <div style={{ color: "#244d3d", fontWeight: 700 }}>{statusMessage}</div>
                   ) : null}
                 </div>
+              </div>
+            )}
+
+            {tab === "contactos" && (
+              <div style={{ display: "grid", gap: "0.85rem" }}>
+                <div style={{ color: "#4a5d5a", fontSize: "0.92rem", fontWeight: 600 }}>
+                  Contactos dos encarregados de educação.
+                </div>
+                {student.parents.length ? student.parents.map((parent) => (
+                  <article key={parent.id} style={{ display: "grid", gap: "0.55rem", background: "#f7f8f4", border: "1px solid #e3e8e1", padding: "1rem" }}>
+                    <strong style={{ color: "#244d3d", fontSize: "1.05rem" }}>{parent.name}</strong>
+                    <div style={{ display: "grid", gap: "0.35rem", color: "#4a5d5a" }}>
+                      <a href={`tel:${parent.phone}`} style={{ color: "#39755d", fontWeight: 700 }}>{parent.phone || "Telefone não informado"}</a>
+                      {parent.email ? (
+                        <a href={`mailto:${parent.email}`} style={{ color: "#39755d", overflowWrap: "anywhere" }}>{parent.email}</a>
+                      ) : (
+                        <span>Email não informado</span>
+                      )}
+                    </div>
+                  </article>
+                )) : (
+                  <div style={{ color: "#68756d" }}>Nenhum contacto registado.</div>
+                )}
               </div>
             )}
           </section>
