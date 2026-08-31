@@ -1,0 +1,850 @@
+[
+    {
+        "turma_name": "1A",
+        "turma_id": "cmth5iqr600015yqkfp0jhy5g",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estudo do Meio"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.P."},
+            {"name": "Aulas Practicas"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "1B",
+        "turma_id": "cmth5irfm00035yqk91rnjuua",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estudo do Meio"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.P."},
+            {"name": "Aulas Practicas"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    
+    {
+        "turma_name": "2A",
+        "turma_id": "cmth5iru400055yqk2hflpxft",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estudo do Meio"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.P."},
+            {"name": "Aulas Practicas"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    
+    {
+        "turma_name": "2B",
+        "turma_id": "cmth5is8p00075yqko9263phx",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estudo do Meio"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.P."},
+            {"name": "Aulas Practicas"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "2C",
+        "turma_id": "cmth5isn400095yqkugdvi32s",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estudo do Meio"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.P."},
+            {"name": "Aulas Practicas"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "3A",
+        "turma_id": "cmth5it1n000b5yqk8e72gvsw",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estudo do Meio"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.P."},
+            {"name": "Aulas Practicas"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "3B",
+        "turma_id": "cmth5itg3000d5yqk9yjeri5n",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estudo do Meio"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.P."},
+            {"name": "Aulas Practicas"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    
+    {
+        "turma_name": "4A",
+        "turma_id": "cmth5ituj000f5yqkni3om3tz",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estudo do Meio"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.P."},
+            {"name": "Aulas Practicas"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "4B",
+        "turma_id": "cmth5iu91000h5yqklvj03v3r",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estudo do Meio"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.P."},
+            {"name": "Aulas Practicas"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "4C",
+        "turma_id": "cmth5iuo0000j5yqkr8pykkjn",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estudo do Meio"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.P."},
+            {"name": "Aulas Practicas"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "5A",
+        "turma_id": "cmth5iv2n000l5yqkrzpdy4l0",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.C."},
+            {"name": "E.M.P."},
+            {"name": "Ciencias da Natureza"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    
+    {
+        "turma_name": "5B",
+        "turma_id": "cmth5ivhg000n5yqkwq3enfvu",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.C."},
+            {"name": "E.M.P."},
+            {"name": "Ciencias da Natureza"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "5C",
+        "turma_id": "cmth5ivvz000p5yqk7t0tlx3t",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.C."},
+            {"name": "E.M.P."},
+            {"name": "Ciencias da Natureza"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "6A",
+        "turma_id": "cmth5iwae000r5yqkyeloxoap",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.C."},
+            {"name": "E.M.P."},
+            {"name": "Ciencias da Natureza"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "6B",
+        "turma_id": "cmth5iwou000t5yqkf6xlr7sb",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.C."},
+            {"name": "E.M.P."},
+            {"name": "Ciencias da Natureza"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "6C",
+        "turma_id": "cmth5ix37000v5yqk0fs3aul3",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "E.M.C."},
+            {"name": "E.M.P."},
+            {"name": "Ciencias da Natureza"},
+            {"name": "Informatica"},
+            {"name": "Educacao Musical"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    
+    {
+        "turma_name": "10CEJ",
+        "turma_id": "cmth5j13j001f5yqkboro00xn",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Metodologia"},
+            {"name": "Empreendedorismo"},
+            {"name": "Introducao a Economia"},
+            {"name": "Informatica"},
+            {"name": "Introducao ao Direito"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "11CEJ",
+        "turma_id": "cmth5j1mq001h5yqkp0frv81p",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Metodologia"},
+            {"name": "Sociologia"},
+            {"name": "Empreendedorismo"},
+            {"name": "Filosofia"},
+            {"name": "Introducao a Economia"},
+            {"name": "Informatica"},
+            {"name": "Introducao ao Direito"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "12CEJ",
+        "turma_id": "cmth5j2u0001n5yqkkvgt6xkx",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Metodologia"},
+            {"name": "Sociologia"},
+            {"name": "Empreendedorismo"},
+            {"name": "Filosofia"},
+            {"name": "Introducao a Economia"},
+            {"name": "Desenvolvimento Economico e Social"},
+            {"name": "Introducao ao Direito"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "9A",
+        "turma_id": "cmth5j81l002d5yqk4r1lrtj5",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Educacao Laboral"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "E.M.C."},
+            {"name": "Informatica"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "E.V.P."},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "9B",
+        "turma_id": "cmth5izw900195yqkkq30rreb",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Educacao Laboral"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "E.M.C."},
+            {"name": "Informatica"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "E.V.P."},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "7A",
+        "turma_id": "cmth5ixhm000x5yqk74w2bwyo",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Educacao Laboral"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "E.M.C."},
+            {"name": "Informatica"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "E.V.P."},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "7B",
+        "turma_id": "cmth5ixw1000z5yqk86g5w8s9",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Educacao Laboral"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "E.M.C."},
+            {"name": "Informatica"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "E.V.P."},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "7C",
+        "turma_id": "cmth5iyai00115yqk6nnswwwe",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Educacao Laboral"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "E.M.C."},
+            {"name": "Informatica"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "E.V.P."},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "7D",
+        "turma_id": "cmth5iyox00135yqkwfxxrpkw",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Educacao Laboral"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "E.M.C."},
+            {"name": "Informatica"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "E.V.P."},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "8A",
+        "turma_id": "cmth5iz3h00155yqkwr56w04z",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Educacao Laboral"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "E.M.C."},
+            {"name": "Informatica"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "E.V.P."},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "8B",
+        "turma_id": "cmth5izhu00175yqkma16fmf2",
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Geografia"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Educacao Laboral"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "E.M.C."},
+            {"name": "Informatica"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "E.V.P."},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "10CFBA",
+        "turma_id": "cmth5j0aq001b5yqkgw0d83xp", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Educação Física"},
+            {"name": "História"},
+            {"name": "Ingles"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "Informatica"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "Metodologia"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "10CFBB",
+        "turma_id": "cmth5j0p5001d5yqk9ctjum14", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Educação Física"},
+            {"name": "Ingles"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "Informatica"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "Metodologia"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "11CFB",
+        "turma_id": "cmth5j214001j5yqkp4a7zxc2", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Educação Física"},
+            {"name": "Geometria Descritiva"},
+            {"name": "Ingles"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "Geologia"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "Metodologia"},
+            {"name": "Lingua Portuguesa"},
+            {"name": "Filosofia"}
+        ]
+    },
+    {
+        "turma_name": "12CFB",
+        "turma_id": "cmth5j2fk001l5yqkvt1jujoh", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Educação Física"},
+            {"name": "Geometria Descritiva"},
+            {"name": "Ingles"},
+            {"name": "Quimica"},
+            {"name": "Empreendedorismo"},
+            {"name": "Geologia"},
+            {"name": "Fisica"},
+            {"name": "Biologia"},
+            {"name": "Filosofia"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "10CG",
+        "turma_id": "cmth5j38e001p5yqkzj8bmqov", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Educação Física"},
+            {"name": "Contabilidade Financeira"},
+            {"name": "Ingles"},
+            {"name": "Informatica Aplicada a Contabilidade"},
+            {"name": "Empreendedorismo"},
+            {"name": "O.G.E."},
+            {"name": "F.A.I."},
+            {"name": "Nocoes de Direito"},
+            {"name": "Introducao a Economia"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "11CG",
+        "turma_id": "cmth5j3mx001r5yqkwp0490d8", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Educação Física"},
+            {"name": "Contabilidade Financeira"},
+            {"name": "Ingles"},
+            {"name": "Informatica Aplicada a Contabilidade"},
+            {"name": "Empreendedorismo"},
+            {"name": "O.G.E."},
+            {"name": "F.A.I."},
+            {"name": "T.C.E."},
+            {"name": "D.L.C."},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "12CGA",
+        "turma_id": "cmth5j41c001t5yqkc3okq4e1", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Contabilidade Analitica"},
+            {"name": "Empreendedorismo"},
+            {"name": "O.G.E."},
+            {"name": "Sociologia"},
+            {"name": "Nocoes de Direito"},
+            {"name": "A.E.F."},
+            {"name": "D.L.F."},
+            {"name": "Projecto Tecnologico"}
+        ]
+    },
+
+    {
+        "turma_name": "12CGB",
+        "turma_id": "cmtw5j41c008t5yqkc3okq4ey", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Contabilidade Analitica"},
+            {"name": "Empreendedorismo"},
+            {"name": "O.G.E."},
+            {"name": "Sociologia"},
+            {"name": "Nocoes de Direito"},
+            {"name": "A.E.F."},
+            {"name": "D.L.F."},
+            {"name": "Projecto Tecnologico"}
+        ]
+    },
+
+    {
+        "turma_name": "13CGA",
+        "turma_id": "cmth5j4fr001v5yqkynu22m5f", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estagio curricular supervisionado"},
+            {"name": "Historia Economica e Social"},
+            {"name": "Fiscalidade"},
+            {"name": "Projecto Tecnologico"}
+        ]
+    },
+
+    {
+        "turma_name": "13CGB",
+        "turma_id": "cmthralgh0003l5w9eqx6ht0g", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estagio curricular supervisionado"},
+            {"name": "Historia Economica e Social"},
+            {"name": "Fiscalidade"},
+            {"name": "Projecto Tecnologico"}
+        ]
+    },
+
+    {
+        "turma_name": "10INF",
+        "turma_id": "cmth5j4u6001x5yqkd9orz3x4", 
+        "disciplinas": [
+            {"name": "Ingles"},
+            {"name": "Fisica"},
+            {"name": "Matemática"},
+            {"name": "T.I.C."},
+            {"name": "T.L.P."},
+            {"name": "Electrotecnia"},
+            {"name": "S.E.A.C."},
+            {"name": "Desenho Tecnico"},
+            {"name": "Educacao Fisica"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+    {
+        "turma_name": "11INF",
+        "turma_id": "cmth5j58k001z5yqkrpxtty0k", 
+        "disciplinas": [
+            {"name": "Ingles"},
+            {"name": "Fisica"},
+            {"name": "Matemática"},
+            {"name": "T.I.C."},
+            {"name": "T.L.P."},
+            {"name": "Electrotecnia"},
+            {"name": "Quimica"},
+            {"name": "F.A.I."},
+            {"name": "S.E.A.C."},
+            {"name": "Desenho Tecnico"},
+            {"name": "Educacao Fisica"},
+            {"name": "Lingua Portuguesa"}
+        ]
+    },
+
+    {
+        "turma_name": "12INF",
+        "turma_id": "cmth5j5mz00215yqk2ny46hog", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "F.A.I."},
+            {"name": "T.L.P."},
+            {"name": "O.G.I."},
+            {"name": "Quimica"},
+            {"name": "T.R.E.I."},
+            {"name": "S.E.A.C."},
+            {"name": "Empreendedorismo"},
+            {"name": "Desenho Tecnico"},
+            {"name": "Projecto Tecnologico"}
+        ]
+    },
+
+    {
+        "turma_name": "13INF",
+        "turma_id": "cmth5j61g00235yqkaxe7i4sz", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estagio curricular supervisionado"},
+            {"name": "Fisica"},
+            {"name": "Quimica"},
+            {"name": "Projecto Tecnologico"}
+        ]
+    },
+
+    {
+        "turma_name": "10ETC",
+        "turma_id": "cmth5j6fu00255yqkokhod14k", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Ingles"},
+            {"name": "Fisica"},
+            {"name": "Informatica"},
+            {"name": "Lingua Portuguesa"},
+            {"name": "P.O.L."},
+            {"name": "Tecnologia de Telecomunicacoes"},
+            {"name": "Electricidade e Electronica"},
+            {"name": "Desenho Tecnico"},
+            {"name": "Educação Física"}
+        ]
+    },
+
+    {
+        "turma_name": "11ETC",
+        "turma_id": "cmth5j6u800275yqktm1knoo7", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Ingles"},
+            {"name": "Fisica"},
+            {"name": "Sistemas Digitais"},
+            {"name": "Lingua Portuguesa"},
+            {"name": "P.O.L."},
+            {"name": "Tecnologia de Telecomunicacoes"},
+            {"name": "F.A.I."},
+            {"name": "Electricidade e Electronica"},
+            {"name": "Quimica"},
+            {"name": "Educação Física"}
+        ]
+    },
+
+    {
+        "turma_name": "12ETC",
+        "turma_id": "cmth5j78n00295yqk4jg7hldi", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Empreendedorismo"},
+            {"name": "Sistemas Digitais"},
+            {"name": "O.G.I."},
+            {"name": "P.O.L."},
+            {"name": "Tecnologias de Telecomunicacoes"},
+            {"name": "F.A.I."},
+            {"name": "Electricidade e Electronica"},
+            {"name": "Quimica"},
+            {"name": "Projecto Tecnologico"}
+        ]
+    },
+
+    {
+        "turma_name": "13ETC",
+        "turma_id": "cmth5j7n5002b5yqkv7td2z2p", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estagio curricular supervisionado"},
+            {"name": "Quimica"},
+            {"name": "Projecto Tecnologico"},
+            {"name": "Fisica"}
+        ]
+    },
+
+    {
+        "turma_name": "10OCC",
+        "turma_id": "cmth5j8g0002f5yqkt05gfj7g", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Ingles"},
+            {"name": "Fisica"},
+            {"name": "Informatica"},
+            {"name": "Lingua Portuguesa"},
+            {"name": "Geometria Descritiva"},
+            {"name": "D.C.C."},
+            {"name": "P.O.L."},
+            {"name": "T.C.O.Edificios"},
+            {"name": "T.C.C."},
+            {"name": "Educação Física"}
+        ]
+    },
+
+    {
+        "turma_name": "11OCC",
+        "turma_id": "cmth5j8ug002h5yqkycl8ezmn", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Ingles"},
+            {"name": "Fisica"},
+            {"name": "Quimica"},
+            {"name": "F.A.I."},
+            {"name": "Lingua Portuguesa"},
+            {"name": "D.C.C."},
+            {"name": "P.O.L."},
+            {"name": "T.C.O.Edificios"},
+            {"name": "T.C.C."},
+            {"name": "Educação Física"}
+        ]
+    },
+
+    {
+        "turma_name": "12OCC",
+        "turma_id": "cmth5j990002j5yqknu7ixymd", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "T.C.O-I.E.U."},
+            {"name": "Quimica"},
+            {"name": "F.A.I."},
+            {"name": "Projecto Tecnologico"},
+            {"name": "D.C.C.Autocad"},
+            {"name": "Empreendedorismo"},
+            {"name": "Tecnica de Topografia"},
+            {"name": "P.O.L."},
+            {"name": "T.C.O.Edificios"},
+            {"name": "Medicoes e Orcamentos"},
+            {"name": "O.G.I."}
+        ]
+    },
+
+    {
+        "turma_name": "13OCC",
+        "turma_id": "cmth5j9nk002l5yqktp5d6s4k", 
+        "disciplinas": [
+            {"name": "Matemática"},
+            {"name": "Estagio curricular supervisionado"},
+            {"name": "Quimica"},
+            {"name": "Projecto Tecnologico"},
+            {"name": "Fisica"}
+        ]
+    }
+]
