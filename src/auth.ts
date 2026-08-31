@@ -3,7 +3,15 @@ import { PrismaClient } from "@prisma/client"
 import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 
-const prisma = new PrismaClient()
+declare global {
+  var prismaAuthClient: PrismaClient | undefined;
+}
+
+const prisma = globalThis.prismaAuthClient ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis.prismaAuthClient = prisma;
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,

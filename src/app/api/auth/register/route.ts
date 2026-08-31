@@ -2,7 +2,15 @@ import { PrismaClient } from "@prisma/client"
 import { hashPassword } from "@/lib/password"
 import { NextRequest, NextResponse } from "next/server"
 
-const prisma = new PrismaClient()
+declare global {
+  var prismaAuthRegister: PrismaClient | undefined;
+}
+
+const prisma = globalThis.prismaAuthRegister ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis.prismaAuthRegister = prisma;
+}
 
 export async function POST(request: NextRequest) {
   try {
