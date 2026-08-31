@@ -1,13 +1,10 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const turmaNames = require('../turmas.json');
 
 const prisma = new PrismaClient();
 
-const targetTurmas = [
-  { name: 'Turma 1', code: 'T1', studentCount: 29 },
-  { name: 'Turma 2', code: 'T2', studentCount: 21 },
-  { name: 'Turma 3', code: 'T3', studentCount: 17 },
-];
+const targetTurmas = turmaNames.map((name) => ({ name }));
 
 const firstNames = [
   'Ana', 'Bruno', 'Carlos', 'Daniela', 'Eduardo', 'Fernanda', 'Gabriel', 'Helena', 'Igor', 'Julia',
@@ -84,13 +81,12 @@ async function seedTurmas(teacher) {
   const results = [];
 
   for (const turmaConfig of targetTurmas) {
-    let turma = await prisma.turma.findUnique({ where: { code: turmaConfig.code } });
+    let turma = await prisma.turma.findFirst({ where: { name: turmaConfig.name } });
 
     if (!turma) {
       turma = await prisma.turma.create({
         data: {
           name: turmaConfig.name,
-          code: turmaConfig.code,
           coordinatorId: teacher.id,
           schedule: 'Segunda a Sexta',
         },
@@ -99,38 +95,15 @@ async function seedTurmas(teacher) {
       turma = await prisma.turma.update({
         where: { id: turma.id },
         data: {
-          name: turmaConfig.name,
           coordinatorId: teacher.id,
           schedule: 'Segunda a Sexta',
         },
       });
     }
 
-    const existingStudentNames = new Set(
-      (await prisma.student.findMany({
-        where: { turmaId: turma.id },
-        select: { name: true },
-      })).map((student) => student.name)
-    );
-
-    await prisma.student.deleteMany({ where: { turmaId: turma.id } });
-
-    const students = [];
-    for (let i = 0; i < turmaConfig.studentCount; i += 1) {
-      students.push({
-        turmaId: turma.id,
-        name: generateRandomName(existingStudentNames),
-        age: 11 + Math.floor(Math.random() * 8),
-        attendance: 'P',
-      });
-    }
-
-    await prisma.student.createMany({ data: students });
-
     const studentCount = await prisma.student.count({ where: { turmaId: turma.id } });
     results.push({
       name: turma.name,
-      code: turma.code,
       studentCount,
     });
   }
