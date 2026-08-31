@@ -36,11 +36,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         })
 
         if (!user) {
-          throw new Error("User not found")
+          return null
         }
 
         if (!user.password) {
-          throw new Error("User does not have a password")
+          return null
         }
 
         const passwordMatch = await bcrypt.compare(
@@ -49,7 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         )
 
         if (!passwordMatch) {
-          throw new Error("Invalid password")
+          return null
         }
 
         return {
