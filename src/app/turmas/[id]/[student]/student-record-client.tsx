@@ -15,6 +15,8 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
   const [tab, setTab] = useState<"notas" | "faltas" | "relatorio">("notas");
   const [gradeStart, setGradeStart] = useState<string>("");
   const [gradeEnd, setGradeEnd] = useState<string>("");
+  const [reportStart, setReportStart] = useState<string>("");
+  const [reportEnd, setReportEnd] = useState<string>("");
   const [gradeValues, setGradeValues] = useState<Record<string, string>>(emptyGrades);
   const [reportNote, setReportNote] = useState<string>("");
   const [absenceRows, setAbsenceRows] = useState([
@@ -53,8 +55,21 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
   }
 
   async function generatePdfReport() {
+    if (!reportStart || !reportEnd) {
+      setStatusMessage("Escolha um intervalo de datas antes de exportar o relatório.");
+      return;
+    }
+
+    const startDate = new Date(`${reportStart}T00:00:00Z`);
+    const endDate = new Date(`${reportEnd}T23:59:59.999Z`);
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) {
+      setStatusMessage("A data inicial não pode ser posterior à data final.");
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/student-record?studentId=${student.id}`);
+      const response = await fetch(`/api/student-record?studentId=${student.id}&from=${reportStart}&to=${reportEnd}`);
 
       if (!response.ok) {
         throw new Error("Não foi possível carregar os dados do aluno.");
@@ -461,6 +476,18 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
 
             {tab === "relatorio" && (
               <div style={{ display: "grid", gap: "1rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", background: "#f6f9f5", border: "1px solid #dfe5df", padding: "0.9rem" }}>
+                  <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
+                    Data início do relatório
+                    <input type="date" value={reportStart} onChange={(event) => setReportStart(event.target.value)} style={{ padding: "0.7rem 0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8" }} />
+                  </label>
+
+                  <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
+                    Data fim do relatório
+                    <input type="date" value={reportEnd} onChange={(event) => setReportEnd(event.target.value)} style={{ padding: "0.7rem 0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8" }} />
+                  </label>
+                </div>
+
                 <div style={{ display: "grid", gap: "0.55rem" }}>
                   <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
                     Observação do professor
@@ -479,7 +506,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
                 </div>
 
                 <div style={{ display: "grid", gap: "0.75rem" }}>
-                  <button type="button" onClick={generatePdfReport} style={{ padding: "0.9rem 1.2rem", background: "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: "pointer" }}>
+                  <button type="button" onClick={generatePdfReport} disabled={!reportStart || !reportEnd} style={{ padding: "0.9rem 1.2rem", background: !reportStart || !reportEnd ? "#a7b7af" : "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: !reportStart || !reportEnd ? "not-allowed" : "pointer" }}>
                     Gerar relatório em PDF
                   </button>
                   {statusMessage ? (

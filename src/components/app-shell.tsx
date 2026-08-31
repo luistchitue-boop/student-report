@@ -8,13 +8,13 @@ export function AppShell({ children, active }: { children: ReactNode; active: "r
         <div className="brand">
           <span className="brand-mark">A</span>
           <span>
-            AEph <small>REPORTS</small>
+            AEph <small>RELATORIOS</small>
           </span>
         </div>
 
         <nav>
           <Link href="/" className={active === "reports" ? "nav-active" : ""}>
-            <span>▦</span> Reports
+            <span>▦</span> Relatorios
           </Link>
           <Link href="/turmas" className={active === "turmas" ? "nav-active" : ""}>
             <span>◫</span> Turmas

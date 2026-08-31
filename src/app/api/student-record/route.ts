@@ -18,18 +18,43 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("studentId");
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
 
     if (!studentId) {
       return NextResponse.json({ error: "studentId is required" }, { status: 400 });
     }
 
+    if (!from || !to) {
+      return NextResponse.json({ error: "Date range is required" }, { status: 400 });
+    }
+
+    const fromDate = new Date(`${from}T00:00:00Z`);
+    const toDate = new Date(`${to}T23:59:59.999Z`);
+
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || fromDate > toDate) {
+      return NextResponse.json({ error: "Invalid date range" }, { status: 400 });
+    }
+
     const [grades, absences] = await Promise.all([
       prisma.grade.findMany({
-        where: { studentId },
+        where: {
+          studentId,
+          createdAt: {
+            gte: fromDate,
+            lte: toDate,
+          },
+        },
         orderBy: { createdAt: "asc" },
       }),
       prisma.absence.findMany({
-        where: { studentId },
+        where: {
+          studentId,
+          dia: {
+            gte: fromDate,
+            lte: toDate,
+          },
+        },
         orderBy: { dia: "asc" },
       }),
     ]);
