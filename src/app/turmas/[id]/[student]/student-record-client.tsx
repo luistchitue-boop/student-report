@@ -5,22 +5,20 @@ import { jsPDF } from "jspdf";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-const subjects = ["Matemática", "Português", "Ciências", "História", "Educação Física", "Arte"];
 const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 const faultTypes = ["Falta de material", "Ausência na sala"];
 
-const emptyGrades = Object.fromEntries(subjects.map((subject) => [subject, ""]));
-
-export function StudentRecordClient({ turma, student }: { turma: { id: string; name: string; schedule: string; students: number }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> } }) {
+export function StudentRecordClient({ turma, student }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> } }) {
+  const subjects = turma.subjects;
   const [tab, setTab] = useState<"notas" | "faltas" | "relatorio" | "contactos">("notas");
   const [gradeStart, setGradeStart] = useState<string>("");
   const [gradeEnd, setGradeEnd] = useState<string>("");
   const [reportStart, setReportStart] = useState<string>("");
   const [reportEnd, setReportEnd] = useState<string>("");
-  const [gradeValues, setGradeValues] = useState<Record<string, string>>(emptyGrades);
+  const [gradeValues, setGradeValues] = useState<Record<string, string>>(() => Object.fromEntries(subjects.map((subject) => [subject, ""])));
   const [reportNote, setReportNote] = useState<string>("");
   const [absenceRows, setAbsenceRows] = useState([
-    { subject: "Matemática", dia: "", tempo: "1º tempo", faultType: "Falta de material", notes: "" },
+    { subject: subjects[0] ?? "", dia: "", tempo: "1º tempo", faultType: "Falta de material", notes: "" },
   ]);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
@@ -41,7 +39,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
   function addAbsenceRow() {
     setAbsenceRows((current) => [
       ...current,
-      { subject: "Português", dia: "", tempo: "1º tempo", faultType: "Falta de material", notes: "" },
+      { subject: subjects[0] ?? "", dia: "", tempo: "1º tempo", faultType: "Falta de material", notes: "" },
     ]);
   }
 

@@ -95,6 +95,25 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    const studentId = body.studentId ?? body.absences?.[0]?.studentId;
+
+    if (!studentId) {
+      return NextResponse.json({ error: "studentId is required" }, { status: 400 });
+    }
+
+    const student = await prisma.student.findFirst({
+      where: {
+        id: studentId,
+        turma: { coordinator: { userId: session.user.id } },
+      },
+      select: { turma: { select: { subjects: { select: { name: true } } } } },
+    });
+
+    if (!student) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
+
+    const subjectNames = new Set(student.turma.subjects.map((subject) => subject.name));
 
     if (body.grades) {
       const grades = Array.isArray(body.grades) ? body.grades : [];
@@ -103,13 +122,13 @@ export async function POST(request: NextRequest) {
         const rawValue = entry.value;
         const numericValue = Number(rawValue);
 
-        if (!entry.subject || rawValue === undefined || rawValue === null || rawValue === "" || Number.isNaN(numericValue) || numericValue < 0 || numericValue > 20) {
+        if (!subjectNames.has(entry.subject) || rawValue === undefined || rawValue === null || rawValue === "" || Number.isNaN(numericValue) || numericValue < 0 || numericValue > 20) {
           continue;
         }
 
         await prisma.grade.create({
           data: {
-            studentId: body.studentId,
+            studentId,
             subject: entry.subject,
             value: numericValue,
             term: entry.term ?? "Semanal",
@@ -124,7 +143,7 @@ export async function POST(request: NextRequest) {
       const absences = Array.isArray(body.absences) ? body.absences : [];
 
       for (const entry of absences) {
-        if (!entry.studentId || !entry.subject || !entry.dia) {
+        if (!entry.studentId || entry.studentId !== studentId || !subjectNames.has(entry.subject) || !entry.dia) {
           continue;
         }
 

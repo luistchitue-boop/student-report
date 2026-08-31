@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 const turmaNames = require('../turmas.json');
+const disciplineData = require('../disciplinas.json');
 
 const prisma = new PrismaClient();
 
@@ -190,15 +191,56 @@ async function seedTurmas(teacher) {
   return results;
 }
 
+async function seedSubjects() {
+  const results = [];
+
+  for (const turmaData of disciplineData) {
+    const turma = await prisma.turma.findFirst({ where: { name: turmaData.turma_name } });
+
+    if (!turma) {
+      results.push({ name: turmaData.turma_name, subjectCount: 0, skipped: true });
+      continue;
+    }
+
+    const subjectNames = [...new Set(
+      turmaData.disciplinas
+        .map((subject) => subject.name.trim())
+        .filter(Boolean)
+    )];
+    const existingSubjects = await prisma.subject.findMany({
+      where: { turmaId: turma.id },
+      select: { name: true },
+    });
+    const existingNames = new Set(existingSubjects.map((subject) => subject.name));
+    const missingNames = subjectNames.filter((name) => !existingNames.has(name));
+
+    if (missingNames.length > 0) {
+      await prisma.subject.createMany({
+        data: missingNames.map((name) => ({ turmaId: turma.id, name })),
+      });
+    }
+
+    results.push({
+      name: turma.name,
+      subjectCount: subjectNames.length,
+      added: missingNames.length,
+    });
+  }
+
+  return results;
+}
+
 async function main() {
   const teacher = await ensureUserAndTeacher();
   const results = await seedTurmas(teacher);
+  const subjects = await seedSubjects();
 
   console.log(JSON.stringify({
     email: 'test@example.com',
     password: 'test1234',
     teacherId: teacher.id,
     turmas: results,
+    subjects,
   }, null, 2));
 }
 

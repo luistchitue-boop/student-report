@@ -29,6 +29,10 @@ export async function getCoordinatorTurmas(userId: string) {
           _count: {
             select: { students: true },
           },
+          subjects: {
+            orderBy: { name: "asc" },
+            select: { name: true },
+          },
           students: {
             orderBy: { name: "asc" },
             select: {
@@ -58,6 +62,7 @@ export async function getCoordinatorTurmas(userId: string) {
       name: turma.name,
       schedule: turma.schedule ?? "Sem horário definido",
       students: turma._count.students,
+      subjects: turma.subjects.map((subject) => subject.name),
       roster: turma.students.map((student) => ({
         id: student.id,
         name: student.name,
