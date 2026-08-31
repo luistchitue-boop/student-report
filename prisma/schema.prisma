@@ -78,6 +78,19 @@ model Turma {
 
   coordinator Teacher? @relation(fields: [coordinatorId], references: [id], onDelete: SetNull)
   students    Student[]
+  subjects    Subject[]
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  turmaId   String
+  name      String
+  createdAt DateTime @default(now())
+
+  turma Turma @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+
+  @@unique([turmaId, name])
+  @@index([turmaId])
 }
 
 model Student {
