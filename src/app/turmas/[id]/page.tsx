@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
-import { getCoordinatorTurmaById, buildStudentSlug } from "@/lib/teacher-data";
+import { getCoordinatorTurmaById } from "@/lib/teacher-data";
 
 export default async function TurmaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -44,8 +44,8 @@ export default async function TurmaDetailPage({ params }: { params: Promise<{ id
           </div>
 
           <div style={{ display: "grid", gap: "0.75rem" }}>
-            {turma.roster.map((student) => (
-              <Link key={student.id} href={`/turmas/${turma.id}/${encodeURIComponent(buildStudentSlug(student.name))}`} style={{ textDecoration: "none", color: "inherit" }}>
+              {turma.roster.map((student) => (
+                <Link key={student.id} href={`/turmas/${turma.id}/${encodeURIComponent(student.id)}`} style={{ textDecoration: "none", color: "inherit" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", background: "#f7f8f4", border: "1px solid #e0e5de", padding: "0.9rem 1rem", flexWrap: "wrap", cursor: "pointer" }}>
                   <div>
                     <strong style={{ display: "block" }}>{student.name}</strong>

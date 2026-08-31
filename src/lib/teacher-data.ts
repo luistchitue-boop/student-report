@@ -11,7 +11,12 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export function buildStudentSlug(name: string) {
-  return name.toLowerCase().replace(/\s+/g, "-");
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export async function getCoordinatorTurmas(userId: string) {
@@ -67,6 +72,8 @@ export async function getCoordinatorStudentBySlug(userId: string, turmaId: strin
   }
 
   return (
-    turma.roster.find((student) => buildStudentSlug(student.name) === studentSlug) ?? null
+    turma.roster.find((student) => student.id === studentSlug) ??
+    turma.roster.find((student) => buildStudentSlug(student.name) === studentSlug) ??
+    null
   );
 }

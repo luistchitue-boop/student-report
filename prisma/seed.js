@@ -1,42 +1,69 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 const turmaNames = require('../turmas.json');
 
 const prisma = new PrismaClient();
 
-const targetTurmas = turmaNames.map((name) => ({ name }));
+const turmasDataDirectory = path.join(__dirname, '..', 'turmas');
+const csvTurmaNames = fs.readdirSync(turmasDataDirectory)
+  .filter((fileName) => fileName.endsWith('.csv'))
+  .map((fileName) => path.basename(fileName, '.csv'));
+const targetTurmas = [...new Set([...turmaNames, ...csvTurmaNames])].map((name) => ({ name }));
 
-const firstNames = [
-  'Ana', 'Bruno', 'Carlos', 'Daniela', 'Eduardo', 'Fernanda', 'Gabriel', 'Helena', 'Igor', 'Julia',
-  'Kaio', 'Luan', 'Marina', 'Nicolas', 'Olivia', 'Pedro', 'Quezia', 'Rafael', 'Sofia', 'Tiago',
-  'Uma', 'Vitor', 'Wesley', 'Ximena', 'Yasmin', 'Zeca', 'Alice', 'Benjamim', 'Camila', 'Davi',
-  'Emilia', 'Felipe', 'Giovanna', 'Henrique', 'Isabela', 'Joao', 'Karla', 'Leonardo', 'Maya', 'Noah',
-  'Patricia', 'Otavio', 'Rita', 'Samuel', 'Tatiana', 'Ulisses', 'Valentina', 'William', 'Yuri', 'Zora'
-];
+function parseCsvLine(line) {
+  const values = [];
+  let value = '';
+  let quoted = false;
 
-const lastNames = [
-  'Almeida', 'Barros', 'Costa', 'Dias', 'Esteves', 'Ferreira', 'Gomes', 'Horta', 'Iglesias', 'Junior',
-  'Klein', 'Lima', 'Matos', 'Nascimento', 'Oliveira', 'Pereira', 'Queiroz', 'Rocha', 'Silva', 'Teixeira',
-  'Uchoa', 'Vieira', 'Wanderley', 'Xavier', 'Yamamoto', 'Zanetti', 'Araujo', 'Borges', 'Carvalho', 'Duarte',
-  'Elias', 'Fonseca', 'Guerra', 'Hernandes', 'Inacio', 'Jardim', 'Lopes', 'Mendes', 'Nogueira', 'Paiva',
-  'Quintana', 'Ribeiro', 'Santos', 'Tavares', 'Vargas', 'Wolff', 'Ximenes', 'Yoshida', 'Zamboni'
-];
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
 
-function randomItem(list) {
-  return list[Math.floor(Math.random() * list.length)];
-}
-
-function generateRandomName(existingNames) {
-  let candidate = `${randomItem(firstNames)} ${randomItem(lastNames)}`;
-  let attempts = 0;
-
-  while (existingNames.has(candidate) && attempts < 50) {
-    candidate = `${randomItem(firstNames)} ${randomItem(lastNames)}`;
-    attempts += 1;
+    if (character === '"' && quoted && nextCharacter === '"') {
+      value += '"';
+      index += 1;
+    } else if (character === '"') {
+      quoted = !quoted;
+    } else if (character === ',' && !quoted) {
+      values.push(value.trim());
+      value = '';
+    } else {
+      value += character;
+    }
   }
 
-  existingNames.add(candidate);
-  return candidate;
+  values.push(value.trim());
+  return values;
+}
+
+function readTurmaCsv(turmaName) {
+  const filePath = path.join(turmasDataDirectory, `${turmaName}.csv`);
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/).filter(Boolean);
+  const headers = parseCsvLine(lines.shift()).map((header) => header.toLowerCase());
+  const columnIndex = (...names) => names.reduce((foundIndex, name) => (
+    foundIndex >= 0 ? foundIndex : headers.indexOf(name.toLowerCase())
+  ), -1);
+  const guardianIndex = columnIndex('nome do encarregado', 'nome encarregado');
+  const emailIndex = columnIndex('e-mail', 'email');
+  const phoneIndex = columnIndex('telefone', 'telemovel', 'telefone do encarregado');
+  const studentIndex = columnIndex('aluno', 'nome do aluno');
+  const valueAt = (values, index) => (index >= 0 ? values[index] || '' : '');
+
+  return lines.map((line) => {
+    const values = parseCsvLine(line);
+    return {
+      parentName: valueAt(values, guardianIndex),
+      email: valueAt(values, emailIndex).toUpperCase() === 'N/A' ? '' : valueAt(values, emailIndex),
+      phone: valueAt(values, phoneIndex),
+      studentName: valueAt(values, studentIndex),
+    };
+  });
 }
 
 async function ensureUserAndTeacher() {
@@ -101,10 +128,62 @@ async function seedTurmas(teacher) {
       });
     }
 
-    const studentCount = await prisma.student.count({ where: { turmaId: turma.id } });
+    const rows = readTurmaCsv(turma.name);
+    const studentRows = new Map();
+    for (const row of rows) {
+      if (!row.studentName) continue;
+      if (!studentRows.has(row.studentName)) studentRows.set(row.studentName, []);
+      studentRows.get(row.studentName).push(row);
+    }
+
+    const existingStudents = await prisma.student.findMany({
+      where: { turmaId: turma.id },
+      include: { parents: true },
+    });
+    const existingStudentNames = new Set(existingStudents.map((student) => student.name));
+    const missingStudentNames = [...studentRows.keys()].filter((name) => !existingStudentNames.has(name));
+
+    if (missingStudentNames.length > 0) {
+      await prisma.student.createMany({
+        data: missingStudentNames.map((name) => ({ turmaId: turma.id, name })),
+      });
+    }
+
+    const students = await prisma.student.findMany({
+      where: { turmaId: turma.id, name: { in: [...studentRows.keys()] } },
+      include: { parents: true },
+    });
+    const studentsByName = new Map(students.map((student) => [student.name, student]));
+    const parentData = [];
+
+    for (const [studentName, studentParentRows] of studentRows) {
+      const student = studentsByName.get(studentName);
+      const existingParentKeys = new Set(
+        student.parents.map((parent) => `${parent.name}\u0000${parent.phone}\u0000${parent.email}`)
+      );
+
+      for (const row of studentParentRows) {
+        const key = `${row.parentName}\u0000${row.phone}\u0000${row.email}`;
+        if (!existingParentKeys.has(key)) {
+          existingParentKeys.add(key);
+          parentData.push({
+            studentId: student.id,
+            name: row.parentName,
+            phone: row.phone,
+            email: row.email,
+          });
+        }
+      }
+    }
+
+    if (parentData.length > 0) {
+      await prisma.parent.createMany({ data: parentData });
+    }
+
     results.push({
       name: turma.name,
-      studentCount,
+      studentCount: students.length,
+      parentCount: students.reduce((count, student) => count + student.parents.length, 0) + parentData.length,
     });
   }
 

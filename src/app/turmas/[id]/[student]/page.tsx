@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { notFound } from "next/navigation";
-import { getCoordinatorTurmaById, buildStudentSlug } from "@/lib/teacher-data";
+import { getCoordinatorStudentBySlug, getCoordinatorTurmaById } from "@/lib/teacher-data";
 import { StudentRecordClient } from "./student-record-client";
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string; student: string }> }) {
@@ -18,7 +18,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  const studentRecord = turma.roster.find((entry) => buildStudentSlug(entry.name) === student);
+  const studentRecord = await getCoordinatorStudentBySlug(session.user.id, id, student);
 
   if (!studentRecord) {
     notFound();
