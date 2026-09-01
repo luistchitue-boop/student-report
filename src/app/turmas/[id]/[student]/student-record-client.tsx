@@ -74,7 +74,8 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
     const response = await fetch("/api/student-justifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ absenceIds: selectedAbsenceIds, title: justificationTitle, notes: justificationNotes }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Não foi possível justificar as faltas.");
-    setAbsences((current) => current.map((absence) => selectedAbsenceIds.includes(absence.id) ? { ...absence, justified: true, justificationTitle, justificationNotes } : absence));
+    const justifiedIds: string[] = Array.isArray(result.absenceIds) ? result.absenceIds : [];
+    setAbsences((current) => current.map((absence) => justifiedIds.includes(absence.id) ? { ...absence, justified: true, justificationTitle: result.title ?? justificationTitle, justificationNotes: result.notes ?? justificationNotes } : absence));
     setSelectedAbsenceIds([]);
     setShowJustificationModal(false);
     setJustificationTitle("");

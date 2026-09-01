@@ -31,7 +31,11 @@ export async function POST(request: NextRequest) {
       data: { justified: true, justificationTitle: title, justificationNotes: notes },
     });
 
-    return NextResponse.json({ success: true, justified: absences.length });
+    return NextResponse.json({
+      success: true,
+      justified: absences.length,
+      absenceIds: absences.map((absence) => absence.id),
+    });
   } catch (error) {
     console.error("Justification save error:", error);
     return NextResponse.json({ error: "Failed to save justification" }, { status: 500 });
