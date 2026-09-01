@@ -283,10 +283,10 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
   .attendance-check { grid-column:2 / -1; justify-self:start; margin-top:-0.2rem; }
   .attendance-book-footer { align-items:stretch; flex-direction:column; }
   .attendance-save-button { width:100%; }
-  .detail-panel-actions { width:100%; }
-  .attendance-book-button { flex:1; }
-  .mini-pauta-button { flex:1; }
-  .new-student-button { flex:1; }
+  .detail-panel-actions { width:100%; flex-direction:column; }
+  .attendance-book-button { flex:1; width:100%; }
+  .mini-pauta-button { flex:1; width:100%; }
+  .new-student-button { flex:1; width:100%; }
   .new-student-panel { padding:0.8rem; border-radius:20px; }
   .new-student-fields, .new-student-fields.parent-fields { grid-template-columns:1fr; }
   .new-student-actions { flex-direction:column-reverse; }
