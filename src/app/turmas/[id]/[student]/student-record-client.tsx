@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
 type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; createdAt: string };
+const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 
 export function StudentRecordClient({ turma, student }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> } }) {
   const [tab, setTab] = useState<"notas" | "faltas" | "relatorio" | "contactos">("relatorio");
@@ -224,7 +225,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
                   <div className="student-record-row absence" key={absence.id}>
                     <label>Disciplina<input value={absence.subject} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, subject: event.target.value } : item))} /></label>
                     <label>Dia<input type="date" value={absence.dia.slice(0, 10)} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, dia: event.target.value } : item))} /></label>
-                    <label>Tempo<input value={absence.tempo} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, tempo: event.target.value } : item))} /></label>
+                    <label>Tempo<select value={absence.tempo} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, tempo: event.target.value } : item))}>{tempos.map((tempo) => <option key={tempo} value={tempo}>{tempo}</option>)}</select></label>
                     <label>Tipo<select value={absence.faultType} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, faultType: event.target.value } : item))}><option value="FALTA_DE_MATERIAL">Falta de material</option><option value="AUSENCIA_NA_SALA">Ausência na sala</option></select></label>
                     <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("absence", absence); setStatusMessage("Falta actualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível actualizar a falta."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("absence", absence.id); setAbsences((current) => current.filter((item) => item.id !== absence.id)); setStatusMessage("Falta eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a falta."); } }}>Eliminar</button></div>
                   </div>
