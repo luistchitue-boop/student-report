@@ -139,6 +139,19 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
 .student-record-panel [style*="grid-template-columns"] { border-radius:15px; }
 .student-record-panel button { border-radius:11px; }
 .student-record-panel a { overflow-wrap:anywhere; }
+.student-record-list-panel { display:grid; gap:0.8rem; }
+.student-record-list-heading { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin-bottom:0.35rem; }
+.student-record-list-heading h2 { margin-top:0.35rem; color:var(--navy); font-size:1.15rem; }
+.student-record-list-heading > span { color:#68756d; font-size:0.78rem; font-weight:800; }
+.student-record-row { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(100px,0.6fr) minmax(0,1fr) auto; align-items:end; gap:0.75rem; padding:0.9rem; border:1px solid #e1e9e2; border-radius:15px; background:#f8fbf8; }
+.student-record-row.absence { grid-template-columns:repeat(4, minmax(0,1fr)) auto; }
+.student-record-row label { display:grid; gap:0.35rem; color:#53645b; font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; }
+.student-record-row input, .student-record-row select { width:100%; min-height:2.45rem; padding:0.55rem 0.65rem; border:1px solid #ccd9ce; border-radius:9px; background:#fff; color:var(--ink); text-transform:none; letter-spacing:0; outline:none; }
+.student-record-actions { display:flex; gap:0.45rem; }
+.student-record-actions button { min-height:2.45rem; border:1px solid #b9cdbd; border-radius:9px; padding:0.55rem 0.7rem; background:#fff; color:var(--green); font-size:0.72rem; font-weight:800; white-space:nowrap; }
+.student-record-actions button.danger { border-color:#e2c2ba; color:#a14a3a; }
+.student-record-empty, .student-record-status { color:#68756d; font-size:0.85rem; font-weight:700; }
+.student-record-status { color:var(--green); }
 @media (max-width: 700px) {
   .pagination { width:100%; justify-content:space-between; gap:0.5rem; }
   .pagination-compact { flex:1 1 auto; justify-content:center; gap:0.35rem; }
@@ -196,6 +209,11 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
   .student-record-panel [style*="grid-template-columns"] { grid-template-columns:1fr !important; gap:0.65rem !important; padding:0.75rem !important; }
   .student-record-panel [style*="grid-column"] { grid-column:auto !important; }
   .student-record-panel button { width:100%; min-height:44px; }
+  .student-record-list-heading { align-items:flex-start; flex-direction:column; }
+  .student-record-row, .student-record-row.absence { grid-template-columns:1fr 1fr; align-items:stretch; }
+  .student-record-row label:first-child { grid-column:1 / -1; }
+  .student-record-actions { grid-column:1 / -1; }
+  .student-record-actions button { flex:1; }
   .turma-summary { grid-template-columns: 1fr; }
   .turma-toolbar { flex-direction: column; align-items: flex-start; }
   .turma-list { grid-template-columns: 1fr; }

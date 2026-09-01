@@ -184,3 +184,62 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to save student record" }, { status: 500 });
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const body = await request.json();
+    const type = body.type === "absence" ? "absence" : body.type === "grade" ? "grade" : "";
+    const id = typeof body.id === "string" ? body.id : "";
+    if (!type || !id) return NextResponse.json({ error: "Record type and id are required" }, { status: 400 });
+
+    if (type === "grade") {
+      const value = Number(body.value);
+      if (!Number.isFinite(value) || value < 0 || value > 20) return NextResponse.json({ error: "Grade must be between 0 and 20" }, { status: 400 });
+      const grade = await prisma.grade.findFirst({ where: { id, student: { turma: { coordinator: { userId: session.user.id } } } } });
+      if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
+      const updated = await prisma.grade.update({ where: { id }, data: { value, subject: typeof body.subject === "string" ? body.subject : grade.subject, term: typeof body.term === "string" ? body.term : grade.term } });
+      return NextResponse.json({ success: true, record: updated });
+    }
+
+    const absence = await prisma.absence.findFirst({ where: { id, student: { turma: { coordinator: { userId: session.user.id } } } } });
+    if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });
+    const subject = typeof body.subject === "string" ? body.subject : absence.subject;
+    const dia = typeof body.dia === "string" ? normalizeDay(body.dia) : absence.dia;
+    const faultType = body.faultType === "AUSENCIA_NA_SALA" ? "AUSENCIA_NA_SALA" : body.faultType === "FALTA_DE_MATERIAL" ? "FALTA_DE_MATERIAL" : absence.faultType;
+    const updated = await prisma.absence.update({ where: { id }, data: { subject, dia, tempo: typeof body.tempo === "string" ? body.tempo : absence.tempo, faultType, notes: typeof body.notes === "string" ? body.notes : absence.notes } });
+    return NextResponse.json({ success: true, record: updated });
+  } catch (error) {
+    console.error("Student record update error:", error);
+    return NextResponse.json({ error: "Failed to update student record" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get("type");
+    const id = searchParams.get("id");
+    if (!id || (type !== "grade" && type !== "absence")) return NextResponse.json({ error: "Record type and id are required" }, { status: 400 });
+
+    if (type === "grade") {
+      const grade = await prisma.grade.findFirst({ where: { id, student: { turma: { coordinator: { userId: session.user.id } } } } });
+      if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
+      await prisma.grade.delete({ where: { id } });
+    } else {
+      const absence = await prisma.absence.findFirst({ where: { id, student: { turma: { coordinator: { userId: session.user.id } } } } });
+      if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });
+      await prisma.absence.delete({ where: { id } });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Student record delete error:", error);
+    return NextResponse.json({ error: "Failed to delete student record" }, { status: 500 });
+  }
+}

@@ -3,44 +3,58 @@
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
-const faultTypes = ["Falta de material", "Ausência na sala"];
+type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
+type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; createdAt: string };
 
 export function StudentRecordClient({ turma, student }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> } }) {
-  const subjects = turma.subjects;
-  const [tab, setTab] = useState<"notas" | "faltas" | "relatorio" | "contactos">("notas");
-  const [gradeStart, setGradeStart] = useState<string>("");
-  const [gradeEnd, setGradeEnd] = useState<string>("");
+  const [tab, setTab] = useState<"notas" | "faltas" | "relatorio" | "contactos">("relatorio");
   const [reportStart, setReportStart] = useState<string>("");
   const [reportEnd, setReportEnd] = useState<string>("");
-  const [gradeValues, setGradeValues] = useState<Record<string, string>>(() => Object.fromEntries(subjects.map((subject) => [subject, ""])));
   const [reportNote, setReportNote] = useState<string>("");
-  const [absenceRows, setAbsenceRows] = useState([
-    { subject: subjects[0] ?? "", dia: "", tempo: "1º tempo", faultType: "Falta de material", notes: "" },
-  ]);
   const [statusMessage, setStatusMessage] = useState<string>("");
-  const [isSaving, setIsSaving] = useState(false);
+  const [grades, setGrades] = useState<GradeRecord[]>([]);
+  const [absences, setAbsences] = useState<AbsenceRecord[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
 
-  const hasValidGradeWindow = (() => {
-    if (!gradeStart || !gradeEnd) return false;
-    const start = new Date(`${gradeStart}T12:00:00Z`);
-    const end = new Date(`${gradeEnd}T12:00:00Z`);
-    const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return diffDays === 6;
-  })();
+  useEffect(() => {
+    if (tab !== "notas" && tab !== "faltas") return;
+    let cancelled = false;
+    setRecordsLoading(true);
+    fetch(`/api/student-record?studentId=${encodeURIComponent(student.id)}&from=2000-01-01&to=2100-12-31`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Não foi possível carregar os registos.");
+        return response.json();
+      })
+      .then((data: { grades?: GradeRecord[]; absences?: AbsenceRecord[] }) => {
+        if (!cancelled) {
+          setGrades(data.grades ?? []);
+          setAbsences(data.absences ?? []);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setStatusMessage(error instanceof Error ? error.message : "Não foi possível carregar os registos.");
+      })
+      .finally(() => {
+        if (!cancelled) setRecordsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [student.id, tab]);
 
-  const studentSlug = useMemo(
-    () => student.name.toLowerCase().replace(/\s+/g, "-") ,
-    [student.name],
-  );
+  async function updateRecord(type: "grade" | "absence", record: GradeRecord | AbsenceRecord) {
+    const body = type === "grade"
+      ? { type, id: record.id, value: (record as GradeRecord).value, subject: record.subject, term: (record as GradeRecord).term }
+      : { type, id: record.id, subject: record.subject, dia: (record as AbsenceRecord).dia.slice(0, 10), tempo: (record as AbsenceRecord).tempo, faultType: (record as AbsenceRecord).faultType, notes: (record as AbsenceRecord).notes };
+    const response = await fetch("/api/student-record", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error ?? "Não foi possível actualizar o registo.");
+  }
 
-  function addAbsenceRow() {
-    setAbsenceRows((current) => [
-      ...current,
-      { subject: subjects[0] ?? "", dia: "", tempo: "1º tempo", faultType: "Falta de material", notes: "" },
-    ]);
+  async function deleteRecord(type: "grade" | "absence", id: string) {
+    const response = await fetch(`/api/student-record?type=${type}&id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error ?? "Não foi possível eliminar o registo.");
   }
 
   function escapeHtml(value: string) {
@@ -90,113 +104,26 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
         notes: fault.notes ?? "",
       }));
 
-      const averageScore = normalizedGrades.length
-        ? (normalizedGrades.reduce((total: number, grade: { value: number }) => total + Number(grade.value), 0) / normalizedGrades.length).toFixed(1)
-        : "0.0";
-
-      const totalFaults = normalizedFaults.length;
-
       const reportElement = document.createElement("div");
       reportElement.style.position = "fixed";
       reportElement.style.left = "-9999px";
       reportElement.style.top = "0";
       reportElement.style.width = "794px";
-      reportElement.style.background = "#fff";
       reportElement.style.padding = "32px";
+      reportElement.style.background = "#fff";
       reportElement.style.fontFamily = "Arial, sans-serif";
-      reportElement.style.color = "#1f2a2b";
-      reportElement.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #1b3d34;padding:0 0 20px;margin-bottom:24px;">
-          <div style="display:flex;align-items:center;gap:16px;">
-            <img src="/school-logo.png" alt="Logo da escola" style="width:72px;height:72px;object-fit:contain;" />
-            <div>
-              <div style="font-size:22px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#1b3d34;">NEPH RELATORIOS</div>
-              <div style="margin-top:7px;color:#60716a;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;">Relatório escolar</div>
-            </div>
-          </div>
-          <div style="text-align:right;color:#60716a;font-size:11px;line-height:1.6;">
-            <strong style="display:block;color:#1b3d34;font-size:12px;">PERÍODO</strong>
-            ${escapeHtml(reportStart)} a ${escapeHtml(reportEnd)}
-          </div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;margin:18px 0 28px;">
-          <div style="background:#1b3d34;color:#fff;border-radius:12px;padding:16px 18px;">
-            <span style="display:block;color:#b9d7c4;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Aluno</span>
-            <span style="font-size:19px;font-weight:800;">${escapeHtml(student.name)}</span>
-          </div>
-          <div style="background:#f1f7f2;border:1px solid #d8e7dc;border-radius:12px;padding:16px 18px;">
-            <span style="display:block;color:#5b6d68;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Turma</span>
-            <span style="font-size:16px;font-weight:800;color:#1b3d34;">${escapeHtml(turma.name)}</span>
-          </div>
-          <div style="background:#fff7df;border:1px solid #f0dfaa;border-radius:12px;padding:16px 18px;">
-            <span style="display:block;color:#806b2c;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Média geral</span>
-            <span style="font-size:24px;font-weight:800;color:#6d581e;">${averageScore}</span>
-          </div>
-        </div>
-
-        <h2 style="color:#1b3d34;font-size:17px;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Notas</h2>
-        <table style="width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid #d8e7dc;border-radius:10px;margin-top:10px;">
-          <thead>
-            <tr>
-              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Disciplina</th>
-              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Nota</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${normalizedGrades.length ? normalizedGrades.map((grade, index) => `<tr style="background:${index % 2 ? "#fbfdfb" : "#ffffff"};"><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(grade.subject)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;font-weight:800;color:#1b3d34;">${Number(grade.value).toFixed(1)}</td></tr>`).join("") : `<tr><td colspan="2" style="padding:12px;">Sem notas registadas.</td></tr>`}
-          </tbody>
-        </table>
-
-        <h2 style="color:#1b3d34;font-size:17px;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Faltas</h2>
-        <table style="width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid #d8e7dc;border-radius:10px;margin-top:10px;">
-          <thead>
-            <tr>
-              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Disciplina</th>
-              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Dia</th>
-              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Tempo</th>
-              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Tipo</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${normalizedFaults.length ? normalizedFaults.map((fault, index) => `<tr style="background:${index % 2 ? "#fbfdfb" : "#ffffff"};"><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.subject)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.dia)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.tempo)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.faultType)}</td></tr>`).join("") : `<tr><td colspan="4" style="padding:12px;">Sem faltas registadas.</td></tr>`}
-          </tbody>
-        </table>
-
-        <h2 style="color:#1b3d34;font-size:17px;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Observação do professor</h2>
-        <div style="border-left:4px solid #39755d;border-radius:0 10px 10px 0;background:#f1f7f2;padding:15px 17px;line-height:1.6;color:#40554c;">${escapeHtml(reportNote.trim() || "Sem observação do professor.")}</div>
-
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:26px;background:#1b3d34;border-radius:12px;padding:15px 18px;color:#fff;">
-          <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#b9d7c4;">Resumo de assiduidade</span>
-          <span style="font-size:16px;font-weight:800;">${totalFaults} falta(s) registada(s)</span>
-        </div>
-      `;
-
+      reportElement.innerHTML = `<h1 style="color:#1b3d34;">NEPH RELATORIOS</h1><h2>Relatório de ${escapeHtml(student.name)}</h2><p>Período: ${escapeHtml(reportStart)} a ${escapeHtml(reportEnd)}</p><h3>Notas</h3><ul>${normalizedGrades.map((grade) => `<li>${escapeHtml(grade.subject)}: ${grade.value.toFixed(1)}</li>`).join("") || "<li>Sem notas registadas.</li>"}</ul><h3>Faltas</h3><ul>${normalizedFaults.map((fault) => `<li>${escapeHtml(fault.subject)} - ${escapeHtml(fault.dia)} - ${escapeHtml(fault.faultType)}</li>`).join("") || "<li>Sem faltas registadas.</li>"}</ul><h3>Observação do professor</h3><p>${escapeHtml(reportNote.trim() || "Sem observação do professor.")}</p>`;
       document.body.appendChild(reportElement);
 
       try {
-        const reportLogo = reportElement.querySelector("img");
-        if (reportLogo && !reportLogo.complete) {
-          await new Promise<void>((resolve) => {
-            reportLogo.addEventListener("load", () => resolve(), { once: true });
-            reportLogo.addEventListener("error", () => resolve(), { once: true });
-          });
-        }
-        const canvas = await html2canvas(reportElement, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+        const canvas = await html2canvas(reportElement, { scale: 2, backgroundColor: "#ffffff" });
         const pdf = new jsPDF("p", "mm", "a4");
-        const imgData = canvas.toDataURL("image/png");
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
         const imgWidth = pageWidth - 18;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const printableHeight = pageHeight - 18;
-        let renderedHeight = 0;
-        while (renderedHeight < imgHeight) {
-          if (renderedHeight > 0) pdf.addPage();
-          const pageHeightToRender = Math.min(printableHeight, imgHeight - renderedHeight);
-          pdf.addImage(imgData, "PNG", 9, 9 - renderedHeight, imgWidth, imgHeight);
-          renderedHeight += pageHeightToRender;
-        }
+        const imgData = canvas.toDataURL("image/png");
+        pdf.addImage(imgData, "PNG", 9, 9, imgWidth, Math.min(imgHeight, pageHeight - 18));
         pdf.save(`relatorio-${student.name.toLowerCase().replace(/\s+/g, "-")}.pdf`);
         setStatusMessage("PDF gerado com sucesso.");
       } catch (error) {
@@ -208,104 +135,6 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
     } catch (error) {
       console.error("PDF generation failed", error);
       setStatusMessage(error instanceof Error ? error.message : "Não foi possível gerar o PDF.");
-    }
-  }
-
-  async function saveGrades() {
-    if (!hasValidGradeWindow) {
-      setStatusMessage("A janela semanal precisa ter exatamente 7 dias de diferença.");
-      return;
-    }
-
-    const grades = subjects
-      .map((subject) => {
-        const rawValue = gradeValues[subject]?.trim();
-        if (rawValue === undefined || rawValue === "") {
-          return null;
-        }
-
-        const value = Number(rawValue);
-        if (!Number.isFinite(value) || value < 0 || value > 20) {
-          return null;
-        }
-
-        return { subject, value, term: "Semanal" };
-      })
-      .filter((entry): entry is { subject: string; value: number; term: string } => entry !== null);
-
-    if (!grades.length) {
-      setStatusMessage("Insira pelo menos uma nota válida antes de guardar.");
-      return;
-    }
-
-    setIsSaving(true);
-    setStatusMessage("");
-
-    try {
-      const response = await fetch("/api/student-record", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: student.id,
-          grades,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error ?? "Não foi possível guardar as notas.");
-      }
-
-      setStatusMessage("Notas guardadas com sucesso.");
-    } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : "Não foi possível guardar as notas.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function saveAbsences() {
-    const absences = absenceRows
-      .filter((row) => row.subject && row.dia)
-      .map((row) => ({
-        studentId: student.id,
-        subject: row.subject,
-        dia: row.dia,
-        tempo: row.tempo,
-        faultType: row.faultType === "Ausência na sala" ? "AUSENCIA_NA_SALA" : "FALTA_DE_MATERIAL",
-        notes: row.notes ?? "",
-      }));
-
-    if (!absences.length) {
-      setStatusMessage("Adicione pelo menos uma falta com dia preenchido antes de guardar.");
-      return;
-    }
-
-    setIsSaving(true);
-    setStatusMessage("");
-
-    try {
-      const response = await fetch("/api/student-record", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: student.id,
-          absences,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error ?? "Não foi possível guardar as faltas.");
-      }
-
-      setStatusMessage("Faltas guardadas com sucesso.");
-    } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : "Não foi possível guardar as faltas.");
-    } finally {
-      setIsSaving(false);
     }
   }
 
@@ -374,130 +203,33 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             </div>
 
             {tab === "notas" && (
-              <div style={{ display: "grid", gap: "1rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", background: "#f6f9f5", border: "1px solid #dfe5df", padding: "0.9rem" }}>
-                  <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
-                    Data início
-                    <input type="date" value={gradeStart} onChange={(event) => setGradeStart(event.target.value)} style={{ padding: "0.7rem 0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8" }} />
-                  </label>
-
-                  <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
-                    Data fim
-                    <input type="date" value={gradeEnd} onChange={(event) => setGradeEnd(event.target.value)} style={{ padding: "0.7rem 0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8" }} />
-                  </label>
-                </div>
-
-                {!hasValidGradeWindow && (gradeStart || gradeEnd) ? (
-                  <div style={{ color: "#a14a3a", fontWeight: 700 }}>
-                    A semana deve ter exatamente 7 dias de diferença.
+              <div className="student-record-list-panel">
+                <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO ACADÉMICO</p><h2>Notas registadas</h2></div><span>{grades.length} registo(s)</span></div>
+                {recordsLoading ? <p className="student-record-empty">A carregar notas...</p> : grades.length ? grades.map((grade) => (
+                  <div className="student-record-row" key={grade.id}>
+                    <label>Disciplina<input value={grade.subject} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, subject: event.target.value } : item))} /></label>
+                    <label>Nota<input type="number" min="0" max="20" step="0.1" value={grade.value} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, value: Number(event.target.value) } : item))} /></label>
+                    <label>Período<input value={grade.term} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, term: event.target.value } : item))} /></label>
+                    <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("grade", grade); setStatusMessage("Nota actualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível actualizar a nota."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("grade", grade.id); setGrades((current) => current.filter((item) => item.id !== grade.id)); setStatusMessage("Nota eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a nota."); } }}>Eliminar</button></div>
                   </div>
-                ) : null}
-
-                <div style={{ color: "#4a5d5a", fontSize: "0.92rem", fontWeight: 600 }}>
-                  Campos vazios não são guardados.
-                </div>
-
-                {subjects.map((subject) => (
-                  <div key={subject} style={{ display: "grid", gridTemplateColumns: "minmax(130px, 180px) 1fr", gap: "0.75rem", alignItems: "center", background: "#f7f8f4", border: "1px solid #e3e8e1", padding: "0.75rem 0.9rem" }}>
-                    <strong style={{ color: "#32413d" }}>{subject}</strong>
-                    <input
-                      type="number"
-                      min="0"
-                      max="20"
-                      step="0.1"
-                      value={gradeValues[subject] ?? ""}
-                      onChange={(event) => setGradeValues((current) => ({ ...current, [subject]: event.target.value }))}
-                      placeholder="Inserir nota"
-                      disabled={!hasValidGradeWindow}
-                      style={{ padding: "0.8rem 0.9rem", border: "1px solid #ccd7cc", background: !hasValidGradeWindow ? "#edf1ee" : "#fbfcf8", cursor: !hasValidGradeWindow ? "not-allowed" : "text" }}
-                    />
-                  </div>
-                ))}
-                <div style={{ paddingTop: "1rem", borderTop: "1px solid #e5ece5", display: "grid", gap: "0.75rem" }}>
-                  {statusMessage ? (
-                    <div style={{ color: "#244d3d", fontWeight: 700 }}>{statusMessage}</div>
-                  ) : null}
-                  <button type="button" onClick={saveGrades} disabled={isSaving || !hasValidGradeWindow} style={{ padding: "0.9rem 1.2rem", background: !hasValidGradeWindow ? "#a7b7af" : "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: isSaving || !hasValidGradeWindow ? "not-allowed" : "pointer", opacity: isSaving ? 0.7 : 1 }}>
-                    {isSaving ? "A guardar..." : "Guardar notas"}
-                  </button>
-                </div>
+                )) : <p className="student-record-empty">Nenhuma nota registada.</p>}
+                {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
               </div>
             )}
 
             {tab === "faltas" && (
-              <div style={{ display: "grid", gap: "1rem" }}>
-                {absenceRows.map((row, index) => (
-                  <div key={`${row.subject}-${index}`} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "0.75rem", background: "#f7f8f4", border: "1px solid #e3e8e1", padding: "0.85rem" }}>
-                    <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
-                      Disciplina
-                      <select value={row.subject} onChange={(event) => {
-                        const next = [...absenceRows];
-                        next[index].subject = event.target.value;
-                        setAbsenceRows(next);
-                      }} style={{ padding: "0.7rem 0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8" }}>
-                        {subjects.map((subject) => (
-                          <option key={subject} value={subject}>{subject}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
-                      Dia
-                      <input type="date" value={row.dia} onChange={(event) => {
-                        const next = [...absenceRows];
-                        next[index].dia = event.target.value;
-                        setAbsenceRows(next);
-                      }} style={{ padding: "0.7rem 0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8" }} />
-                    </label>
-
-                    <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
-                      Tempo
-                      <select value={row.tempo} onChange={(event) => {
-                        const next = [...absenceRows];
-                        next[index].tempo = event.target.value;
-                        setAbsenceRows(next);
-                      }} style={{ padding: "0.7rem 0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8" }}>
-                        {tempos.map((tempo) => (
-                          <option key={tempo} value={tempo}>{tempo}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
-                      Tipo de falta
-                      <select value={row.faultType} onChange={(event) => {
-                        const next = [...absenceRows];
-                        next[index].faultType = event.target.value;
-                        setAbsenceRows(next);
-                      }} style={{ padding: "0.7rem 0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8" }}>
-                        {faultTypes.map((faultType) => (
-                          <option key={faultType} value={faultType}>{faultType}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d", gridColumn: "1 / -1" }}>
-                      Observação
-                      <textarea rows={2} value={row.notes} onChange={(event) => {
-                        const next = [...absenceRows];
-                        next[index].notes = event.target.value;
-                        setAbsenceRows(next);
-                      }} style={{ padding: "0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8", resize: "vertical" }} />
-                    </label>
+              <div className="student-record-list-panel">
+                <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO DE ASSIDUIDADE</p><h2>Faltas registadas</h2></div><span>{absences.length} registo(s)</span></div>
+                {recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : absences.length ? absences.map((absence) => (
+                  <div className="student-record-row absence" key={absence.id}>
+                    <label>Disciplina<input value={absence.subject} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, subject: event.target.value } : item))} /></label>
+                    <label>Dia<input type="date" value={absence.dia.slice(0, 10)} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, dia: event.target.value } : item))} /></label>
+                    <label>Tempo<input value={absence.tempo} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, tempo: event.target.value } : item))} /></label>
+                    <label>Tipo<select value={absence.faultType} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, faultType: event.target.value } : item))}><option value="FALTA_DE_MATERIAL">Falta de material</option><option value="AUSENCIA_NA_SALA">Ausência na sala</option></select></label>
+                    <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("absence", absence); setStatusMessage("Falta actualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível actualizar a falta."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("absence", absence.id); setAbsences((current) => current.filter((item) => item.id !== absence.id)); setStatusMessage("Falta eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a falta."); } }}>Eliminar</button></div>
                   </div>
-                ))}
-
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-                  <button type="button" onClick={addAbsenceRow} style={{ padding: "0.8rem 1rem", border: "1px solid #dfe5df", background: "#fff", color: "#244d3d", fontWeight: 800, cursor: "pointer" }}>
-                    + Adicionar falta
-                  </button>
-                  <button type="button" onClick={saveAbsences} disabled={isSaving} style={{ padding: "0.9rem 1.2rem", background: "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: isSaving ? "not-allowed" : "pointer", opacity: isSaving ? 0.7 : 1 }}>
-                    {isSaving ? "A guardar..." : "Guardar faltas"}
-                  </button>
-                </div>
-                {statusMessage ? (
-                  <div style={{ color: "#244d3d", fontWeight: 700 }}>{statusMessage}</div>
-                ) : null}
+                )) : <p className="student-record-empty">Nenhuma falta registada.</p>}
+                {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
               </div>
             )}
 
