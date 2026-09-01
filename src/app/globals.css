@@ -28,6 +28,9 @@
 .app-shell { min-height:100vh; display:flex; position:relative; }
 .sidebar { position:sticky; top:0; align-self:flex-start; width:236px; min-width:236px; height:100vh; padding:34px 24px 24px; background:#e4f0e5; display:flex; flex-direction:column; }
 .sidebar-header { display:flex; align-items:center; margin-bottom:10px; }
+@media (min-width: 701px) {
+  .sidebar-header { margin-bottom: 22px; }
+}
 .brand { display:flex; align-items:center; gap:10px; font-size:16px; font-weight:800; letter-spacing:-.5px; }
 .brand small { display:block; font:9px 'DM Mono',monospace; letter-spacing:1.5px; color:var(--green); margin-top:1px; }
 .brand-mark { display:grid; place-items:center; width:29px; height:29px; color:#fff; background:var(--green); border-radius:50%; font-size:17px; font-weight:800; }
