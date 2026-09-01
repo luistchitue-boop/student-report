@@ -35,6 +35,10 @@ export default async function TurmaDetailPage({
   const visibleStudents = turma.roster.slice(startIndex, startIndex + PAGE_SIZE);
 
   const buildPageHref = (page: number) => (page === 1 ? `/turmas/${turma.id}` : `/turmas/${turma.id}?page=${page}`);
+  const getDisplayName = (name: string) => {
+    const nameParts = name.trim().split(/\s+/).filter(Boolean);
+    return nameParts.length > 1 ? `${nameParts[0]} ${nameParts[nameParts.length - 1]}` : nameParts[0] ?? name;
+  };
   const getMobilePageItems = (currentPage: number, totalPages: number) => {
     if (totalPages <= 4) {
       return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -97,7 +101,7 @@ export default async function TurmaDetailPage({
                     <span className="student-avatar" aria-hidden="true">👤</span>
                   </div>
                   <div className="student-card-body">
-                    <strong>{student.name}</strong>
+                    <strong>{getDisplayName(student.name)}</strong>
                     <small>{student.age} anos</small>
                   </div>
                   <span className={`attendance-pill ${student.attendance === "P" ? "present" : student.attendance === "F" ? "absent" : "neutral"}`}>
