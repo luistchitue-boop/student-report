@@ -94,9 +94,21 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
 .mini-pauta-input-wrap input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
 .mini-pauta-input-wrap input:disabled { background:#edf1ee; cursor:not-allowed; }
 .mini-pauta-footer { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:1.1rem; padding-top:1rem; border-top:1px solid #e5ece5; color:#68756d; font-size:0.8rem; font-weight:700; }
+.mini-pauta-footer-actions { display:flex; align-items:center; gap:0.5rem; }
+.mini-pauta-export-button { min-height:2.45rem; border:1px solid #b9cdbd; border-radius:10px; padding:0.55rem 0.9rem; background:#fff; color:var(--green); font-size:0.7rem; font-weight:500; }
+.mini-pauta-export-button:hover { background:#f0f8f1; }
 .mini-pauta-save-button { min-height:2.6rem; border:0; border-radius:11px; padding:0.65rem 1rem; background:var(--green); color:#fff; font-weight:800; }
 .mini-pauta-save-button:disabled { cursor:not-allowed; opacity:0.55; }
 .mini-pauta-status { margin-top:0.75rem; color:var(--green); font-size:0.8rem; font-weight:800; }
+.mini-pauta-modal-backdrop { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:1rem; background:rgba(24,38,33,0.42); }
+.mini-pauta-export-modal { display:grid; gap:0.85rem; width:min(100%, 500px); padding:1.25rem; border:1px solid #dfe5df; border-radius:20px; background:#fff; box-shadow:0 24px 70px rgba(20,35,28,0.2); }
+.mini-pauta-modal-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:0.25rem; }
+.mini-pauta-modal-heading h2 { margin-top:0.35rem; color:var(--navy); font-size:1.15rem; }
+.mini-pauta-export-modal label { display:grid; gap:0.35rem; color:#53645b; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; }
+.mini-pauta-export-modal input, .mini-pauta-export-modal select { min-height:2.45rem; padding:0.55rem 0.65rem; border:1px solid #ccd9ce; border-radius:9px; background:#fff; outline:none; }
+.mini-pauta-export-modal input:focus, .mini-pauta-export-modal select:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
+.mini-pauta-modal-close { border:0; background:transparent; color:#68756d; font-size:1.4rem; line-height:1; }
+.mini-pauta-export-help { color:#68756d; font-size:0.78rem; line-height:1.45; }
 .attendance-book-shell { max-width:980px !important; }
 .attendance-book-subtitle { margin-top:0.45rem; color:#68756d; font-size:0.9rem; font-weight:700; }
 .attendance-book-panel { background:#fff; border:1px solid #dfe5df; border-radius:24px; padding:1.35rem; box-shadow:0 18px 44px rgba(26,38,32,0.06); }
@@ -225,7 +237,9 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
   .mini-pauta-input-wrap { grid-column:1 / -1; justify-content:space-between; padding-top:0.35rem; border-top:1px solid #e8eee8; }
   .mini-pauta-input-wrap input { width:100%; max-width:7rem; }
   .mini-pauta-footer { align-items:stretch; flex-direction:column; }
+  .mini-pauta-footer-actions { display:grid; grid-template-columns:1fr 1fr; }
   .mini-pauta-save-button { width:100%; }
+  .mini-pauta-export-button { width:100%; }
   .attendance-book-toolbar { grid-template-columns:1fr; }
   .attendance-fault-switch { grid-column:auto; }
   .attendance-fault-switch div { flex-direction:column; }

@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
   const subject = searchParams.get("subject") ?? "";
   const weekStart = searchParams.get("weekStart") ?? "";
   const weekEnd = searchParams.get("weekEnd") ?? "";
+  const exportMode = searchParams.get("export") === "true";
 
   if (!turmaId || !subject || !weekStart || !weekEnd || !isValidDate(weekStart) || !isValidDate(weekEnd)) {
     return NextResponse.json({ error: "Turma, subject, and a valid weekly interval are required" }, { status: 400 });
@@ -38,8 +39,12 @@ export async function GET(request: NextRequest) {
   if (!turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
 
   const term = `Semanal:${weekStart}:${weekEnd}`;
+  const startDate = new Date(`${weekStart}T00:00:00Z`);
+  const endDate = new Date(`${weekEnd}T23:59:59.999Z`);
   const grades = await prisma.grade.findMany({
-    where: { studentId: { in: turma.students.map((student) => student.id) }, subject, term },
+    where: exportMode
+      ? { studentId: { in: turma.students.map((student) => student.id) }, subject, createdAt: { gte: startDate, lte: endDate } }
+      : { studentId: { in: turma.students.map((student) => student.id) }, subject, term },
     select: { studentId: true, value: true },
   });
 

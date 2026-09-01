@@ -204,11 +204,22 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
         const imgData = canvas.toDataURL("image/png");
         const printableHeight = pageHeight - 18;
-        let renderedHeight = 0;
-        while (renderedHeight < imgHeight) {
-          if (renderedHeight > 0) pdf.addPage();
-          pdf.addImage(imgData, "PNG", 9, 9 - renderedHeight, imgWidth, imgHeight);
-          renderedHeight += printableHeight;
+        const pixelsPerMillimeter = canvas.width / imgWidth;
+        const pageSliceHeight = Math.floor(printableHeight * pixelsPerMillimeter);
+        let sourceY = 0;
+        while (sourceY < canvas.height) {
+          const sourceHeight = Math.min(pageSliceHeight, canvas.height - sourceY);
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = sourceHeight;
+          const context = pageCanvas.getContext("2d");
+          if (!context) throw new Error("Não foi possível preparar uma página do PDF.");
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          context.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+          if (sourceY > 0) pdf.addPage();
+          pdf.addImage(pageCanvas.toDataURL("image/png"), "PNG", 9, 9, imgWidth, sourceHeight / pixelsPerMillimeter);
+          sourceY += sourceHeight;
         }
         pdf.save(`relatorio-${student.name.toLowerCase().replace(/\s+/g, "-")}.pdf`);
         setStatusMessage("PDF gerado com sucesso.");
