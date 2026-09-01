@@ -19,11 +19,13 @@ export function StudentCardClient({
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedState, setSelectedState] = useState<boolean>(isActive);
+  const [error, setError] = useState<string | null>(null);
 
   const handleOpenModal = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setSelectedState(isActive);
+    setError(null);
     setShowModal(true);
   };
 
@@ -32,6 +34,7 @@ export function StudentCardClient({
       e.preventDefault();
       e.stopPropagation();
     }
+    setError(null);
     setShowModal(false);
   };
 
@@ -45,17 +48,36 @@ export function StudentCardClient({
     }
 
     setIsLoading(true);
+    setError(null);
+    
     try {
-      const response = await fetch(
-        `/api/turmas/${turmaId}/students/${student.id}/toggle-active`,
-        { method: "PATCH" }
-      );
+      const url = `/api/turmas/${turmaId}/students/${student.id}/toggle-active`;
+      console.log("Saving student state with URL:", url, "state:", selectedState);
+      
+      const response = await fetch(url, { method: "PATCH" });
+      
+      console.log("Response status:", response.status, "ok:", response.ok);
+      
       if (response.ok) {
+        const data = await response.json();
+        console.log("Updated student:", data);
         setIsActive(selectedState);
         setShowModal(false);
+      } else {
+        let errorMessage = "Falha ao guardar o estado do aluno";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          const text = await response.text();
+          console.error("Error response text:", text);
+        }
+        console.error("Failed response:", response.status, errorMessage);
+        setError(errorMessage);
       }
     } catch (error) {
       console.error("Failed to toggle student active status:", error);
+      setError("Erro ao conectar ao servidor");
     } finally {
       setIsLoading(false);
     }
@@ -130,6 +152,7 @@ export function StudentCardClient({
                   <span>Inactivo(a)</span>
                 </label>
               </div>
+              {error && <div className="modal-error">{error}</div>}
             </div>
 
             <div className="modal-footer">

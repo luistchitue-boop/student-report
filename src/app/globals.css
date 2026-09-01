@@ -116,6 +116,7 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
 .modal-close { border:0; background:transparent; color:#68756d; font-size:1.4rem; line-height:1; cursor:pointer; padding:0; }
 .modal-close:hover { color:var(--ink); }
 .modal-body { display:grid; gap:0.75rem; }
+.modal-error { padding:0.65rem 0.85rem; border-radius:8px; background:#fce4e6; color:#8b3a3a; font-size:0.75rem; font-weight:600; border:1px solid #f5c6cc; }
 .state-options { border:0; padding:0; margin:0; display:grid; gap:0.65rem; }
 .state-options label { display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border:1px solid #dde5df; border-radius:10px; background:#fbfcf8; cursor:pointer; transition:all 0.2s ease; font-weight:500; }
 .state-options label:hover { border-color:var(--green); background:#f5faf6; }
