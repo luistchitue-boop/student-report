@@ -320,8 +320,8 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
       </aside>
 
       <div className="page-shell">
-        <main className="main-content" style={{ maxWidth: 900 }}>
-          <header className="topbar" style={{ marginBottom: "1.75rem" }}>
+        <main className="main-content student-record-shell" style={{ maxWidth: 900 }}>
+          <header className="topbar student-record-topbar" style={{ marginBottom: "1.75rem" }}>
             <div>
               <p className="eyebrow">ALUNO</p>
               <h1 style={{ fontSize: "2rem", letterSpacing: "-0.05em" }}>{student.name}</h1>
@@ -331,18 +331,18 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             </Link>
           </header>
 
-          <section style={{ background: "#fff", border: "1px solid #dfe5df", padding: "1.25rem" }}>
-            <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem", borderBottom: "1px solid #e5ece5", paddingBottom: "0.8rem", flexWrap: "wrap" }}>
-              <button type="button" onClick={() => setTab("notas")} style={{ border: tab === "notas" ? "none" : "1px solid #dfe5df", background: tab === "notas" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+          <section className="student-record-panel" style={{ background: "#fff", border: "1px solid #dfe5df", padding: "1.25rem" }}>
+            <div className="student-tabs" style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem", borderBottom: "1px solid #e5ece5", paddingBottom: "0.8rem", flexWrap: "wrap" }}>
+              <button className="student-tab" type="button" onClick={() => setTab("notas")} style={{ border: tab === "notas" ? "none" : "1px solid #dfe5df", background: tab === "notas" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
                 Notas
               </button>
-              <button type="button" onClick={() => setTab("faltas")} style={{ border: tab === "faltas" ? "none" : "1px solid #dfe5df", background: tab === "faltas" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+              <button className="student-tab" type="button" onClick={() => setTab("faltas")} style={{ border: tab === "faltas" ? "none" : "1px solid #dfe5df", background: tab === "faltas" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
                 Faltas
               </button>
-              <button type="button" onClick={() => setTab("relatorio")} style={{ border: tab === "relatorio" ? "none" : "1px solid #dfe5df", background: tab === "relatorio" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+              <button className="student-tab" type="button" onClick={() => setTab("relatorio")} style={{ border: tab === "relatorio" ? "none" : "1px solid #dfe5df", background: tab === "relatorio" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
                 Relatório
               </button>
-              <button type="button" onClick={() => setTab("contactos")} style={{ border: tab === "contactos" ? "none" : "1px solid #dfe5df", background: tab === "contactos" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+              <button className="student-tab" type="button" onClick={() => setTab("contactos")} style={{ border: tab === "contactos" ? "none" : "1px solid #dfe5df", background: tab === "contactos" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
                 Contactos
               </button>
             </div>

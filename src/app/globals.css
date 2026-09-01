@@ -68,6 +68,17 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
 .page-button:hover { border-color:#b9d0c0; }
 .page-button.active { background:var(--green); border-color:var(--green); color:#fff; box-shadow:0 10px 18px rgba(57,117,93,0.18); }
 .page-button.disabled { opacity:0.45; pointer-events:none; }
+.student-record-shell { max-width:900px !important; }
+.student-record-topbar h1 { max-width:100%; overflow-wrap:anywhere; }
+.student-record-panel { border-radius:24px; box-shadow:0 18px 44px rgba(26,38,32,0.06); }
+.student-tabs { gap:0.45rem !important; padding:0.3rem !important; margin-bottom:1.35rem !important; border:1px solid #e5ece5 !important; border-radius:16px; background:#f7faf6; }
+.student-tab { border-radius:11px; transition:background .18s ease, color .18s ease, box-shadow .18s ease; }
+.student-tab:hover { background:#edf5ee !important; }
+.student-record-panel input, .student-record-panel select, .student-record-panel textarea { border-radius:10px; outline:none; transition:border-color .18s ease, box-shadow .18s ease; }
+.student-record-panel input:focus, .student-record-panel select:focus, .student-record-panel textarea:focus { border-color:#76a98a !important; box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
+.student-record-panel [style*="grid-template-columns"] { border-radius:15px; }
+.student-record-panel button { border-radius:11px; }
+.student-record-panel a { overflow-wrap:anywhere; }
 @media (max-width: 700px) {
   .pagination { width:100%; justify-content:space-between; gap:0.5rem; }
   .pagination-compact { flex:1 1 auto; justify-content:center; gap:0.35rem; }
@@ -92,6 +103,15 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
   .send-button { min-height: 46px; }
   .selected-label { max-width: 100%; text-align: left; }
   .student-grid { grid-template-columns: 1fr; }
+  .student-record-shell { padding:20px 12px 28px; }
+  .student-record-topbar { align-items:flex-start; }
+  .student-record-topbar h1 { font-size:1.7rem !important; line-height:1.12; }
+  .student-record-panel { padding:0.8rem !important; border-radius:20px; }
+  .student-tabs { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  .student-tab { width:100%; min-height:42px; padding:0.65rem 0.45rem !important; }
+  .student-record-panel [style*="grid-template-columns"] { grid-template-columns:1fr !important; gap:0.65rem !important; padding:0.75rem !important; }
+  .student-record-panel [style*="grid-column"] { grid-column:auto !important; }
+  .student-record-panel button { width:100%; min-height:44px; }
   .turma-summary { grid-template-columns: 1fr; }
   .turma-toolbar { flex-direction: column; align-items: flex-start; }
   .turma-list { grid-template-columns: 1fr; }
