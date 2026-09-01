@@ -206,7 +206,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
           {turma.roster.map((student) => (
             <label key={student.id} className="mini-pauta-row">
               <span className="mini-pauta-avatar">{displayName(student.name).charAt(0).toUpperCase()}</span>
-              <span className="mini-pauta-student"><strong>{displayName(student.name)}</strong><small>{student.age} anos</small></span>
+              <span className="mini-pauta-student"><strong>{displayName(student.name)}</strong></span>
               <span className="mini-pauta-input-wrap"><span>Nota</span><input type="number" min="0" max="20" step="0.1" value={grades[student.id] ?? ""} onChange={(event) => setGrades((current) => ({ ...current, [student.id]: event.target.value }))} placeholder="-" disabled={!weekStart || !weekEnd} /></span>
             </label>
           ))}

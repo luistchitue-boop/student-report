@@ -113,7 +113,6 @@ export default async function TurmaDetailPage({
                   </div>
                   <div className="student-card-body">
                     <strong>{getDisplayName(student.name)}</strong>
-                    <small>{student.age} anos</small>
                   </div>
                   <span className={`attendance-pill ${student.attendance === "P" ? "present" : student.attendance === "F" ? "absent" : "neutral"}`}>
                     {student.attendance === "P" ? "Activo(a)" : student.attendance === "F" ? "Ausente" : student.attendance}
