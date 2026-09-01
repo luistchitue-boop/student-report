@@ -1,47 +1,24 @@
 "use client";
 
-import { FormEvent, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 
-const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
-const reportUrl = (slug: string) => `${appUrl}/reports/${slug}.pdf`;
+const quickStats = [
+  { label: "Turmas", value: "12", hint: "total" },
+  { label: "Alunos ativos", value: "284", hint: "matriculados" },
+  { label: "Faltas hoje", value: "8", hint: "registadas" },
+  { label: "Relatórios", value: "14", hint: "disponíveis" },
+];
 
-const reports = [
-  { id: "weekly", name: "Relatorio academico semanal", date: "Today", size: "PDF link", url: reportUrl("relatorio-academico-semanal") },
-  { id: "term-1", name: "Relatorio academico do primeiro trimestre", date: "28 Mar 2026", size: "1.5 MB", url: reportUrl("relatorio-primeiro-trimestre") },
-  { id: "attendance", name: "Resumo de presencas · 2026", date: "12 Jun 2026", size: "820 KB", url: reportUrl("resumo-presencas-2026") },
+const actions = [
+  { title: "Turmas", description: "Consultar turmas e alunos", href: "/turmas", accent: "primary" },
+  { title: "Definições", description: "Configurar conta e preferências", href: "/settings", accent: "secondary" },
+  { title: "Admin", description: "Gerir professores e atribuições", href: "/admin", accent: "neutral" },
 ];
 
 export default function HomePage() {
   const { data: session } = useSession();
-  const [reportList, setReportList] = useState(reports);
-  const [selectedReport, setSelectedReport] = useState(reports[0]);
-  const [phone, setPhone] = useState("");
-  const [channel, setChannel] = useState<"whatsapp" | "sms" | "email">("whatsapp");
-  const [email, setEmail] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
-  const [newReport, setNewReport] = useState({ name: "", url: "" });
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [message, setMessage] = useState("");
-
-  async function sendReport(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("sending"); setMessage("");
-    try {
-      const response = await fetch("/api/send-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone, email, channel, reportUrl: selectedReport.url, reportName: selectedReport.name }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to send report");
-      setStatus("sent"); setMessage("Report sent successfully");
-    } catch (error) { setStatus("error"); setMessage(error instanceof Error ? error.message : "Unable to send report"); }
-  }
-
-  function addReport(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const report = { id: `report-${Date.now()}`, name: newReport.name, date: "Today", size: "PDF link", url: newReport.url };
-    setReportList((current) => [report, ...current]);
-    setSelectedReport(report); setNewReport({ name: "", url: "" }); setShowAdd(false);
-  }
 
   const userInitials = session?.user?.name
     ? session.user.name
@@ -54,13 +31,100 @@ export default function HomePage() {
       : "U";
 
   return (
-    <AppShell active="reports">
+    <AppShell active="inicio">
       <main className="main-content">
-        <header className="topbar"><div><p className="eyebrow">GABINETE ESCOLAR / 2026</p><h1>Relatorios escolares</h1></div><div className="profile"><span className="status-dot" /> Conectado <span className="avatar" title={session?.user?.email ?? undefined}>{userInitials}</span><button className="sign-out-btn" onClick={() => signOut({ redirectTo: "/auth/signin" })}>Sair</button></div></header>
-        <section className="welcome"><div><p className="eyebrow accent">{channel === "email" ? "ENTREGA POR EMAIL" : channel === "sms" ? "ENTREGA POR SMS" : "ENTREGA POR WHATSAPP"}</p><h2>Crie e envie relatorios<br /><em>da turma e dos alunos.</em></h2><p className="lede">Aceda ao histórico de notas, faltas e observações e partilhe os relatórios em segundos.</p></div><div className="whatsapp-glyph">◔</div></section>
-        <section className="workspace" id="reports"><div className="section-heading"><div><p className="eyebrow">BIBLIOTECA</p><h3>Relatorios disponíveis <span>{String(reportList.length).padStart(2, "0")}</span></h3></div><button className="outline-button" type="button" onClick={() => setShowAdd((current) => !current)}>＋ Adicionar</button></div>{showAdd && <form className="add-report" onSubmit={addReport}><input required placeholder="Nome do relatorio" value={newReport.name} onChange={(event) => setNewReport({ ...newReport, name: event.target.value })} /><input required type="url" placeholder="https://seu-site.com/relatorio.pdf" value={newReport.url} onChange={(event) => setNewReport({ ...newReport, url: event.target.value })} /><button className="send-button" type="submit">Guardar</button></form>}<div className="reports-list">{reportList.map((report) => <button type="button" className={`report-row ${selectedReport.id === report.id ? "selected" : ""}`} key={report.id} onClick={() => { setSelectedReport(report); setStatus("idle"); }}><span className="pdf-icon">PDF</span><span className="report-details"><strong>{report.name}</strong><small>Adicionado {report.date} · {report.size}</small></span><span className="row-arrow">{selectedReport.id === report.id ? "✓" : "→"}</span></button>)}</div></section>
-        <section className="send-panel" id="activity"><div className="panel-heading"><div><p className="eyebrow">PRONTO PARA ENVIAR</p><h3>Enviar relatorio selecionado</h3></div><span className="selected-label">{selectedReport.name}</span></div><div className="channel-switch" role="group" aria-label="Canal de entrega"><button type="button" className={channel === "whatsapp" ? "active" : ""} onClick={() => setChannel("whatsapp")}>WhatsApp</button><button type="button" className={channel === "sms" ? "active" : ""} onClick={() => setChannel("sms")}>SMS</button><button type="button" className={channel === "email" ? "active" : ""} onClick={() => setChannel("email")}>Email</button></div><form onSubmit={sendReport}>{channel === "email" ? <><label htmlFor="email">Email do encarregado</label><div className="send-controls"><input id="email" type="email" required placeholder="encarregado@exemplo.com" value={email} onChange={(event) => setEmail(event.target.value)} /><button className="send-button" type="submit" disabled={status === "sending"}>{status === "sending" ? "A enviar..." : "Enviar por Email  →"}</button></div></> : <><label htmlFor="phone">Número do encarregado {channel === "sms" ? "por SMS" : "por WhatsApp"}</label><div className="send-controls"><input id="phone" type="tel" required placeholder="+244 9XX XXX XXX" value={phone} onChange={(event) => setPhone(event.target.value)} /><button className="send-button" type="submit" disabled={status === "sending"}>{status === "sending" ? "A enviar..." : `Enviar por ${channel === "sms" ? "SMS" : "WhatsApp"}  →`}</button></div></>}<p className={`form-status ${status}`}>{message || (channel === "email" ? "O link do relatorio será incluído no email." : "Inclua o código do país, por exemplo +244.")}</p></form></section><footer><span>Os links PDF são armazenados em segurança no Vercel.</span><span>Última entrega: hoje, 09:42</span></footer>
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">GABINETE ESCOLAR / 2026</p>
+            <h1>Inicio</h1>
+          </div>
+          <div className="profile">
+            <span className="status-dot" /> Conectado
+            <span className="avatar" title={session?.user?.email ?? undefined}>{userInitials}</span>
+            <button className="sign-out-btn" onClick={() => signOut({ redirectTo: "/auth/signin" })}>Sair</button>
+          </div>
+        </header>
+
+        <section className="welcome">
+          <div>
+            <p className="eyebrow accent">PAINEL GERAL</p>
+            <h2>Bem-vindo ao gestor escolar<br /><em>da sua escola.</em></h2>
+            <p className="lede">Acompanhe turmas, alunos, presenças e relatórios num único painel.</p>
+          </div>
+          <div className="whatsapp-glyph">▣</div>
+        </section>
+
+        <section className="workspace">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">VISÃO GERAL</p>
+              <h3>Resumo do dia</h3>
+            </div>
+          </div>
+
+          <div className="stats-grid">
+            {quickStats.map((stat) => (
+              <div key={stat.label} className="stat-card">
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.hint}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="send-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">ATALHOS</p>
+              <h3>Gestão rápida</h3>
+            </div>
+          </div>
+
+          <div className="quick-actions">
+            {actions.map((action) => (
+              <Link key={action.title} href={action.href} className={`action-card ${action.accent}`}>
+                <strong>{action.title}</strong>
+                <span>{action.description}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="workspace">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">PRÓXIMAS TAREFAS</p>
+              <h3>Agenda escolar</h3>
+            </div>
+          </div>
+
+          <div className="task-list">
+            <div className="task-item">
+              <span className="task-tag">Hoje</span>
+              <div>
+                <strong>Revisão de faltas</strong>
+                <small>Confirmar registos das turmas 10CEJ e 10CFBA.</small>
+              </div>
+            </div>
+            <div className="task-item">
+              <span className="task-tag warning">Manhã</span>
+              <div>
+                <strong>Alunos com apoio</strong>
+                <small>Verificar observações pendentes e contactos.</small>
+              </div>
+            </div>
+            <div className="task-item">
+              <span className="task-tag success">Próximo</span>
+              <div>
+                <strong>Relatório semanal</strong>
+                <small>Preparar resumo do desempenho e presenças.</small>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
+
       <style>{`
         .sign-out-btn {
           margin-left: 1rem;
@@ -75,6 +139,138 @@ export default function HomePage() {
 
         .sign-out-btn:hover {
           background-color: #e0e0e0;
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 1rem;
+          margin-top: 1rem;
+        }
+
+        .stat-card {
+          background: #f7f8fb;
+          border: 1px solid #e5e7eb;
+          border-radius: 16px;
+          padding: 1rem 1.1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+        }
+
+        .stat-card span {
+          color: #5b6477;
+          font-size: 0.82rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .stat-card strong {
+          font-size: clamp(1.6rem, 4vw, 2.2rem);
+          line-height: 1;
+        }
+
+        .stat-card small {
+          color: #6b7280;
+        }
+
+        .quick-actions {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 1rem;
+          margin-top: 1rem;
+        }
+
+        .action-card {
+          display: flex;
+          flex-direction: column;
+          gap: 0.45rem;
+          padding: 1.1rem;
+          border-radius: 16px;
+          text-decoration: none;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          border: 1px solid transparent;
+        }
+
+        .action-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        }
+
+        .action-card.primary {
+          background: linear-gradient(135deg, #e0f2fe, #dbeafe);
+          border-color: #bfdbfe;
+          color: #0f172a;
+        }
+
+        .action-card.secondary {
+          background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+          border-color: #bbf7d0;
+          color: #0f172a;
+        }
+
+        .action-card.neutral {
+          background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+          border-color: #d1d5db;
+          color: #0f172a;
+        }
+
+        .action-card strong {
+          font-size: 1.05rem;
+        }
+
+        .action-card span {
+          color: rgba(15, 23, 42, 0.75);
+        }
+
+        .task-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.9rem;
+          margin-top: 1rem;
+        }
+
+        .task-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 1rem;
+          padding: 1rem 1.1rem;
+          border-radius: 14px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+        }
+
+        .task-tag {
+          min-width: 70px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.4rem 0.65rem;
+          border-radius: 999px;
+          background: #dbeafe;
+          color: #1d4ed8;
+          font-size: 0.72rem;
+          font-weight: 700;
+          text-transform: uppercase;
+        }
+
+        .task-tag.warning {
+          background: #fef3c7;
+          color: #b45309;
+        }
+
+        .task-tag.success {
+          background: #dcfce7;
+          color: #15803d;
+        }
+
+        .task-item strong {
+          display: block;
+          margin-bottom: 0.2rem;
+        }
+
+        .task-item small {
+          color: #4b5563;
         }
       `}</style>
     </AppShell>

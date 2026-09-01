@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-export function AppShell({ children, active }: { children: ReactNode; active: "reports" | "turmas" | "settings" | "admin" }) {
+export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" }) {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = session?.user?.role === "ADMIN";
@@ -22,7 +22,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: "r
               </svg>
             </span>
             <span>
-              NEPH <small>RELATORIOS</small>
+              NEPH <small>GESTÃO</small>
             </span>
           </div>
 
@@ -39,14 +39,11 @@ export function AppShell({ children, active }: { children: ReactNode; active: "r
         </div>
 
         <nav className={`sidebar-nav ${menuOpen ? "menu-open" : ""}`}>
-          <Link href="/" className={active === "reports" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-            <span>▦</span> Relatorios
+          <Link href="/" className={active === "inicio" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+            <span>▦</span> Inicio
           </Link>
           <Link href="/turmas" className={active === "turmas" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
             <span>◫</span> Turmas
-          </Link>
-          <Link href="/#activity" className="" onClick={() => setMenuOpen(false)}>
-            <span>↗</span> Activity
           </Link>
           {isAdmin && (
             <Link href="/admin" className={active === "admin" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
