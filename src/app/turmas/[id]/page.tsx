@@ -70,7 +70,7 @@ export default async function TurmaDetailPage({
                     <small>{student.age} anos</small>
                   </div>
                   <span className={`attendance-pill ${student.attendance === "P" ? "present" : student.attendance === "F" ? "absent" : "neutral"}`}>
-                    {student.attendance === "P" ? "Presente" : student.attendance === "F" ? "Ausente" : student.attendance}
+                    {student.attendance === "P" ? "Activo(a)" : student.attendance === "F" ? "Ausente" : student.attendance}
                   </span>
                 </article>
               </Link>
