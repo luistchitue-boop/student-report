@@ -4,21 +4,27 @@ import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 
-const quickStats = [
-  { label: "Turmas", value: "12", hint: "total" },
-  { label: "Alunos ativos", value: "284", hint: "matriculados" },
-  { label: "Faltas hoje", value: "8", hint: "registadas" },
-  { label: "Relatórios", value: "14", hint: "disponíveis" },
-];
-
 const actions = [
   { title: "Turmas", description: "Consultar turmas e alunos", href: "/turmas", accent: "primary" },
   { title: "Definições", description: "Configurar conta e preferências", href: "/settings", accent: "secondary" },
   { title: "Admin", description: "Gerir professores e atribuições", href: "/admin", accent: "neutral" },
 ];
 
-export default function HomePage() {
+export default function HomePage({
+  stats,
+}: {
+  stats: {
+    turmas: number;
+    activeStudents: number;
+    absencesToday: number;
+  };
+}) {
   const { data: session } = useSession();
+  const quickStats = [
+    { label: "Turmas", value: String(stats.turmas), hint: "total" },
+    { label: "Alunos ativos", value: String(stats.activeStudents), hint: "matriculados" },
+    { label: "Faltas hoje", value: String(stats.absencesToday), hint: "registadas" },
+  ];
 
   const userInitials = session?.user?.name
     ? session.user.name
