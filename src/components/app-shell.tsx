@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-export function AppShell({ children, active }: { children: ReactNode; active: "reports" | "turmas" | "settings" }) {
+export function AppShell({ children, active }: { children: ReactNode; active: "reports" | "turmas" | "settings" | "admin" }) {
+  const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAdmin = session?.user?.role === "ADMIN";
 
   return (
     <div className="app-shell">
@@ -45,6 +48,11 @@ export function AppShell({ children, active }: { children: ReactNode; active: "r
           <Link href="/#activity" className="" onClick={() => setMenuOpen(false)}>
             <span>↗</span> Activity
           </Link>
+          {isAdmin && (
+            <Link href="/admin" className={active === "admin" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+              <span>◈</span> Admin
+            </Link>
+          )}
           <Link href="/settings" className={active === "settings" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
             <span>⚙</span> Definições
           </Link>

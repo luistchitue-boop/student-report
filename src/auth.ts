@@ -70,6 +70,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email = user.email
         token.name = user.name
       }
+
+      if (token.id) {
+        const teacher = await prisma.teacher.findUnique({
+          where: { userId: token.id as string },
+          select: { role: true },
+        })
+
+        token.role = teacher?.role ?? "COORDENADOR"
+      }
+
       return token
     },
     async session({ session, token }) {
@@ -77,6 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string
         session.user.email = (token.email as string | undefined) ?? session.user.email
         session.user.name = (token.name as string | undefined) ?? session.user.name
+        session.user.role = (token.role as string | undefined) ?? "COORDENADOR"
       }
       return session
     },
