@@ -210,9 +210,11 @@ export async function PATCH(request: NextRequest) {
     if (type === "grade") {
       const value = Number(body.value);
       if (!Number.isFinite(value) || value < 0 || value > 20) return NextResponse.json({ error: "Grade must be between 0 and 20" }, { status: 400 });
-      const grade = await prisma.grade.findFirst({ where: { id, student: { turma: { coordinator: { userId: session.user.id } } } } });
+      const grade = await prisma.grade.findFirst({ where: { id, student: { turma: { coordinator: { userId: session.user.id } } } }, include: { student: { include: { turma: { select: { subjects: { select: { name: true } } } } } } } });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
-      const updated = await prisma.grade.update({ where: { id }, data: { value, subject: typeof body.subject === "string" ? body.subject : grade.subject, term: typeof body.term === "string" ? body.term : grade.term } });
+      const subject = typeof body.subject === "string" ? body.subject : grade.subject;
+      if (!grade.student.turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
+      const updated = await prisma.grade.update({ where: { id }, data: { value, subject, term: typeof body.term === "string" ? body.term : grade.term } });
       return NextResponse.json({ success: true, record: updated });
     }
 
