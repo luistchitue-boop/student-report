@@ -4,6 +4,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ContactosTab } from "./contactos-tab";
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
 type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; createdAt: string };
@@ -404,26 +405,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             )}
 
             {tab === "contactos" && (
-              <div style={{ display: "grid", gap: "0.85rem" }}>
-                <div style={{ color: "#4a5d5a", fontSize: "0.92rem", fontWeight: 600 }}>
-                  Contactos dos encarregados de educação.
-                </div>
-                {student.parents.length ? student.parents.map((parent) => (
-                  <article key={parent.id} style={{ display: "grid", gap: "0.55rem", background: "#f7f8f4", border: "1px solid #e3e8e1", padding: "1rem" }}>
-                    <strong style={{ color: "#244d3d", fontSize: "1.05rem" }}>{parent.name}</strong>
-                    <div style={{ display: "grid", gap: "0.35rem", color: "#4a5d5a" }}>
-                      <a href={`tel:${parent.phone}`} style={{ color: "#39755d", fontWeight: 700 }}>{parent.phone || "Telefone não informado"}</a>
-                      {parent.email ? (
-                        <a href={`mailto:${parent.email}`} style={{ color: "#39755d", overflowWrap: "anywhere" }}>{parent.email}</a>
-                      ) : (
-                        <span>Email não informado</span>
-                      )}
-                    </div>
-                  </article>
-                )) : (
-                  <div style={{ color: "#68756d" }}>Nenhum contacto registado.</div>
-                )}
-              </div>
+              <ContactosTab parents={student.parents} />
             )}
           </section>
           {showJustificationModal ? (
