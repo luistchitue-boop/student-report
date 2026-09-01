@@ -40,6 +40,7 @@ export async function getCoordinatorTurmas(userId: string) {
               name: true,
               age: true,
               attendance: true,
+              active: true,
                 parents: {
                   orderBy: { name: "asc" },
                   select: {
@@ -68,6 +69,7 @@ export async function getCoordinatorTurmas(userId: string) {
         name: student.name,
         age: student.age ?? 0,
         attendance: student.attendance ?? "P",
+        active: student.active,
                 parents: student.parents,
       })),
     })) ?? []
