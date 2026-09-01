@@ -145,6 +145,21 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
 .weekly-period-selector input { min-height:2.45rem; padding:0.55rem 0.65rem; border:1px solid #ccd9ce; border-radius:9px; background:#fff; outline:none; }
 .weekly-period-selector input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
 .record-warning { color:#a14a3a; }
+.justification-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:0.75rem; padding:0.85rem 0.9rem; border:1px solid #eadfc5; border-radius:14px; background:#fffaf0; cursor:pointer; }
+.justification-row input { width:1.05rem; height:1.05rem; accent-color:var(--green); }
+.justification-row > span:nth-child(2) { display:grid; gap:0.2rem; min-width:0; }
+.justification-row strong { color:var(--navy); font-size:0.88rem; }
+.justification-row small { color:#746b55; font-size:0.72rem; overflow-wrap:anywhere; }
+.justification-row.justified { border-color:#cfe3d2; background:#f1f8f2; cursor:default; }
+.justification-status { padding:0.35rem 0.55rem; border-radius:999px; background:#f6e9c6; color:#806b2c; font-size:0.7rem; font-weight:800; white-space:nowrap; }
+.justification-row.justified .justification-status { background:#d9eedc; color:#286044; }
+.justification-footer { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:0.75rem; padding-top:1rem; border-top:1px solid #e5ece5; color:#68756d; font-size:0.8rem; font-weight:700; }
+.justification-modal-backdrop { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:1rem; background:rgba(24,38,33,0.42); }
+.justification-modal { display:grid; gap:0.9rem; width:min(100%, 500px); padding:1.25rem; border:1px solid #dfe5df; border-radius:20px; background:#fff; box-shadow:0 24px 70px rgba(20,35,28,0.2); }
+.justification-modal label { display:grid; gap:0.4rem; color:#53645b; font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; }
+.justification-modal input, .justification-modal textarea { width:100%; padding:0.7rem; border:1px solid #ccd9ce; border-radius:10px; background:#fff; outline:none; }
+.justification-modal input:focus, .justification-modal textarea:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
+.modal-close { border:0; background:transparent; color:#68756d; font-size:1.5rem; line-height:1; }
 .student-record-list-heading { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin-bottom:0.35rem; }
 .student-record-list-heading h2 { margin-top:0.35rem; color:var(--navy); font-size:1.15rem; }
 .student-record-list-heading > span { color:#68756d; font-size:0.78rem; font-weight:800; }
@@ -220,6 +235,10 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
   .student-record-row label:first-child { grid-column:1 / -1; }
   .student-record-actions { grid-column:1 / -1; }
   .student-record-actions button { flex:1; }
+  .justification-row { grid-template-columns:auto minmax(0,1fr); }
+  .justification-status { grid-column:2; justify-self:start; }
+  .justification-footer { align-items:stretch; flex-direction:column; }
+  .justification-footer button { width:100%; }
   .turma-summary { grid-template-columns: 1fr; }
   .turma-toolbar { flex-direction: column; align-items: flex-start; }
   .turma-list { grid-template-columns: 1fr; }

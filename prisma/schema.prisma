@@ -140,6 +140,9 @@ model Absence {
   tempo      String
   faultType  FaultType @default(FALTA_DE_MATERIAL)
   notes      String?   @db.Text
+  justified  Boolean   @default(false)
+  justificationTitle String?
+  justificationNotes String? @db.Text
   createdAt  DateTime  @default(now())
 
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)

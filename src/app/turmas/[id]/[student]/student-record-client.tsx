@@ -6,11 +6,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
-type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; createdAt: string };
+type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; createdAt: string };
 const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 
 export function StudentRecordClient({ turma, student }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> } }) {
-  const [tab, setTab] = useState<"notas" | "faltas" | "relatorio" | "contactos">("relatorio");
+  const [tab, setTab] = useState<"notas" | "faltas" | "justificativos" | "relatorio" | "contactos">("relatorio");
   const [gradeStart, setGradeStart] = useState("");
   const [gradeEnd, setGradeEnd] = useState("");
   const [reportStart, setReportStart] = useState<string>("");
@@ -20,9 +20,15 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
   const [grades, setGrades] = useState<GradeRecord[]>([]);
   const [absences, setAbsences] = useState<AbsenceRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
+  const [justificationStart, setJustificationStart] = useState("");
+  const [justificationEnd, setJustificationEnd] = useState("");
+  const [selectedAbsenceIds, setSelectedAbsenceIds] = useState<string[]>([]);
+  const [justificationTitle, setJustificationTitle] = useState("");
+  const [justificationNotes, setJustificationNotes] = useState("");
+  const [showJustificationModal, setShowJustificationModal] = useState(false);
 
   useEffect(() => {
-    if (tab !== "notas" && tab !== "faltas") return;
+    if (tab !== "notas" && tab !== "faltas" && tab !== "justificativos") return;
     if (tab === "notas" && (!gradeStart || !gradeEnd)) {
       setGrades([]);
       return;
@@ -35,10 +41,15 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
         return;
       }
     }
+    if (tab === "justificativos" && (!justificationStart || !justificationEnd)) {
+      setAbsences([]);
+      setRecordsLoading(false);
+      return;
+    }
     let cancelled = false;
     setRecordsLoading(true);
-    const from = tab === "notas" ? gradeStart : "2000-01-01";
-    const to = tab === "notas" ? gradeEnd : "2100-12-31";
+    const from = tab === "notas" ? gradeStart : tab === "justificativos" ? justificationStart : "2000-01-01";
+    const to = tab === "notas" ? gradeEnd : tab === "justificativos" ? justificationEnd : "2100-12-31";
     fetch(`/api/student-record?studentId=${encodeURIComponent(student.id)}&from=${from}&to=${to}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("Não foi possível carregar os registos.");
@@ -57,7 +68,19 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
         if (!cancelled) setRecordsLoading(false);
       });
     return () => { cancelled = true; };
-  }, [gradeEnd, gradeStart, student.id, tab]);
+  }, [gradeEnd, gradeStart, justificationEnd, justificationStart, student.id, tab]);
+
+  async function justifySelectedAbsences() {
+    const response = await fetch("/api/student-justifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ absenceIds: selectedAbsenceIds, title: justificationTitle, notes: justificationNotes }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error ?? "Não foi possível justificar as faltas.");
+    setAbsences((current) => current.map((absence) => selectedAbsenceIds.includes(absence.id) ? { ...absence, justified: true, justificationTitle, justificationNotes } : absence));
+    setSelectedAbsenceIds([]);
+    setShowJustificationModal(false);
+    setJustificationTitle("");
+    setJustificationNotes("");
+    setStatusMessage(`${result.justified} falta(s) justificadas.`);
+  }
 
   const validGradePeriod = (() => {
     if (!gradeStart || !gradeEnd) return false;
@@ -251,6 +274,9 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
               <button className="student-tab" type="button" onClick={() => setTab("faltas")} style={{ border: tab === "faltas" ? "none" : "1px solid #dfe5df", background: tab === "faltas" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
                 Faltas
               </button>
+              <button className="student-tab" type="button" onClick={() => setTab("justificativos")} style={{ border: tab === "justificativos" ? "none" : "1px solid #dfe5df", background: tab === "justificativos" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+                Justificativos
+              </button>
               <button className="student-tab" type="button" onClick={() => setTab("relatorio")} style={{ border: tab === "relatorio" ? "none" : "1px solid #dfe5df", background: tab === "relatorio" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
                 Relatório
               </button>
@@ -291,6 +317,29 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
                     <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("absence", absence); setStatusMessage("Falta actualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível actualizar a falta."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("absence", absence.id); setAbsences((current) => current.filter((item) => item.id !== absence.id)); setStatusMessage("Falta eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a falta."); } }}>Eliminar</button></div>
                   </div>
                 )) : <p className="student-record-empty">Nenhuma falta registada.</p>}
+                {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
+              </div>
+            )}
+
+            {tab === "justificativos" && (
+              <div className="student-record-list-panel">
+                <div className="weekly-period-selector">
+                  <label>Início do intervalo<input type="date" value={justificationStart} onChange={(event) => setJustificationStart(event.target.value)} /></label>
+                  <label>Fim do intervalo<input type="date" value={justificationEnd} onChange={(event) => setJustificationEnd(event.target.value)} /></label>
+                </div>
+                {!justificationStart || !justificationEnd ? <p className="student-record-empty">Seleccione o intervalo para ver as faltas.</p> : recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : (
+                  <>
+                    <div className="student-record-list-heading"><div><p className="eyebrow">JUSTIFICAÇÃO DE FALTAS</p><h2>Seleccione as faltas</h2></div><span>{absences.filter((absence) => !absence.justified).length} por justificar</span></div>
+                    {absences.length ? absences.map((absence) => (
+                      <label key={absence.id} className={`justification-row ${absence.justified ? "justified" : ""}`}>
+                        <input type="checkbox" checked={selectedAbsenceIds.includes(absence.id)} disabled={absence.justified} onChange={() => setSelectedAbsenceIds((current) => current.includes(absence.id) ? current.filter((id) => id !== absence.id) : [...current, absence.id])} />
+                        <span><strong>{absence.subject}</strong><small>{absence.dia.slice(0, 10)} · {absence.tempo} · {absence.faultType === "AUSENCIA_NA_SALA" ? "Ausência na sala" : "Falta de material"}</small></span>
+                        <span className="justification-status">{absence.justified ? "Justificada" : "Injustificada"}</span>
+                      </label>
+                    )) : <p className="student-record-empty">Nenhuma falta neste intervalo.</p>}
+                    <div className="justification-footer"><span>{selectedAbsenceIds.length} falta(s) seleccionada(s)</span><button type="button" className="mini-pauta-save-button" disabled={!selectedAbsenceIds.length} onClick={() => setShowJustificationModal(true)}>Justificar</button></div>
+                  </>
+                )}
                 {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
               </div>
             )}
@@ -360,6 +409,16 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
               </div>
             )}
           </section>
+          {showJustificationModal ? (
+            <div className="justification-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowJustificationModal(false); }}>
+              <form className="justification-modal" onSubmit={async (event) => { event.preventDefault(); try { await justifySelectedAbsences(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível justificar as faltas."); } }}>
+                <div className="student-record-list-heading"><div><p className="eyebrow">JUSTIFICATIVO</p><h2>Justificar faltas</h2></div><button type="button" className="modal-close" onClick={() => setShowJustificationModal(false)} aria-label="Fechar">×</button></div>
+                <label>Titulo do justificativo<input required value={justificationTitle} onChange={(event) => setJustificationTitle(event.target.value)} /></label>
+                <label>Observacoes<textarea required rows={4} value={justificationNotes} onChange={(event) => setJustificationNotes(event.target.value)} /></label>
+                <button type="submit" className="mini-pauta-save-button">Confirmar justificativo</button>
+              </form>
+            </div>
+          ) : null}
         </main>
       </div>
     </div>

@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const [grades, absences] = await Promise.all([
       prisma.grade.findMany({
         where: {
-          studentId,
+          studentId: student.id,
           createdAt: {
             gte: fromDate,
             lte: toDate,
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.absence.findMany({
         where: {
-          studentId,
+          studentId: student.id,
           dia: {
             gte: fromDate,
             lte: toDate,
@@ -89,6 +89,9 @@ export async function GET(request: NextRequest) {
         tempo: absence.tempo,
         faultType: absence.faultType,
         notes: absence.notes ?? "",
+        justified: absence.justified,
+        justificationTitle: absence.justificationTitle ?? "",
+        justificationNotes: absence.justificationNotes ?? "",
         createdAt: absence.createdAt.toISOString(),
       })),
     });
