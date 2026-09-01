@@ -11,6 +11,8 @@ const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 
 export function StudentRecordClient({ turma, student }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> } }) {
   const [tab, setTab] = useState<"notas" | "faltas" | "relatorio" | "contactos">("relatorio");
+  const [gradeStart, setGradeStart] = useState("");
+  const [gradeEnd, setGradeEnd] = useState("");
   const [reportStart, setReportStart] = useState<string>("");
   const [reportEnd, setReportEnd] = useState<string>("");
   const [reportNote, setReportNote] = useState<string>("");
@@ -21,9 +23,23 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
 
   useEffect(() => {
     if (tab !== "notas" && tab !== "faltas") return;
+    if (tab === "notas" && (!gradeStart || !gradeEnd)) {
+      setGrades([]);
+      return;
+    }
+    if (tab === "notas") {
+      const start = new Date(`${gradeStart}T12:00:00Z`);
+      const end = new Date(`${gradeEnd}T12:00:00Z`);
+      if (end.getTime() - start.getTime() !== 6 * 24 * 60 * 60 * 1000) {
+        setGrades([]);
+        return;
+      }
+    }
     let cancelled = false;
     setRecordsLoading(true);
-    fetch(`/api/student-record?studentId=${encodeURIComponent(student.id)}&from=2000-01-01&to=2100-12-31`)
+    const from = tab === "notas" ? gradeStart : "2000-01-01";
+    const to = tab === "notas" ? gradeEnd : "2100-12-31";
+    fetch(`/api/student-record?studentId=${encodeURIComponent(student.id)}&from=${from}&to=${to}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("Não foi possível carregar os registos.");
         return response.json();
@@ -41,7 +57,14 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
         if (!cancelled) setRecordsLoading(false);
       });
     return () => { cancelled = true; };
-  }, [student.id, tab]);
+  }, [gradeEnd, gradeStart, student.id, tab]);
+
+  const validGradePeriod = (() => {
+    if (!gradeStart || !gradeEnd) return false;
+    const start = new Date(`${gradeStart}T12:00:00Z`);
+    const end = new Date(`${gradeEnd}T12:00:00Z`);
+    return end.getTime() - start.getTime() === 6 * 24 * 60 * 60 * 1000;
+  })();
 
   async function updateRecord(type: "grade" | "absence", record: GradeRecord | AbsenceRecord) {
     const body = type === "grade"
@@ -113,18 +136,51 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
       reportElement.style.padding = "32px";
       reportElement.style.background = "#fff";
       reportElement.style.fontFamily = "Arial, sans-serif";
-      reportElement.innerHTML = `<h1 style="color:#1b3d34;">NEPH RELATORIOS</h1><h2>Relatório de ${escapeHtml(student.name)}</h2><p>Período: ${escapeHtml(reportStart)} a ${escapeHtml(reportEnd)}</p><h3>Notas</h3><ul>${normalizedGrades.map((grade) => `<li>${escapeHtml(grade.subject)}: ${grade.value.toFixed(1)}</li>`).join("") || "<li>Sem notas registadas.</li>"}</ul><h3>Faltas</h3><ul>${normalizedFaults.map((fault) => `<li>${escapeHtml(fault.subject)} - ${escapeHtml(fault.dia)} - ${escapeHtml(fault.faultType)}</li>`).join("") || "<li>Sem faltas registadas.</li>"}</ul><h3>Observação do professor</h3><p>${escapeHtml(reportNote.trim() || "Sem observação do professor.")}</p>`;
+      reportElement.style.color = "#1f2a2b";
+      reportElement.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #1b3d34;padding:0 0 20px;margin-bottom:24px;">
+          <div style="display:flex;align-items:center;gap:16px;">
+            <img src="/school-logo.png" alt="Logo da escola" style="width:72px;height:72px;object-fit:contain;" />
+            <div><div style="font-size:22px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#1b3d34;">NEPH RELATORIOS</div><div style="margin-top:7px;color:#60716a;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;">Relatório escolar</div></div>
+          </div>
+          <div style="text-align:right;color:#60716a;font-size:11px;line-height:1.6;"><strong style="display:block;color:#1b3d34;font-size:12px;">PERÍODO</strong>${escapeHtml(reportStart)} a ${escapeHtml(reportEnd)}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;margin:18px 0 28px;">
+          <div style="background:#1b3d34;color:#fff;border-radius:12px;padding:16px 18px;"><span style="display:block;color:#b9d7c4;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Aluno</span><span style="font-size:19px;font-weight:800;">${escapeHtml(student.name)}</span></div>
+          <div style="background:#f1f7f2;border:1px solid #d8e7dc;border-radius:12px;padding:16px 18px;"><span style="display:block;color:#5b6d68;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Turma</span><span style="font-size:16px;font-weight:800;color:#1b3d34;">${escapeHtml(turma.name)}</span></div>
+          <div style="background:#fff7df;border:1px solid #f0dfaa;border-radius:12px;padding:16px 18px;"><span style="display:block;color:#806b2c;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Média geral</span><span style="font-size:24px;font-weight:800;color:#6d581e;">${normalizedGrades.length ? (normalizedGrades.reduce((total, grade) => total + grade.value, 0) / normalizedGrades.length).toFixed(1) : "0.0"}</span></div>
+        </div>
+        <h2 style="color:#1b3d34;font-size:17px;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Notas</h2>
+        <table style="width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid #d8e7dc;border-radius:10px;margin-top:10px;"><thead><tr><th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Disciplina</th><th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Nota</th></tr></thead><tbody>${normalizedGrades.length ? normalizedGrades.map((grade, index) => `<tr style="background:${index % 2 ? "#fbfdfb" : "#ffffff"};"><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(grade.subject)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;font-weight:800;color:#1b3d34;">${grade.value.toFixed(1)}</td></tr>`).join("") : `<tr><td colspan="2" style="padding:12px;">Sem notas registadas.</td></tr>`}</tbody></table>
+        <h2 style="color:#1b3d34;font-size:17px;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Faltas</h2>
+        <table style="width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid #d8e7dc;border-radius:10px;margin-top:10px;"><thead><tr><th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Disciplina</th><th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Dia</th><th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Tempo</th><th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Tipo</th></tr></thead><tbody>${normalizedFaults.length ? normalizedFaults.map((fault, index) => `<tr style="background:${index % 2 ? "#fbfdfb" : "#ffffff"};"><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.subject)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.dia)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.tempo)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.faultType)}</td></tr>`).join("") : `<tr><td colspan="4" style="padding:12px;">Sem faltas registadas.</td></tr>`}</tbody></table>
+        <h2 style="color:#1b3d34;font-size:17px;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Observação do professor</h2>
+        <div style="border-left:4px solid #39755d;border-radius:0 10px 10px 0;background:#f1f7f2;padding:15px 17px;line-height:1.6;color:#40554c;">${escapeHtml(reportNote.trim() || "Sem observação do professor.")}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:26px;background:#1b3d34;border-radius:12px;padding:15px 18px;color:#fff;"><span style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#b9d7c4;">Resumo de assiduidade</span><span style="font-size:16px;font-weight:800;">${normalizedFaults.length} falta(s) registada(s)</span></div>`;
       document.body.appendChild(reportElement);
 
       try {
-        const canvas = await html2canvas(reportElement, { scale: 2, backgroundColor: "#ffffff" });
+        const reportLogo = reportElement.querySelector("img");
+        if (reportLogo && !reportLogo.complete) {
+          await new Promise<void>((resolve) => {
+            reportLogo.addEventListener("load", () => resolve(), { once: true });
+            reportLogo.addEventListener("error", () => resolve(), { once: true });
+          });
+        }
+        const canvas = await html2canvas(reportElement, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
         const pdf = new jsPDF("p", "mm", "a4");
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
         const imgWidth = pageWidth - 18;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
         const imgData = canvas.toDataURL("image/png");
-        pdf.addImage(imgData, "PNG", 9, 9, imgWidth, Math.min(imgHeight, pageHeight - 18));
+        const printableHeight = pageHeight - 18;
+        let renderedHeight = 0;
+        while (renderedHeight < imgHeight) {
+          if (renderedHeight > 0) pdf.addPage();
+          pdf.addImage(imgData, "PNG", 9, 9 - renderedHeight, imgWidth, imgHeight);
+          renderedHeight += printableHeight;
+        }
         pdf.save(`relatorio-${student.name.toLowerCase().replace(/\s+/g, "-")}.pdf`);
         setStatusMessage("PDF gerado com sucesso.");
       } catch (error) {
@@ -205,16 +261,21 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
 
             {tab === "notas" && (
               <div className="student-record-list-panel">
+                <div className="weekly-period-selector">
+                  <label>Início da semana<input type="date" value={gradeStart} onChange={(event) => setGradeStart(event.target.value)} /></label>
+                  <label>Fim da semana<input type="date" value={gradeEnd} onChange={(event) => setGradeEnd(event.target.value)} /></label>
+                </div>
+                {!gradeStart || !gradeEnd ? <p className="student-record-empty">Seleccione o período semanal para ver as notas.</p> : !validGradePeriod ? <p className="student-record-empty record-warning">O período deve ter exactamente 7 dias.</p> : <>
                 <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO ACADÉMICO</p><h2>Notas registadas</h2></div><span>{grades.length} registo(s)</span></div>
                 {recordsLoading ? <p className="student-record-empty">A carregar notas...</p> : grades.length ? grades.map((grade) => (
                   <div className="student-record-row" key={grade.id}>
                     <label>Disciplina<input value={grade.subject} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, subject: event.target.value } : item))} /></label>
                     <label>Nota<input type="number" min="0" max="20" step="0.1" value={grade.value} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, value: Number(event.target.value) } : item))} /></label>
-                    <label>Período<input value={grade.term} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, term: event.target.value } : item))} /></label>
                     <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("grade", grade); setStatusMessage("Nota actualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível actualizar a nota."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("grade", grade.id); setGrades((current) => current.filter((item) => item.id !== grade.id)); setStatusMessage("Nota eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a nota."); } }}>Eliminar</button></div>
                   </div>
                 )) : <p className="student-record-empty">Nenhuma nota registada.</p>}
                 {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
+                </>}
               </div>
             )}
 

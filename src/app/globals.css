@@ -140,6 +140,11 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
 .student-record-panel button { border-radius:11px; }
 .student-record-panel a { overflow-wrap:anywhere; }
 .student-record-list-panel { display:grid; gap:0.8rem; }
+.weekly-period-selector { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.75rem; padding:0.85rem; border:1px solid #e1ebe2; border-radius:15px; background:#f6faf6; }
+.weekly-period-selector label { display:grid; gap:0.35rem; color:#53645b; font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; }
+.weekly-period-selector input { min-height:2.45rem; padding:0.55rem 0.65rem; border:1px solid #ccd9ce; border-radius:9px; background:#fff; outline:none; }
+.weekly-period-selector input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
+.record-warning { color:#a14a3a; }
 .student-record-list-heading { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin-bottom:0.35rem; }
 .student-record-list-heading h2 { margin-top:0.35rem; color:var(--navy); font-size:1.15rem; }
 .student-record-list-heading > span { color:#68756d; font-size:0.78rem; font-weight:800; }
@@ -210,6 +215,7 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
   .student-record-panel [style*="grid-column"] { grid-column:auto !important; }
   .student-record-panel button { width:100%; min-height:44px; }
   .student-record-list-heading { align-items:flex-start; flex-direction:column; }
+  .weekly-period-selector { grid-template-columns:1fr; }
   .student-record-row, .student-record-row.absence { grid-template-columns:1fr 1fr; align-items:stretch; }
   .student-record-row label:first-child { grid-column:1 / -1; }
   .student-record-actions { grid-column:1 / -1; }

@@ -36,6 +36,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid date range" }, { status: 400 });
     }
 
+    const student = await prisma.student.findFirst({
+      where: {
+        id: studentId,
+        turma: { coordinator: { userId: session.user.id } },
+      },
+      select: { id: true },
+    });
+
+    if (!student) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
+
     const [grades, absences] = await Promise.all([
       prisma.grade.findMany({
         where: {
