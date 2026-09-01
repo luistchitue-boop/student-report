@@ -243,3 +243,12 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
   .turma-toolbar { flex-direction: column; align-items: flex-start; }
   .turma-list { grid-template-columns: 1fr; }
 }
+
+button { font-weight:600; }
+.outline-button, .send-button, .attendance-book-button, .mini-pauta-button, .attendance-select-all, .attendance-save-button, .mini-pauta-save-button { font-weight:600; }
+.outline-button, .attendance-book-button, .mini-pauta-button { min-height:2.2rem; padding:0.45rem 0.8rem; }
+.send-button { padding:0 18px; }
+.attendance-select-all { padding:0.5rem 0.7rem; }
+.student-record-panel button:not(.modal-close) { font-weight:600 !important; min-height:2.45rem; padding:0.55rem 0.75rem !important; }
+.student-tab { font-weight:600 !important; }
+.student-record-actions button { font-weight:600; }
