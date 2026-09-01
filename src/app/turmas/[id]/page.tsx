@@ -98,6 +98,9 @@ export default async function TurmaDetailPage({
               <Link href={`/turmas/${turma.id}/mini_pauta`} className="mini-pauta-button">
                 Mini pauta
               </Link>
+              <Link href={`/turmas/${turma.id}/novo_aluno`} className="new-student-button">
+                Novo aluno
+              </Link>
             </div>
           </div>
 

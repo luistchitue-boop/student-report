@@ -54,6 +54,25 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
 .attendance-book-button:hover { background:#2f654f; }
 .mini-pauta-button { display:inline-flex; align-items:center; justify-content:center; min-height:2.35rem; padding:0.5rem 0.85rem; border:1px solid #b9cdbd; border-radius:10px; background:#fff; color:var(--green); font-size:0.78rem; font-weight:800; text-decoration:none; }
 .mini-pauta-button:hover { background:#f0f8f1; }
+.new-student-button { display:inline-flex; align-items:center; justify-content:center; min-height:2.2rem; padding:0.45rem 0.8rem; border:1px solid #b9cdbd; border-radius:9px; background:#edf5ee; color:var(--green); font-size:0.76rem; font-weight:600; text-decoration:none; }
+.new-student-button:hover { background:#e1efe3; }
+.new-student-shell { max-width:760px !important; }
+.new-student-panel { background:#fff; border:1px solid #dfe5df; border-radius:24px; padding:1.35rem; box-shadow:0 18px 44px rgba(26,38,32,0.06); }
+.new-student-section { display:grid; gap:0.8rem; padding:1rem; border:1px solid #e1ebe2; border-radius:16px; background:#f8fbf8; }
+.new-student-section h2 { color:var(--navy); font-size:1rem; }
+.new-student-fields { display:grid; grid-template-columns:1.5fr 0.7fr; gap:0.75rem; }
+.new-student-fields.student-fields { grid-template-columns:1fr; }
+.new-student-fields.parent-fields { grid-template-columns:1fr 1fr; }
+.new-student-fields label { display:grid; gap:0.35rem; color:#53645b; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; }
+.new-student-fields input { width:100%; min-height:2.45rem; padding:0.55rem 0.65rem; border:1px solid #ccd9ce; border-radius:9px; background:#fff; outline:none; }
+.new-student-fields input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
+.new-student-actions { display:flex; justify-content:flex-end; gap:0.6rem; padding-top:0.4rem; }
+.new-student-cancel, .new-student-submit { display:inline-flex; align-items:center; justify-content:center; min-height:2.35rem; padding:0.5rem 0.8rem; border-radius:9px; font-size:0.72rem; font-weight:600; text-decoration:none; }
+.new-student-cancel { border:1px solid #ccd9ce; background:#fff; color:#68756d; }
+.new-student-submit { border:0; background:var(--green); color:#fff; }
+.new-student-submit:disabled { opacity:0.55; cursor:not-allowed; }
+.new-student-status { color:#a14a3a; font-size:0.8rem; font-weight:600; }
+.new-student-add-parent { justify-self:start; }
 .mini-pauta-shell { max-width:980px !important; }
 .mini-pauta-subtitle { margin-top:0.45rem; color:#68756d; font-size:0.9rem; font-weight:700; }
 .mini-pauta-panel { background:#fff; border:1px solid #dfe5df; border-radius:24px; padding:1.35rem; box-shadow:0 18px 44px rgba(26,38,32,0.06); }
@@ -220,6 +239,12 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
   .detail-panel-actions { width:100%; }
   .attendance-book-button { flex:1; }
   .mini-pauta-button { flex:1; }
+  .new-student-button { flex:1; }
+  .new-student-panel { padding:0.8rem; border-radius:20px; }
+  .new-student-fields, .new-student-fields.parent-fields { grid-template-columns:1fr; }
+  .new-student-actions { flex-direction:column-reverse; }
+  .new-student-cancel, .new-student-submit { width:100%; }
+  .new-student-add-parent { width:100%; }
   .student-record-shell { padding:20px 12px 28px; }
   .student-record-topbar { align-items:flex-start; }
   .student-record-topbar h1 { font-size:1.7rem !important; line-height:1.12; }
@@ -244,11 +269,11 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
   .turma-list { grid-template-columns: 1fr; }
 }
 
-button { font-weight:600; }
-.outline-button, .send-button, .attendance-book-button, .mini-pauta-button, .attendance-select-all, .attendance-save-button, .mini-pauta-save-button { font-weight:600; }
-.outline-button, .attendance-book-button, .mini-pauta-button { min-height:2.2rem; padding:0.45rem 0.8rem; }
-.send-button { padding:0 18px; }
-.attendance-select-all { padding:0.5rem 0.7rem; }
-.student-record-panel button:not(.modal-close) { font-weight:600 !important; min-height:2.45rem; padding:0.55rem 0.75rem !important; }
-.student-tab { font-weight:600 !important; }
-.student-record-actions button { font-weight:600; }
+button { font-weight:500; }
+.outline-button, .send-button, .attendance-book-button, .mini-pauta-button, .attendance-select-all, .attendance-save-button, .mini-pauta-save-button { font-weight:500; font-size:0.7rem; }
+.outline-button, .attendance-book-button, .mini-pauta-button { min-height:2rem; padding:0.35rem 0.65rem; }
+.send-button { padding:0 14px; }
+.attendance-select-all { min-height:2rem; padding:0.4rem 0.6rem; }
+.student-record-panel button:not(.modal-close) { font-weight:500 !important; min-height:2.2rem; padding:0.4rem 0.6rem !important; font-size:0.7rem !important; }
+.student-tab { font-weight:500 !important; font-size:0.7rem !important; }
+.student-record-actions button { font-weight:500; font-size:0.68rem; }
