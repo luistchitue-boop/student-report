@@ -62,11 +62,17 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
 .attendance-pill.absent { background:#f7e7e3; color:#7c3d32; }
 .attendance-pill.neutral { background:#f6f0d7; color:#675826; }
 .pagination { display:flex; justify-content:center; align-items:center; gap:0.5rem; margin-top:1.4rem; flex-wrap:wrap; }
+.pagination-compact { display:flex; align-items:center; justify-content:center; gap:0.5rem; flex-wrap:wrap; }
 .page-button { display:inline-flex; align-items:center; justify-content:center; min-width:2.35rem; min-height:2.35rem; padding:0.5rem 0.8rem; border-radius:10px; border:1px solid #dfe8e1; background:#fff; color:#4d5d56; font-weight:700; text-decoration:none; transition:all .18s ease; }
+.page-button.page-ellipsis { min-width:2.2rem; background:#f4f7f4; border-style:dashed; color:#5a665f; pointer-events:none; }
 .page-button:hover { border-color:#b9d0c0; }
 .page-button.active { background:var(--green); border-color:var(--green); color:#fff; box-shadow:0 10px 18px rgba(57,117,93,0.18); }
 .page-button.disabled { opacity:0.45; pointer-events:none; }
 @media (max-width: 700px) {
+  .pagination { width:100%; justify-content:space-between; gap:0.5rem; }
+  .pagination-compact { flex:1 1 auto; justify-content:center; gap:0.35rem; }
+  .page-button { flex:1 1 auto; min-width:0; }
+  .page-button.page-ellipsis { flex:0 0 auto; min-width:2rem; }
   .app-shell { flex-direction: column; }
   .sidebar { position: relative; width: 100%; min-width: 100%; height: auto; padding: 18px 16px 12px; border-bottom: 1px solid rgba(57, 117, 93, 0.15); gap: 10px; }
   .brand { justify-content: center; }

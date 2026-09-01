@@ -35,6 +35,41 @@ export default async function TurmaDetailPage({
   const visibleStudents = turma.roster.slice(startIndex, startIndex + PAGE_SIZE);
 
   const buildPageHref = (page: number) => (page === 1 ? `/turmas/${turma.id}` : `/turmas/${turma.id}?page=${page}`);
+  const getMobilePageItems = (currentPage: number, totalPages: number) => {
+    if (totalPages <= 4) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    let start = Math.max(1, currentPage - 1);
+    let end = Math.min(totalPages, currentPage + 1);
+
+    if (currentPage <= 2) {
+      start = 1;
+      end = 3;
+    }
+
+    if (currentPage >= totalPages - 1) {
+      start = totalPages - 2;
+      end = totalPages;
+    }
+
+    const items = Array.from({ length: end - start + 1 }, (_, index) => start + index);
+
+    if (start > 1 && end < totalPages) {
+      return [...items, "ellipsis"];
+    }
+
+    if (start > 1) {
+      return ["ellipsis", ...items];
+    }
+
+    if (end < totalPages) {
+      return [...items, "ellipsis"];
+    }
+
+    return items;
+  };
+  const mobilePageItems = getMobilePageItems(currentPage, totalPages);
 
   return (
     <AppShell active="turmas">
@@ -51,10 +86,6 @@ export default async function TurmaDetailPage({
 
         <section className="turma-detail-panel">
           <div className="detail-panel-header">
-            <div>
-              <div className="eyebrow">DISPONIBILIDADE</div>
-              <strong>{turma.schedule}</strong>
-            </div>
             <span className="detail-count">{turma.students} alunos</span>
           </div>
 
@@ -88,16 +119,24 @@ export default async function TurmaDetailPage({
               Anterior
             </Link>
 
-            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-              <Link
-                key={page}
-                href={buildPageHref(page)}
-                className={page === currentPage ? "page-button active" : "page-button"}
-                aria-current={page === currentPage ? "page" : undefined}
-              >
-                {page}
-              </Link>
-            ))}
+            <div className="pagination-compact" aria-label="Páginas de alunos">
+              {mobilePageItems.map((page, index) =>
+                typeof page === "number" ? (
+                  <Link
+                    key={`${page}-${index}`}
+                    href={buildPageHref(page)}
+                    className={page === currentPage ? "page-button active" : "page-button"}
+                    aria-current={page === currentPage ? "page" : undefined}
+                  >
+                    {page}
+                  </Link>
+                ) : (
+                  <span key={`ellipsis-${index}`} className="page-button page-ellipsis" aria-hidden="true">
+                    …
+                  </span>
+                )
+              )}
+            </div>
 
             <Link
               href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)}
