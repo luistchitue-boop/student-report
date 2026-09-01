@@ -276,7 +276,7 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
               key={parent.id}
               style={{
                 display: "grid",
-                gap: "0.55rem",
+                gap: "0.75rem",
                 background: "#fff",
                 border: "1px solid #dfe5df",
                 padding: "1rem",
@@ -284,56 +284,57 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
                 boxShadow: "0 2px 4px rgba(0, 0, 0, 0.02)",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem" }}>
+              <div style={{ display: "grid", gap: "0.55rem" }}>
                 <strong style={{ color: "var(--navy)", fontSize: "1.05rem", fontWeight: 700 }}>
                   {parent.name}
                 </strong>
-                <button
-                  onClick={() => handleEditClick(parent)}
-                  style={{
-                    minHeight: "2rem",
-                    padding: "0.4rem 0.8rem",
-                    border: "1px solid #ccd7cc",
-                    borderRadius: "8px",
-                    background: "#fbfcf8",
-                    color: "var(--green)",
-                    fontWeight: 700,
-                    fontSize: "0.7rem",
-                    cursor: "pointer",
-                    textTransform: "uppercase",
-                    whiteSpace: "nowrap",
-                    transition: "all 0.2s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--green)";
-                    e.currentTarget.style.background = "var(--green-soft)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#ccd7cc";
-                    e.currentTarget.style.background = "#fbfcf8";
-                  }}
-                >
-                  Editar
-                </button>
-              </div>
-              <div style={{ display: "grid", gap: "0.35rem", color: "var(--muted)" }}>
-                <a
-                  href={`tel:${parent.phone}`}
-                  style={{ color: "var(--green)", fontWeight: 700, textDecoration: "none" }}
-                >
-                  {parent.phone || "Telefone não informado"}
-                </a>
-                {parent.email ? (
+                <div style={{ display: "grid", gap: "0.35rem", color: "var(--muted)" }}>
                   <a
-                    href={`mailto:${parent.email}`}
-                    style={{ color: "var(--green)", overflowWrap: "anywhere", textDecoration: "none" }}
+                    href={`tel:${parent.phone}`}
+                    style={{ color: "var(--green)", fontWeight: 700, textDecoration: "none" }}
                   >
-                    {parent.email}
+                    {parent.phone || "Telefone não informado"}
                   </a>
-                ) : (
-                  <span>Email não informado</span>
-                )}
+                  {parent.email ? (
+                    <a
+                      href={`mailto:${parent.email}`}
+                      style={{ color: "var(--green)", overflowWrap: "anywhere", textDecoration: "none" }}
+                    >
+                      {parent.email}
+                    </a>
+                  ) : (
+                    <span>Email não informado</span>
+                  )}
+                </div>
               </div>
+              <button
+                onClick={() => handleEditClick(parent)}
+                style={{
+                  minHeight: "2rem",
+                  padding: "0.4rem 0.8rem",
+                  border: "1px solid #ccd7cc",
+                  borderRadius: "8px",
+                  background: "#fbfcf8",
+                  color: "var(--green)",
+                  fontWeight: 700,
+                  fontSize: "0.7rem",
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  whiteSpace: "nowrap",
+                  transition: "all 0.2s ease",
+                  width: "100%",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--green)";
+                  e.currentTarget.style.background = "var(--green-soft)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#ccd7cc";
+                  e.currentTarget.style.background = "#fbfcf8";
+                }}
+              >
+                Editar
+              </button>
             </article>
           )
         )

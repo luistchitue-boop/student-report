@@ -292,6 +292,7 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
   .new-student-actions { flex-direction:column-reverse; }
   .new-student-cancel, .new-student-submit { width:100%; }
   .new-student-add-parent { width:100%; }
+  .student-record-shell { padding: 16px; }
   .student-record-shell { padding:20px 12px 28px; }
   .student-record-topbar { align-items:flex-start; }
   .student-record-topbar h1 { font-size:1.7rem !important; line-height:1.12; }

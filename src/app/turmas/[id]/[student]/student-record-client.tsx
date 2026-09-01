@@ -4,6 +4,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AppShell } from "@/components/app-shell";
 import { ContactosTab } from "./contactos-tab";
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
@@ -237,55 +238,20 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
   }
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" role="img" aria-label="Livro">
-              <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11a2 2 0 0 1 2 2v15a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 20.5z" />
-              <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13a2 2 0 0 0-2 2v15a2 2 0 0 1 2-2h4.5a2.5 2.5 0 0 1 2.5 2.5z" />
-            </svg>
-          </span>
-          <span>
-            NEPH <small>RELATORIOS</small>
-          </span>
-        </div>
-
-        <nav>
-          <Link href="/" className="">
-            <span>▦</span> Reports
-          </Link>
-          <Link href="/turmas" className="nav-active">
-            <span>◫</span> Turmas
-          </Link>
-          <Link href="/#activity" className="">
-            <span>↗</span> Activity
-          </Link>
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="help-mark">?</div>
+    <AppShell active="turmas">
+      <main className="main-content student-record-shell" style={{ maxWidth: 900 }}>
+        <header className="topbar student-record-topbar" style={{ marginBottom: "1.75rem" }}>
           <div>
-            <strong>Need a hand?</strong>
-            <small>Read the sending guide</small>
+            <p className="eyebrow">ALUNO</p>
+            <h1 style={{ fontSize: "2rem", letterSpacing: "-0.05em" }}>{student.name}</h1>
           </div>
-        </div>
-      </aside>
+          <Link href={`/turmas/${turma.id}`} style={{ textDecoration: "none", color: "#39755d", fontWeight: 800 }}>
+            ← Voltar à turma
+          </Link>
+        </header>
 
-      <div className="page-shell">
-        <main className="main-content student-record-shell" style={{ maxWidth: 900 }}>
-          <header className="topbar student-record-topbar" style={{ marginBottom: "1.75rem" }}>
-            <div>
-              <p className="eyebrow">ALUNO</p>
-              <h1 style={{ fontSize: "2rem", letterSpacing: "-0.05em" }}>{student.name}</h1>
-            </div>
-            <Link href={`/turmas/${turma.id}`} style={{ textDecoration: "none", color: "#39755d", fontWeight: 800 }}>
-              ← Voltar à turma
-            </Link>
-          </header>
-
-          <section className="student-record-panel" style={{ background: "#fff", border: "1px solid #dfe5df", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)" }}>
-            <div className="student-tabs" style={{ display: "flex", gap: "0.5rem", marginBottom: "1.75rem", borderBottom: "2px solid #e5ece5", paddingBottom: "1rem", flexWrap: "wrap" }}>
+        <section className="student-record-panel" style={{ background: "#fff", border: "1px solid #dfe5df", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)" }}>
+          <div className="student-tabs" style={{ display: "flex", gap: "0.5rem", marginBottom: "1.75rem", borderBottom: "2px solid #e5ece5", paddingBottom: "1rem", flexWrap: "wrap" }}>
               <button className="student-tab" type="button" onClick={() => setTab("notas")} style={{ border: "none", background: tab === "notas" ? "var(--green-soft)" : "transparent", color: tab === "notas" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
                 Notas
               </button>
@@ -419,7 +385,6 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             </div>
           ) : null}
         </main>
-      </div>
-    </div>
-  );
-}
+      </AppShell>
+    );
+  }
