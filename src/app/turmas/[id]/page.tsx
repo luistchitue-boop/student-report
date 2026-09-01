@@ -90,7 +90,12 @@ export default async function TurmaDetailPage({
 
         <section className="turma-detail-panel">
           <div className="detail-panel-header">
-            <span className="detail-count">{turma.students} alunos</span>
+            <div className="detail-panel-actions">
+              <span className="detail-count">{turma.students} alunos</span>
+              <Link href={`/turmas/${turma.id}/livro_de_ponto`} className="attendance-book-button">
+                Livro de ponto
+              </Link>
+            </div>
           </div>
 
           <div className="student-grid" aria-label={`Lista de alunos da turma ${turma.name}`}>
