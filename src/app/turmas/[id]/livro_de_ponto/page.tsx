@@ -9,8 +9,14 @@ export default async function AttendanceBookPage({ params }: { params: Promise<{
   if (!session?.user?.id) redirect("/auth/signin");
 
   const { id } = await params;
-  const turma = await getCoordinatorTurmaById(session.user.id, id);
+  let turma = await getCoordinatorTurmaById(session.user.id, id);
   if (!turma) notFound();
+
+  // Filter out inactive students
+  turma = {
+    ...turma,
+    roster: turma.roster.filter((student) => student.active),
+  };
 
   return (
     <AppShell active="turmas">

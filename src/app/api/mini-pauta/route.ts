@@ -14,7 +14,7 @@ async function getAuthorizedTurma(userId: string, turmaId: string) {
     where: { id: turmaId, coordinator: { userId } },
     include: {
       subjects: { orderBy: { name: "asc" }, select: { name: true } },
-      students: { orderBy: { name: "asc" }, select: { id: true, name: true, age: true } },
+      students: { where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, age: true } },
     },
   });
 }
