@@ -8,9 +8,11 @@ function normalizeDay(dateInput: string) {
   return new Date(`${dateInput}T12:00:00Z`);
 }
 
-async function getAuthorizedTurma(userId: string, turmaId: string) {
+async function getAuthorizedTurma(userId: string, turmaId: string, userRole?: string) {
+  const isAdmin = userRole === "ADMIN";
+
   return prisma.turma.findFirst({
-    where: { id: turmaId, coordinator: { userId } },
+    where: isAdmin ? { id: turmaId } : { id: turmaId, coordinator: { userId } },
     include: {
       subjects: { orderBy: { name: "asc" }, select: { name: true } },
       students: { where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, age: true } },
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     if (!turmaId || !date || !subject) return NextResponse.json({ error: "Turma, date, and subject are required" }, { status: 400 });
 
-    const turma = await getAuthorizedTurma(session.user.id, turmaId);
+    const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
     if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
     if (!turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
 

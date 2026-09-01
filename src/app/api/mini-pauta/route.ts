@@ -9,9 +9,11 @@ function isValidDate(value: string) {
   return !Number.isNaN(date.getTime());
 }
 
-async function getAuthorizedTurma(userId: string, turmaId: string) {
+async function getAuthorizedTurma(userId: string, turmaId: string, userRole?: string) {
+  const isAdmin = userRole === "ADMIN";
+
   return prisma.turma.findFirst({
-    where: { id: turmaId, coordinator: { userId } },
+    where: isAdmin ? { id: turmaId } : { id: turmaId, coordinator: { userId } },
     include: {
       subjects: { orderBy: { name: "asc" }, select: { name: true } },
       students: { where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, age: true } },
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "O intervalo semanal deve ter exactamente 7 dias." }, { status: 400 });
     }
 
-    const turma = await getAuthorizedTurma(session.user.id, turmaId);
+    const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
     if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
     if (!turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
 

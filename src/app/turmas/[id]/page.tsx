@@ -102,7 +102,7 @@ export default async function TurmaDetailPage({
           </div>
 
           <div className="student-grid" aria-label={`Lista de alunos da turma ${turma.name}`}>
-            {visibleStudents.map((student) => (
+            {visibleStudents.map((student: { id: string; name: string; age: number; attendance: string; active: boolean; parents: unknown[] }) => (
               <StudentCardClient key={student.id} turmaId={turma.id} student={student} />
             ))}
           </div>

@@ -32,8 +32,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Preencha o nome e telefone de pelo menos um encarregado." }, { status: 400 });
     }
 
+    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+
     const turma = await prisma.turma.findFirst({
-      where: { id: turmaId, coordinator: { userId: session.user.id } },
+      where: isAdmin ? { id: turmaId } : { id: turmaId, coordinator: { userId: session.user.id } },
       select: { id: true },
     });
     if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });

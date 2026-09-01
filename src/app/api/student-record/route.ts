@@ -116,11 +116,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "studentId is required" }, { status: 400 });
     }
 
+    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
     const student = await prisma.student.findFirst({
-      where: {
-        id: studentId,
-        turma: { coordinator: { userId: session.user.id } },
-      },
+      where: isAdmin
+        ? { id: studentId }
+        : {
+            id: studentId,
+            turma: { coordinator: { userId: session.user.id } },
+          },
       select: { turma: { select: { subjects: { select: { name: true } } } } },
     });
 
@@ -210,10 +213,17 @@ export async function PATCH(request: NextRequest) {
     const id = typeof body.id === "string" ? body.id : "";
     if (!type || !id) return NextResponse.json({ error: "Record type and id are required" }, { status: 400 });
 
+    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+
     if (type === "grade") {
       const value = Number(body.value);
       if (!Number.isFinite(value) || value < 0 || value > 20) return NextResponse.json({ error: "Grade must be between 0 and 20" }, { status: 400 });
-      const grade = await prisma.grade.findFirst({ where: { id, student: { turma: { coordinator: { userId: session.user.id } } } }, include: { student: { include: { turma: { select: { subjects: { select: { name: true } } } } } } } });
+      const grade = await prisma.grade.findFirst({
+        where: isAdmin
+          ? { id }
+          : { id, student: { turma: { coordinator: { userId: session.user.id } } } },
+        include: { student: { include: { turma: { select: { subjects: { select: { name: true } } } } } } },
+      });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
       const subject = typeof body.subject === "string" ? body.subject : grade.subject;
       if (!grade.student.turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
@@ -244,12 +254,18 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get("id");
     if (!id || (type !== "grade" && type !== "absence")) return NextResponse.json({ error: "Record type and id are required" }, { status: 400 });
 
+    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+
     if (type === "grade") {
-      const grade = await prisma.grade.findFirst({ where: { id, student: { turma: { coordinator: { userId: session.user.id } } } } });
+      const grade = await prisma.grade.findFirst({
+        where: isAdmin ? { id } : { id, student: { turma: { coordinator: { userId: session.user.id } } } },
+      });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
       await prisma.grade.delete({ where: { id } });
     } else {
-      const absence = await prisma.absence.findFirst({ where: { id, student: { turma: { coordinator: { userId: session.user.id } } } } });
+      const absence = await prisma.absence.findFirst({
+        where: isAdmin ? { id } : { id, student: { turma: { coordinator: { userId: session.user.id } } } },
+      });
       if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });
       await prisma.absence.delete({ where: { id } });
     }

@@ -15,9 +15,11 @@ export async function PATCH(
       return Response.json({ message: "Não autorizado" }, { status: 401 });
     }
 
+    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+
     // Verify the coordinator owns this turma
     const turma = await prisma.turma.findFirst({
-      where: { id: turmaId, coordinator: { userId: session.user.id } },
+      where: isAdmin ? { id: turmaId } : { id: turmaId, coordinator: { userId: session.user.id } },
       select: { id: true },
     });
 

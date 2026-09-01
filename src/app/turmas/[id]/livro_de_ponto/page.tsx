@@ -15,7 +15,7 @@ export default async function AttendanceBookPage({ params }: { params: Promise<{
   // Filter out inactive students
   turma = {
     ...turma,
-    roster: turma.roster.filter((student) => student.active),
+    roster: turma.roster.filter((student: { active: boolean }) => student.active),
   };
 
   return (

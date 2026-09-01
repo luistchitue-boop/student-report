@@ -35,8 +35,10 @@ export async function PATCH(
       return Response.json({ message: "Aluno não encontrado" }, { status: 404 });
     }
 
+    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+
     const turma = await prisma.turma.findFirst({
-      where: { id: student.turmaId, coordinator: { userId: session.user.id } },
+      where: isAdmin ? { id: student.turmaId } : { id: student.turmaId, coordinator: { userId: session.user.id } },
       select: { id: true },
     });
 

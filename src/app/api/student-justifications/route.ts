@@ -19,8 +19,11 @@ export async function POST(request: NextRequest) {
     if (!absenceIds.length || !title || !notes) return NextResponse.json({ error: "Selecione faltas e preencha os dois campos." }, { status: 400 });
 
     const uniqueAbsenceIds = [...new Set(absenceIds)];
+    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
     const absences = await prisma.absence.findMany({
-      where: { id: { in: uniqueAbsenceIds }, student: { turma: { coordinator: { userId: session.user.id } } } },
+      where: isAdmin
+        ? { id: { in: uniqueAbsenceIds } }
+        : { id: { in: uniqueAbsenceIds }, student: { turma: { coordinator: { userId: session.user.id } } } },
       select: { id: true },
     });
 
