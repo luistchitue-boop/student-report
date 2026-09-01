@@ -26,8 +26,8 @@ export default function SignIn() {
       if (result?.error) {
         setError(
           result.error === "CredentialsSignin"
-            ? "Email ou senha invalidos."
-            : `Nao foi possivel iniciar sessao: ${result.error}`
+            ? "Email ou senha inválidos."
+            : `Não foi possível iniciar sessão: ${result.error}`
         );
         return;
       }
@@ -45,7 +45,7 @@ export default function SignIn() {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>NEPH RELATORIOS</h1>
+          <h1>NEPH Relatórios</h1>
           <p>Entre na sua conta</p>
         </div>
 
@@ -68,7 +68,7 @@ export default function SignIn() {
             <input
               id="password"
               type="password"
-              placeholder="A sua senha"
+              placeholder="A sua palavra-passe"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

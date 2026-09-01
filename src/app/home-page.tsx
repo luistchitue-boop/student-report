@@ -36,7 +36,7 @@ export default function HomePage() {
         <header className="topbar">
           <div>
             <p className="eyebrow">GABINETE ESCOLAR / 2026</p>
-            <h1>Inicio</h1>
+            <h1>Início</h1>
           </div>
           <div className="profile">
             <span className="status-dot" /> Conectado
@@ -48,7 +48,7 @@ export default function HomePage() {
         <section className="welcome">
           <div>
             <p className="eyebrow accent">PAINEL GERAL</p>
-            <h2>Bem-vindo ao gestor escolar<br /><em>da sua escola.</em></h2>
+            <h2>Bem-vindo ao portal da Coordenação</h2>
             <p className="lede">Acompanhe turmas, alunos, presenças e relatórios num único painel.</p>
           </div>
           <div className="whatsapp-glyph">▣</div>
@@ -91,38 +91,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="workspace">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">PRÓXIMAS TAREFAS</p>
-              <h3>Agenda escolar</h3>
-            </div>
-          </div>
-
-          <div className="task-list">
-            <div className="task-item">
-              <span className="task-tag">Hoje</span>
-              <div>
-                <strong>Revisão de faltas</strong>
-                <small>Confirmar registos das turmas 10CEJ e 10CFBA.</small>
-              </div>
-            </div>
-            <div className="task-item">
-              <span className="task-tag warning">Manhã</span>
-              <div>
-                <strong>Alunos com apoio</strong>
-                <small>Verificar observações pendentes e contactos.</small>
-              </div>
-            </div>
-            <div className="task-item">
-              <span className="task-tag success">Próximo</span>
-              <div>
-                <strong>Relatório semanal</strong>
-                <small>Preparar resumo do desempenho e presenças.</small>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
       <style>{`
@@ -223,55 +191,6 @@ export default function HomePage() {
           color: rgba(15, 23, 42, 0.75);
         }
 
-        .task-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.9rem;
-          margin-top: 1rem;
-        }
-
-        .task-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 1rem;
-          padding: 1rem 1.1rem;
-          border-radius: 14px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-        }
-
-        .task-tag {
-          min-width: 70px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0.4rem 0.65rem;
-          border-radius: 999px;
-          background: #dbeafe;
-          color: #1d4ed8;
-          font-size: 0.72rem;
-          font-weight: 700;
-          text-transform: uppercase;
-        }
-
-        .task-tag.warning {
-          background: #fef3c7;
-          color: #b45309;
-        }
-
-        .task-tag.success {
-          background: #dcfce7;
-          color: #15803d;
-        }
-
-        .task-item strong {
-          display: block;
-          margin-bottom: 0.2rem;
-        }
-
-        .task-item small {
-          color: #4b5563;
-        }
       `}</style>
     </AppShell>
   );
