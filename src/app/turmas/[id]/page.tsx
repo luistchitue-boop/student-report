@@ -95,6 +95,9 @@ export default async function TurmaDetailPage({
               <Link href={`/turmas/${turma.id}/livro_de_ponto`} className="attendance-book-button">
                 Livro de ponto
               </Link>
+              <Link href={`/turmas/${turma.id}/mini_pauta`} className="mini-pauta-button">
+                Mini pauta
+              </Link>
             </div>
           </div>
 
