@@ -68,35 +68,38 @@ export default async function TurmasPage({
         </section>
 
         <section className="turma-list">
-          {visibleTurmas.map((turma) => (
-            <Link key={turma.id} href={`/turmas/${turma.id}`} className="turma-card-link">
-              <article className="turma-card">
-                <div className="turma-card-header">
-                  <span className="turma-badge">Turma</span>
-                  <strong>{turma.name}</strong>
-                </div>
+          {visibleTurmas.map((turma) => {
+            const subjectSlots = Array.from({ length: 4 }, (_, index) => turma.subjects[index] ?? "—");
 
-                <div className="turma-card-body">
-                  <div className="metric-row">
-                    <span className="metric-label">Alunos</span>
-                    <span className="metric-value">{turma.students}</span>
+            return (
+              <Link key={turma.id} href={`/turmas/${turma.id}`} className="turma-card-link">
+                <article className="turma-card">
+                  <div className="turma-card-header">
+                    <span className="turma-badge">Turma</span>
+                    <strong>{turma.name}</strong>
                   </div>
-                  <div className="metric-row">
-                    <span className="metric-label">Horário</span>
-                    <span className="metric-value">{turma.schedule}</span>
-                  </div>
-                </div>
 
-                <div className="subject-list" aria-label={`Disciplinas da turma ${turma.name}`}>
-                  {(turma.subjects.length ? turma.subjects : ["Sem disciplinas cadastradas"]).map((subject) => (
-                    <span key={`${turma.id}-${subject}`} className="subject-pill">
-                      {subject}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            </Link>
-          ))}
+                  <div className="turma-card-body">
+                    <div className="metric-row">
+                      <span className="metric-label">Alunos</span>
+                      <span className="metric-value">{turma.students}</span>
+                    </div>
+                  </div>
+
+                  <div className="subject-list" aria-label={`Disciplinas da turma ${turma.name}`}>
+                    {subjectSlots.map((subject, index) => (
+                      <span
+                        key={`${turma.id}-${subject}-${index}`}
+                        className={subject === "—" ? "subject-pill empty" : "subject-pill"}
+                      >
+                        {subject}
+                      </span>
+                    ))}
+                  </div>
+                </article>
+              </Link>
+            );
+          })}
         </section>
 
         {totalPages > 1 && (
