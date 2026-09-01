@@ -6,9 +6,14 @@ export function AppShell({ children, active }: { children: ReactNode; active: "r
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">A</span>
+          <span className="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img" aria-label="Livro">
+              <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11a2 2 0 0 1 2 2v15a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 20.5z" />
+              <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13a2 2 0 0 0-2 2v15a2 2 0 0 1 2-2h4.5a2.5 2.5 0 0 1 2.5 2.5z" />
+            </svg>
+          </span>
           <span>
-            AEph <small>RELATORIOS</small>
+            NEPH <small>RELATORIOS</small>
           </span>
         </div>
 

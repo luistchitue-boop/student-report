@@ -4,7 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "AEph Relatorios | Gestão escolar",
+  title: "NEPH RELATORIOS | Gestão escolar",
   description: "Crie e envie relatórios escolares com notas, faltas e observações para as famílias.",
 };
 

@@ -107,7 +107,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
       reportElement.style.color = "#1f2a2b";
       reportElement.innerHTML = `
         <div style="border-bottom:2px solid #1b3d34;padding-bottom:16px;margin-bottom:24px;">
-          <div style="font-size:20px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1b3d34;">AEph Reports</div>
+          <div style="font-size:20px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1b3d34;">NEPH RELATORIOS</div>
           <h1 style="margin:8px 0 0;color:#1b3d34;font-size:28px;">Relatório escolar</h1>
         </div>
 
@@ -292,9 +292,14 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">A</span>
+          <span className="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img" aria-label="Livro">
+              <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11a2 2 0 0 1 2 2v15a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 20.5z" />
+              <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13a2 2 0 0 0-2 2v15a2 2 0 0 1 2-2h4.5a2.5 2.5 0 0 1 2.5 2.5z" />
+            </svg>
+          </span>
           <span>
-            AEph <small>REPORTS</small>
+            NEPH <small>RELATORIOS</small>
           </span>
         </div>
 

@@ -45,7 +45,7 @@ export default function SignIn() {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>AEph Relatorios</h1>
+          <h1>NEPH RELATORIOS</h1>
           <p>Entre na sua conta</p>
         </div>
 
