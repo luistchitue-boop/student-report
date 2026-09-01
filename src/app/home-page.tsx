@@ -2,6 +2,7 @@
 
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
+import { ArrowRight, BarChart3, FileText, GraduationCap, ShieldCheck, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 
 const actions = [
@@ -57,7 +58,7 @@ export default function HomePage({
             <h2>Bem-vindo ao portal da Coordenação</h2>
             <p className="lede">Acompanhe turmas, alunos, presenças e relatórios num único painel.</p>
           </div>
-          <div className="whatsapp-glyph">▣</div>
+          <div className="whatsapp-glyph" aria-hidden="true"><BarChart3 size={64} strokeWidth={1.8} /></div>
         </section>
 
         <section className="workspace">
@@ -88,12 +89,23 @@ export default function HomePage({
           </div>
 
           <div className="quick-actions">
-            {actions.map((action) => (
-              <Link key={action.title} href={action.href} className={`action-card ${action.accent}`}>
-                <strong>{action.title}</strong>
-                <span>{action.description}</span>
-              </Link>
-            ))}
+            {actions.map((action) => {
+              const iconMap = {
+                Turmas: Users,
+                Definições: ShieldCheck,
+                Admin: FileText,
+              };
+              const Icon = iconMap[action.title as keyof typeof iconMap] ?? GraduationCap;
+
+              return (
+                <Link key={action.title} href={action.href} className={`action-card ${action.accent}`}>
+                  <div className="action-icon"><Icon size={18} strokeWidth={2.2} /></div>
+                  <strong>{action.title}</strong>
+                  <span>{action.description}</span>
+                  <span className="action-arrow"><ArrowRight size={16} strokeWidth={2.2} /></span>
+                </Link>
+              );
+            })}
           </div>
         </section>
 
@@ -164,6 +176,7 @@ export default function HomePage({
           text-decoration: none;
           transition: transform 0.2s ease, box-shadow 0.2s ease;
           border: 1px solid transparent;
+          position: relative;
         }
 
         .action-card:hover {
@@ -195,6 +208,28 @@ export default function HomePage({
 
         .action-card span {
           color: rgba(15, 23, 42, 0.75);
+        }
+
+        .action-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 2.4rem;
+          height: 2.4rem;
+          border-radius: 0.7rem;
+          background: rgba(15, 23, 42, 0.08);
+          color: #0f172a;
+          margin-bottom: 0.2rem;
+        }
+
+        .action-arrow {
+          position: absolute;
+          right: 1rem;
+          bottom: 0.9rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: inherit;
         }
 
       `}</style>

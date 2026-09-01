@@ -4,8 +4,16 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import {
+  BookOpen,
+  Building2,
+  FileText,
+  House,
+  ShieldCheck,
+  Settings,
+} from "lucide-react";
 
-export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" }) {
+export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" | "relatorios" }) {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = session?.user?.role === "ADMIN";
@@ -16,10 +24,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
         <div className="sidebar-header">
           <div className="brand">
             <span className="brand-mark" aria-hidden="true">
-              <svg viewBox="0 0 24 24" role="img" aria-label="Livro">
-                <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11a2 2 0 0 1 2 2v15a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 20.5z" />
-                <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13a2 2 0 0 0-2 2v15a2 2 0 0 1 2-2h4.5a2.5 2.5 0 0 1 2.5 2.5z" />
-              </svg>
+              <BookOpen size={18} strokeWidth={2.2} />
             </span>
             <span>
               NEPH <small>GESTÃO</small>
@@ -40,18 +45,23 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
 
         <nav className={`sidebar-nav ${menuOpen ? "menu-open" : ""}`}>
           <Link href="/" className={active === "inicio" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-            <span>▦</span> Inicio
+            <House size={16} strokeWidth={2.1} /> Inicio
           </Link>
           <Link href="/turmas" className={active === "turmas" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-            <span>◫</span> Turmas
+            <Building2 size={16} strokeWidth={2.1} /> Turmas
           </Link>
           {isAdmin && (
-            <Link href="/admin" className={active === "admin" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-              <span>◈</span> Admin
-            </Link>
+            <>
+              <Link href="/admin" className={active === "admin" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+                <ShieldCheck size={16} strokeWidth={2.1} /> Admin
+              </Link>
+              <Link href="/admin/relatorios" className={active === "relatorios" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+                <FileText size={16} strokeWidth={2.1} /> Relatorios
+              </Link>
+            </>
           )}
           <Link href="/settings" className={active === "settings" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-            <span>⚙</span> Definições
+            <Settings size={16} strokeWidth={2.1} /> Definições
           </Link>
         </nav>
       </aside>
