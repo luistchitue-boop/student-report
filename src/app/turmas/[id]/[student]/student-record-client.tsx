@@ -106,76 +106,97 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
       reportElement.style.fontFamily = "Arial, sans-serif";
       reportElement.style.color = "#1f2a2b";
       reportElement.innerHTML = `
-        <div style="border-bottom:2px solid #1b3d34;padding-bottom:16px;margin-bottom:24px;">
-          <div style="font-size:20px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1b3d34;">NEPH RELATORIOS</div>
-          <h1 style="margin:8px 0 0;color:#1b3d34;font-size:28px;">Relatório escolar</h1>
-        </div>
-
-        <div style="display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:12px;margin:18px 0 24px;">
-          <div style="background:#f5faf6;border:1px solid #dfe5df;padding:12px 14px;">
-            <span style="display:block;color:#5b6d68;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Aluno</span>
-            <span style="font-size:16px;font-weight:700;">${escapeHtml(student.name)}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #1b3d34;padding:0 0 20px;margin-bottom:24px;">
+          <div style="display:flex;align-items:center;gap:16px;">
+            <img src="/school-logo.png" alt="Logo da escola" style="width:72px;height:72px;object-fit:contain;" />
+            <div>
+              <div style="font-size:22px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#1b3d34;">NEPH RELATORIOS</div>
+              <div style="margin-top:7px;color:#60716a;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;">Relatório escolar</div>
+            </div>
           </div>
-          <div style="background:#f5faf6;border:1px solid #dfe5df;padding:12px 14px;">
-            <span style="display:block;color:#5b6d68;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Turma</span>
-            <span style="font-size:16px;font-weight:700;">${escapeHtml(turma.name)}</span>
-          </div>
-          <div style="background:#f5faf6;border:1px solid #dfe5df;padding:12px 14px;">
-            <span style="display:block;color:#5b6d68;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Média</span>
-            <span style="font-size:16px;font-weight:700;">${averageScore}</span>
+          <div style="text-align:right;color:#60716a;font-size:11px;line-height:1.6;">
+            <strong style="display:block;color:#1b3d34;font-size:12px;">PERÍODO</strong>
+            ${escapeHtml(reportStart)} a ${escapeHtml(reportEnd)}
           </div>
         </div>
 
-        <h2 style="color:#1b3d34;font-size:18px;margin:22px 0 10px;border-bottom:1px solid #dfe5df;padding-bottom:6px;">Notas</h2>
-        <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+        <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;margin:18px 0 28px;">
+          <div style="background:#1b3d34;color:#fff;border-radius:12px;padding:16px 18px;">
+            <span style="display:block;color:#b9d7c4;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Aluno</span>
+            <span style="font-size:19px;font-weight:800;">${escapeHtml(student.name)}</span>
+          </div>
+          <div style="background:#f1f7f2;border:1px solid #d8e7dc;border-radius:12px;padding:16px 18px;">
+            <span style="display:block;color:#5b6d68;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Turma</span>
+            <span style="font-size:16px;font-weight:800;color:#1b3d34;">${escapeHtml(turma.name)}</span>
+          </div>
+          <div style="background:#fff7df;border:1px solid #f0dfaa;border-radius:12px;padding:16px 18px;">
+            <span style="display:block;color:#806b2c;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Média geral</span>
+            <span style="font-size:24px;font-weight:800;color:#6d581e;">${averageScore}</span>
+          </div>
+        </div>
+
+        <h2 style="color:#1b3d34;font-size:17px;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Notas</h2>
+        <table style="width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid #d8e7dc;border-radius:10px;margin-top:10px;">
           <thead>
             <tr>
-              <th style="border:1px solid #d6ddd5;padding:10px 12px;text-align:left;background:#edf5ee;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Disciplina</th>
-              <th style="border:1px solid #d6ddd5;padding:10px 12px;text-align:left;background:#edf5ee;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Nota</th>
+              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Disciplina</th>
+              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Nota</th>
             </tr>
           </thead>
           <tbody>
-            ${normalizedGrades.length ? normalizedGrades.map((grade) => `<tr><td style="border:1px solid #d6ddd5;padding:10px 12px;">${escapeHtml(grade.subject)}</td><td style="border:1px solid #d6ddd5;padding:10px 12px;">${Number(grade.value).toFixed(1)}</td></tr>`).join("") : `<tr><td colspan="2" style="border:1px solid #d6ddd5;padding:10px 12px;">Sem notas registadas.</td></tr>`}
+            ${normalizedGrades.length ? normalizedGrades.map((grade, index) => `<tr style="background:${index % 2 ? "#fbfdfb" : "#ffffff"};"><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(grade.subject)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;font-weight:800;color:#1b3d34;">${Number(grade.value).toFixed(1)}</td></tr>`).join("") : `<tr><td colspan="2" style="padding:12px;">Sem notas registadas.</td></tr>`}
           </tbody>
         </table>
 
-        <h2 style="color:#1b3d34;font-size:18px;margin:22px 0 10px;border-bottom:1px solid #dfe5df;padding-bottom:6px;">Faltas</h2>
-        <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+        <h2 style="color:#1b3d34;font-size:17px;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Faltas</h2>
+        <table style="width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid #d8e7dc;border-radius:10px;margin-top:10px;">
           <thead>
             <tr>
-              <th style="border:1px solid #d6ddd5;padding:10px 12px;text-align:left;background:#edf5ee;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Disciplina</th>
-              <th style="border:1px solid #d6ddd5;padding:10px 12px;text-align:left;background:#edf5ee;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Dia</th>
-              <th style="border:1px solid #d6ddd5;padding:10px 12px;text-align:left;background:#edf5ee;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Tempo</th>
-              <th style="border:1px solid #d6ddd5;padding:10px 12px;text-align:left;background:#edf5ee;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Tipo</th>
+              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Disciplina</th>
+              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Dia</th>
+              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Tempo</th>
+              <th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Tipo</th>
             </tr>
           </thead>
           <tbody>
-            ${normalizedFaults.length ? normalizedFaults.map((fault) => `<tr><td style="border:1px solid #d6ddd5;padding:10px 12px;">${escapeHtml(fault.subject)}</td><td style="border:1px solid #d6ddd5;padding:10px 12px;">${escapeHtml(fault.dia)}</td><td style="border:1px solid #d6ddd5;padding:10px 12px;">${escapeHtml(fault.tempo)}</td><td style="border:1px solid #d6ddd5;padding:10px 12px;">${escapeHtml(fault.faultType)}</td></tr>`).join("") : `<tr><td colspan="4" style="border:1px solid #d6ddd5;padding:10px 12px;">Sem faltas registadas.</td></tr>`}
+            ${normalizedFaults.length ? normalizedFaults.map((fault, index) => `<tr style="background:${index % 2 ? "#fbfdfb" : "#ffffff"};"><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.subject)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.dia)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.tempo)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(fault.faultType)}</td></tr>`).join("") : `<tr><td colspan="4" style="padding:12px;">Sem faltas registadas.</td></tr>`}
           </tbody>
         </table>
 
-        <h2 style="color:#1b3d34;font-size:18px;margin:22px 0 10px;border-bottom:1px solid #dfe5df;padding-bottom:6px;">Observação do professor</h2>
-        <div style="border:1px solid #dfe5df;background:#f7faf7;padding:14px 16px;line-height:1.6;">${escapeHtml(reportNote.trim() || "Sem observação do professor.")}</div>
+        <h2 style="color:#1b3d34;font-size:17px;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Observação do professor</h2>
+        <div style="border-left:4px solid #39755d;border-radius:0 10px 10px 0;background:#f1f7f2;padding:15px 17px;line-height:1.6;color:#40554c;">${escapeHtml(reportNote.trim() || "Sem observação do professor.")}</div>
 
-        <div style="margin-top:22px;background:#fff;border:1px solid #dfe5df;padding:12px 14px;">
-          <span style="display:block;color:#5b6d68;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Resumo</span>
-          <span style="font-size:16px;font-weight:700;">${totalFaults} falta(s) registada(s) neste relatório.</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:26px;background:#1b3d34;border-radius:12px;padding:15px 18px;color:#fff;">
+          <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#b9d7c4;">Resumo de assiduidade</span>
+          <span style="font-size:16px;font-weight:800;">${totalFaults} falta(s) registada(s)</span>
         </div>
       `;
 
       document.body.appendChild(reportElement);
 
       try {
-        const canvas = await html2canvas(reportElement, { scale: 2, backgroundColor: "#ffffff" });
+        const reportLogo = reportElement.querySelector("img");
+        if (reportLogo && !reportLogo.complete) {
+          await new Promise<void>((resolve) => {
+            reportLogo.addEventListener("load", () => resolve(), { once: true });
+            reportLogo.addEventListener("error", () => resolve(), { once: true });
+          });
+        }
+        const canvas = await html2canvas(reportElement, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
         const pdf = new jsPDF("p", "mm", "a4");
         const imgData = canvas.toDataURL("image/png");
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
         const imgWidth = pageWidth - 18;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const finalHeight = Math.min(imgHeight, pageHeight - 18);
-
-        pdf.addImage(imgData, "PNG", 9, 9, imgWidth, finalHeight);
+        const printableHeight = pageHeight - 18;
+        let renderedHeight = 0;
+        while (renderedHeight < imgHeight) {
+          if (renderedHeight > 0) pdf.addPage();
+          const pageHeightToRender = Math.min(printableHeight, imgHeight - renderedHeight);
+          pdf.addImage(imgData, "PNG", 9, 9 - renderedHeight, imgWidth, imgHeight);
+          renderedHeight += pageHeightToRender;
+        }
         pdf.save(`relatorio-${student.name.toLowerCase().replace(/\s+/g, "-")}.pdf`);
         setStatusMessage("PDF gerado com sucesso.");
       } catch (error) {
