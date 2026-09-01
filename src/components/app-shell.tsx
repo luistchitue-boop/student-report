@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-export function AppShell({ children, active }: { children: ReactNode; active: "reports" | "turmas" }) {
+export function AppShell({ children, active }: { children: ReactNode; active: "reports" | "turmas" | "settings" }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -26,6 +26,9 @@ export function AppShell({ children, active }: { children: ReactNode; active: "r
           </Link>
           <Link href="/#activity" className="">
             <span>↗</span> Activity
+          </Link>
+          <Link href="/settings" className={active === "settings" ? "nav-active" : ""}>
+            <span>⚙</span> Definições
           </Link>
         </nav>
 
