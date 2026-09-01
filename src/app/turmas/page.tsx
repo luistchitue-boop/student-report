@@ -4,7 +4,13 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { getCoordinatorTurmas } from "@/lib/teacher-data";
 
-export default async function TurmasPage() {
+const PAGE_SIZE = 6;
+
+export default async function TurmasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] | undefined }>;
+}) {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -12,38 +18,117 @@ export default async function TurmasPage() {
   }
 
   const turmas = await getCoordinatorTurmas(session.user.id);
+  const rawPage = (await searchParams)?.page;
+  const requestedPage = Number(Array.isArray(rawPage) ? rawPage[0] : rawPage ?? "1");
+  const totalPages = Math.max(1, Math.ceil(turmas.length / PAGE_SIZE));
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const visibleTurmas = turmas.slice(startIndex, startIndex + PAGE_SIZE);
+  const totalStudents = turmas.reduce((sum, turma) => sum + turma.students, 0);
+  const averageStudents = turmas.length ? Math.round(totalStudents / turmas.length) : 0;
+
+  const buildPageHref = (page: number) => (page === 1 ? "/turmas" : `/turmas?page=${page}`);
 
   return (
     <AppShell active="turmas">
-      <main className="main-content" style={{ maxWidth: 980 }}>
-        <header className="topbar" style={{ marginBottom: "1.75rem" }}>
+      <main className="main-content turma-page-shell">
+        <header className="topbar turma-topbar">
           <div>
             <p className="eyebrow">COORDENAÇÃO</p>
-            <h1 style={{ fontSize: "2rem", letterSpacing: "-0.05em" }}>Turmas</h1>
+            <h1>Turmas</h1>
           </div>
-          <a href="/" style={{ textDecoration: "none", color: "#39755d", fontWeight: 800 }}>
+          <Link href="/" className="dashboard-link">
             ← Voltar ao dashboard
-          </a>
+          </Link>
         </header>
 
-        <section className="turma-list" style={{ display: "grid", gap: "1rem" }}>
-          {turmas.map((turma) => (
-            <Link key={turma.id} href={`/turmas/${turma.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-              <div style={{ background: "#fff", border: "1px solid #dfe5df", borderLeft: "4px solid #39755d", padding: "1rem 1.1rem", cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center", flexWrap: "wrap", marginBottom: "0.5rem" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0.35rem 0.6rem", background: "#e2efe7", color: "#39755d", borderRadius: 999, fontSize: "0.68rem", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                    Turma
-                  </span>
-                  <strong style={{ fontSize: "1.05rem", letterSpacing: "-0.04em" }}>{turma.name}</strong>
+        <section className="turma-summary" aria-label="Resumo de turmas">
+          <div className="summary-card">
+            <span className="summary-label">Turmas ativas</span>
+            <strong>{turmas.length}</strong>
+          </div>
+          <div className="summary-card">
+            <span className="summary-label">Alunos</span>
+            <strong>{totalStudents}</strong>
+          </div>
+          <div className="summary-card">
+            <span className="summary-label">Média por turma</span>
+            <strong>{averageStudents}</strong>
+          </div>
+        </section>
+
+        <section className="turma-toolbar" aria-label="Navegação de turmas">
+          <div>
+            <p className="eyebrow">VISÃO GERAL</p>
+            <h2>Gestão de turmas</h2>
+          </div>
+          <div className="page-meta">
+            {visibleTurmas.length ? `Mostrando ${startIndex + 1}-${Math.min(startIndex + visibleTurmas.length, turmas.length)} de ${turmas.length}` : "Nenhuma turma encontrada"}
+          </div>
+        </section>
+
+        <section className="turma-list">
+          {visibleTurmas.map((turma) => (
+            <Link key={turma.id} href={`/turmas/${turma.id}`} className="turma-card-link">
+              <article className="turma-card">
+                <div className="turma-card-header">
+                  <span className="turma-badge">Turma</span>
+                  <strong>{turma.name}</strong>
                 </div>
-                <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", color: "#5d6b63", fontSize: "0.8rem" }}>
-                  <span>{turma.students} alunos</span>
-                  <span>{turma.schedule}</span>
+
+                <div className="turma-card-body">
+                  <div className="metric-row">
+                    <span className="metric-label">Alunos</span>
+                    <span className="metric-value">{turma.students}</span>
+                  </div>
+                  <div className="metric-row">
+                    <span className="metric-label">Horário</span>
+                    <span className="metric-value">{turma.schedule}</span>
+                  </div>
                 </div>
-              </div>
+
+                <div className="subject-list" aria-label={`Disciplinas da turma ${turma.name}`}>
+                  {(turma.subjects.length ? turma.subjects : ["Sem disciplinas cadastradas"]).map((subject) => (
+                    <span key={`${turma.id}-${subject}`} className="subject-pill">
+                      {subject}
+                    </span>
+                  ))}
+                </div>
+              </article>
             </Link>
           ))}
         </section>
+
+        {totalPages > 1 && (
+          <nav className="pagination" aria-label="Paginação de turmas">
+            <Link
+              href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)}
+              className={currentPage === 1 ? "page-button disabled" : "page-button"}
+              aria-disabled={currentPage === 1}
+            >
+              Anterior
+            </Link>
+
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+              <Link
+                key={page}
+                href={buildPageHref(page)}
+                className={page === currentPage ? "page-button active" : "page-button"}
+                aria-current={page === currentPage ? "page" : undefined}
+              >
+                {page}
+              </Link>
+            ))}
+
+            <Link
+              href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)}
+              className={currentPage === totalPages ? "page-button disabled" : "page-button"}
+              aria-disabled={currentPage === totalPages}
+            >
+              Próxima
+            </Link>
+          </nav>
+        )}
       </main>
     </AppShell>
   );
