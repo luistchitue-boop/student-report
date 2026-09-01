@@ -53,7 +53,28 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .summary-card strong { font-size:1.85rem; letter-spacing:-0.06em; color:var(--navy); }
 .turma-toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
 .turma-toolbar h2 { margin-top:0.35rem; font-size:1.2rem; letter-spacing:-0.05em; }
+.turma-toolbar-actions { display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; justify-content:flex-end; }
 .page-meta { color:#617067; font-size:0.82rem; font-weight:600; }
+.create-turma-button { display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; min-height:2.6rem; padding:0.6rem 1rem; border:0; border-radius:10px; background:var(--green); color:#fff; font-size:0.75rem; font-weight:800; box-shadow:0 10px 18px rgba(57,117,93,0.16); }
+.create-turma-button:hover { background:#2e664f; }
+.turma-create-modal { width:min(100%, 420px); background:#fff; border:1px solid #dfe5df; border-radius:20px; padding:1.2rem; box-shadow:0 24px 70px rgba(20,35,28,0.2); }
+.turma-create-modal-header { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; }
+.turma-create-modal-header h3 { margin:0; color:var(--navy); font-size:1.15rem; }
+.turma-create-modal-close { border:0; background:transparent; color:#68756d; font-size:1.5rem; line-height:1; }
+.turma-create-form { display:grid; gap:0.9rem; }
+.turma-create-field { display:grid; gap:0.35rem; }
+.turma-create-field label { color:#53645b; font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; }
+.turma-create-field input { width:100%; min-height:2.5rem; padding:0.6rem 0.7rem; border:1px solid #ccd9ce; border-radius:10px; background:#fff; color:var(--ink); outline:none; }
+.turma-create-field input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
+.turma-create-actions { display:flex; justify-content:flex-end; gap:0.6rem; margin-top:0.4rem; }
+.turma-create-cancel, .turma-create-submit { min-height:2.45rem; border-radius:9px; padding:0.55rem 0.9rem; font-size:0.75rem; font-weight:800; }
+.turma-create-cancel { border:1px solid #ccd9ce; background:#fff; color:#68756d; }
+.turma-create-submit { border:0; background:var(--green); color:#fff; }
+.turma-create-submit:disabled { opacity:0.6; cursor:not-allowed; }
+.turma-create-status { margin-top:0.5rem; font-size:0.8rem; font-weight:700; }
+.turma-create-status.error { color:#a14a3a; }
+.turma-create-status.success { color:#1d6949; }
+.turma-modal-backdrop { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:1rem; background:rgba(24,38,33,0.42); }
 .turma-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
 .turma-card-link { color:inherit; text-decoration:none; }
 .turma-card { background:#fff; border:1px solid #dfe7df; border-radius:18px; padding:1.1rem 1.1rem 1rem; box-shadow:0 12px 24px rgba(24,38,33,0.03); transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; min-height:220px; display:flex; flex-direction:column; }

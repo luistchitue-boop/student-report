@@ -27,7 +27,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
               <BookOpen size={18} strokeWidth={2.2} />
             </span>
             <span>
-              NEPH <small>GESTÃO</small>
+              NEPH <small>Relatorios</small>
             </span>
           </div>
 

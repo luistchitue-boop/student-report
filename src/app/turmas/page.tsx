@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { getCoordinatorTurmas } from "@/lib/teacher-data";
+import TurmasActions from "./turmas-actions";
 
 const PAGE_SIZE = 6;
 
@@ -97,8 +98,12 @@ export default async function TurmasPage({
             <p className="eyebrow">VISÃO GERAL</p>
             <h2>Gestão de turmas</h2>
           </div>
-          <div className="page-meta">
-            {visibleTurmas.length ? `Mostrando ${startIndex + 1}-${Math.min(startIndex + visibleTurmas.length, turmas.length)} de ${turmas.length}` : "Nenhuma turma encontrada"}
+
+          <div className="turma-toolbar-actions">
+            <div className="page-meta">
+              {visibleTurmas.length ? `Mostrando ${startIndex + 1}-${Math.min(startIndex + visibleTurmas.length, turmas.length)} de ${turmas.length}` : "Nenhuma turma encontrada"}
+            </div>
+            <TurmasActions isAdmin={session.user.role === "ADMIN"} />
           </div>
         </section>
 
