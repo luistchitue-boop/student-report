@@ -26,18 +26,23 @@ export async function POST(request: NextRequest) {
 
     if (absences.length !== uniqueAbsenceIds.length) return NextResponse.json({ error: "Uma ou mais faltas não foram encontradas." }, { status: 404 });
 
-    await prisma.absence.updateMany({
-      where: { id: { in: absences.map((absence) => absence.id) } },
-      data: { justified: true, justificationTitle: title, justificationNotes: notes },
-    });
+    const justifiedAbsences = await prisma.$transaction(
+      absences.map((absence) => prisma.absence.update({
+        where: { id: absence.id },
+        data: { justified: true, justificationTitle: title, justificationNotes: notes },
+        select: { id: true, justified: true, justificationTitle: true, justificationNotes: true },
+      })),
+    );
 
     return NextResponse.json({
       success: true,
-      justified: absences.length,
-      absenceIds: absences.map((absence) => absence.id),
+      justified: justifiedAbsences.length,
+      absenceIds: justifiedAbsences.filter((absence) => absence.justified).map((absence) => absence.id),
+      title,
+      notes,
     });
   } catch (error) {
     console.error("Justification save error:", error);
-    return NextResponse.json({ error: "Failed to save justification" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to save justification" }, { status: 500 });
   }
 }

@@ -71,6 +71,10 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
   }, [gradeEnd, gradeStart, justificationEnd, justificationStart, student.id, tab]);
 
   async function justifySelectedAbsences() {
+    if (!selectedAbsenceIds.length || !justificationTitle.trim() || !justificationNotes.trim()) {
+      throw new Error("Selecione faltas e preencha os dois campos.");
+    }
+
     const response = await fetch("/api/student-justifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ absenceIds: selectedAbsenceIds, title: justificationTitle, notes: justificationNotes }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Não foi possível justificar as faltas.");
