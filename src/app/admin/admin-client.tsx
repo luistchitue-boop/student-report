@@ -62,58 +62,73 @@ export function AdminClient() {
   }
 
   return (
-    <section className="workspace" style={{ maxWidth: 900 }}>
-      <div className="section-heading">
+    <section className="admin-shell workspace">
+      <div className="section-heading admin-heading">
         <div>
           <p className="eyebrow">NOVO COORDENADOR</p>
           <h3>Criar professor e atribuir turmas</h3>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="add-report" style={{ display: "grid", gap: 16 }}>
-        <input
-          required
-          value={form.name}
-          onChange={(event) => setForm({ ...form, name: event.target.value })}
-          placeholder="Nome do professor"
-        />
-        <input
-          required
-          type="email"
-          value={form.email}
-          onChange={(event) => setForm({ ...form, email: event.target.value })}
-          placeholder="endereco@escola.ao"
-        />
-        <input
-          required
-          type="password"
-          value={form.password}
-          onChange={(event) => setForm({ ...form, password: event.target.value })}
-          placeholder="Senha temporária"
-        />
+      <form onSubmit={handleSubmit} className="admin-form">
+        <div className="admin-form-grid">
+          <label className="admin-field">
+            <span>Nome do professor</span>
+            <input
+              required
+              value={form.name}
+              onChange={(event) => setForm({ ...form, name: event.target.value })}
+              placeholder="Ex.: João da Silva"
+            />
+          </label>
 
-        <div>
-          <p className="eyebrow" style={{ marginBottom: 12 }}>Turmas atribuídas</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10 }}>
+          <label className="admin-field">
+            <span>Email institucional</span>
+            <input
+              required
+              type="email"
+              value={form.email}
+              onChange={(event) => setForm({ ...form, email: event.target.value })}
+              placeholder="professor@escola.ao"
+            />
+          </label>
+
+          <label className="admin-field">
+            <span>Senha temporária</span>
+            <input
+              required
+              type="password"
+              value={form.password}
+              onChange={(event) => setForm({ ...form, password: event.target.value })}
+              placeholder="Digite uma senha segura"
+            />
+          </label>
+        </div>
+
+        <div className="admin-turma-panel">
+          <p className="eyebrow admin-label">Turmas atribuídas</p>
+          <div className="admin-turma-grid">
             {turmaOptions.map((turma) => (
-              <label key={turma} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+              <label key={turma} className={`admin-checkbox ${selectedTurmas.includes(turma) ? "selected" : ""}`}>
                 <input
                   type="checkbox"
                   checked={selectedTurmas.includes(turma)}
                   onChange={() => toggleTurma(turma)}
                 />
-                {turma}
+                <span>{turma}</span>
               </label>
             ))}
           </div>
         </div>
 
-        <button className="send-button" type="submit" disabled={status === "saving"}>
-          {status === "saving" ? "A guardar..." : "Criar professor"}
-        </button>
+        <div className="admin-actions">
+          <button className="admin-submit" type="submit" disabled={status === "saving"}>
+            {status === "saving" ? "A guardar..." : "Criar professor"}
+          </button>
+        </div>
 
         {message && (
-          <p className={`form-status ${status}`} style={{ margin: 0 }}>
+          <p className={`admin-status ${status}`}>
             {message}
           </p>
         )}
