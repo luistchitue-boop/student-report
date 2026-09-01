@@ -43,6 +43,24 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
 .subject-list { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.5rem; margin-top:auto; min-height:110px; }
 .subject-pill { display:inline-flex; align-items:center; justify-content:center; border-radius:999px; padding:0.38rem 0.65rem; border:1px solid #d7e3d9; background:#f9faf7; color:#42504a; font-size:0.7rem; font-weight:700; min-height:2.1rem; text-align:center; }
 .subject-pill.empty { color:#a2ada5; background:#f4f6f3; border-style:dashed; }
+.turma-detail-shell { max-width: 980px; }
+.turma-detail-panel { background:#fff; border:1px solid #dfe5df; border-radius:18px; padding:1.25rem; box-shadow:0 12px 28px rgba(26,38,32,0.04); }
+.detail-panel-header { display:flex; justify-content:space-between; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem; }
+.detail-panel-header strong { font-size:1.05rem; }
+.detail-count { background:#e2efe7; color:#39755d; font-weight:800; padding:0.45rem 0.7rem; border-radius:999px; }
+.student-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:1rem; }
+.student-card-link { color:inherit; text-decoration:none; }
+.student-card { background:linear-gradient(180deg, #ffffff 0%, #f7faf7 100%); border:1px solid #e2e9e2; border-radius:20px; padding:1rem 0.9rem; min-height:210px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; text-align:center; transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+.student-card:hover { border-color:#bfd2c2; transform:translateY(-2px); box-shadow:0 14px 26px rgba(25,40,35,0.05); }
+.student-avatar-wrap { display:flex; align-items:center; justify-content:center; width:64px; height:64px; border-radius:50%; background:linear-gradient(180deg, #edf4ee 0%, #e3efe6 100%); border:1px solid #d7e4d9; margin-bottom:0.8rem; }
+.student-avatar { display:grid; place-items:center; font-size:1.7rem; color:#3d5d53; }
+.student-card-body { display:flex; flex-direction:column; gap:0.2rem; margin-bottom:0.75rem; }
+.student-card-body strong { font-size:1rem; letter-spacing:-0.03em; color:var(--navy); }
+.student-card-body small { color:#68756d; font-size:0.75rem; }
+.attendance-pill { display:inline-flex; align-items:center; justify-content:center; width:100%; border-radius:999px; padding:0.4rem 0.75rem; font-size:0.72rem; font-weight:800; }
+.attendance-pill.present { background:#eaf5ea; color:#254a3d; }
+.attendance-pill.absent { background:#f7e7e3; color:#7c3d32; }
+.attendance-pill.neutral { background:#f6f0d7; color:#675826; }
 .pagination { display:flex; justify-content:center; align-items:center; gap:0.5rem; margin-top:1.4rem; flex-wrap:wrap; }
 .page-button { display:inline-flex; align-items:center; justify-content:center; min-width:2.35rem; min-height:2.35rem; padding:0.5rem 0.8rem; border-radius:10px; border:1px solid #dfe8e1; background:#fff; color:#4d5d56; font-weight:700; text-decoration:none; transition:all .18s ease; }
 .page-button:hover { border-color:#b9d0c0; }
@@ -67,6 +85,7 @@ nav .nav-active { background:#cde5cb; border-radius:4px; color:var(--ink); }
   .send-controls { display: grid; gap: 10px; }
   .send-button { min-height: 46px; }
   .selected-label { max-width: 100%; text-align: left; }
+  .student-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .turma-summary { grid-template-columns: 1fr; }
   .turma-toolbar { flex-direction: column; align-items: flex-start; }
   .turma-list { grid-template-columns: 1fr; }

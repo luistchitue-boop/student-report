@@ -5,7 +5,15 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { getCoordinatorTurmaById } from "@/lib/teacher-data";
 
-export default async function TurmaDetailPage({ params }: { params: Promise<{ id: string }> }) {
+const PAGE_SIZE = 10;
+
+export default async function TurmaDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string | string[] | undefined }>;
+}) {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -19,46 +27,87 @@ export default async function TurmaDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
+  const rawPage = (await searchParams)?.page;
+  const requestedPage = Number(Array.isArray(rawPage) ? rawPage[0] : rawPage ?? "1");
+  const totalPages = Math.max(1, Math.ceil(turma.roster.length / PAGE_SIZE));
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const visibleStudents = turma.roster.slice(startIndex, startIndex + PAGE_SIZE);
+
+  const buildPageHref = (page: number) => (page === 1 ? `/turmas/${turma.id}` : `/turmas/${turma.id}?page=${page}`);
+
   return (
     <AppShell active="turmas">
-      <main className="main-content" style={{ maxWidth: 980 }}>
-        <header className="topbar" style={{ marginBottom: "1.75rem" }}>
+      <main className="main-content turma-detail-shell">
+        <header className="topbar turma-topbar">
           <div>
             <p className="eyebrow">ALUNOS</p>
-            <h1 style={{ fontSize: "2rem", letterSpacing: "-0.05em" }}>{turma.name}</h1>
+            <h1>{turma.name}</h1>
           </div>
-          <Link href="/turmas" style={{ textDecoration: "none", color: "#39755d", fontWeight: 800 }}>
+          <Link href="/turmas" className="dashboard-link">
             ← Voltar às turmas
           </Link>
         </header>
 
-        <section style={{ background: "#fff", border: "1px solid #dfe5df", padding: "1.25rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center", flexWrap: "wrap", marginBottom: "1rem" }}>
+        <section className="turma-detail-panel">
+          <div className="detail-panel-header">
             <div>
               <div className="eyebrow">DISPONIBILIDADE</div>
               <strong>{turma.schedule}</strong>
             </div>
-            <span style={{ background: "#e2efe7", color: "#39755d", fontWeight: 800, padding: "0.45rem 0.7rem", borderRadius: 999 }}>
-              {turma.students} alunos
-            </span>
+            <span className="detail-count">{turma.students} alunos</span>
           </div>
 
-          <div style={{ display: "grid", gap: "0.75rem" }}>
-              {turma.roster.map((student) => (
-                <Link key={student.id} href={`/turmas/${turma.id}/${encodeURIComponent(student.id)}`} style={{ textDecoration: "none", color: "inherit" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", background: "#f7f8f4", border: "1px solid #e0e5de", padding: "0.9rem 1rem", flexWrap: "wrap", cursor: "pointer" }}>
-                  <div>
-                    <strong style={{ display: "block" }}>{student.name}</strong>
-                    <small style={{ color: "#68756d" }}>{student.age} anos</small>
+          <div className="student-grid" aria-label={`Lista de alunos da turma ${turma.name}`}>
+            {visibleStudents.map((student) => (
+              <Link key={student.id} href={`/turmas/${turma.id}/${encodeURIComponent(student.id)}`} className="student-card-link">
+                <article className="student-card">
+                  <div className="student-avatar-wrap">
+                    <span className="student-avatar" aria-hidden="true">👤</span>
                   </div>
-                  <span style={{ background: student.attendance === "P" ? "#eaf5ea" : student.attendance === "F" ? "#f7e7e3" : "#f6f0d7", color: "#37433d", borderRadius: 999, padding: "0.35rem 0.7rem", fontSize: "0.75rem", fontWeight: 800 }}>
+                  <div className="student-card-body">
+                    <strong>{student.name}</strong>
+                    <small>{student.age} anos</small>
+                  </div>
+                  <span className={`attendance-pill ${student.attendance === "P" ? "present" : student.attendance === "F" ? "absent" : "neutral"}`}>
                     {student.attendance === "P" ? "Presente" : student.attendance === "F" ? "Ausente" : student.attendance}
                   </span>
-                </div>
+                </article>
               </Link>
             ))}
           </div>
         </section>
+
+        {totalPages > 1 && (
+          <nav className="pagination" aria-label="Paginação dos alunos da turma">
+            <Link
+              href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)}
+              className={currentPage === 1 ? "page-button disabled" : "page-button"}
+              aria-disabled={currentPage === 1}
+            >
+              Anterior
+            </Link>
+
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+              <Link
+                key={page}
+                href={buildPageHref(page)}
+                className={page === currentPage ? "page-button active" : "page-button"}
+                aria-current={page === currentPage ? "page" : undefined}
+              >
+                {page}
+              </Link>
+            ))}
+
+            <Link
+              href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)}
+              className={currentPage === totalPages ? "page-button disabled" : "page-button"}
+              aria-disabled={currentPage === totalPages}
+            >
+              Próxima
+            </Link>
+          </nav>
+        )}
       </main>
     </AppShell>
   );
