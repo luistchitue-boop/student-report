@@ -141,7 +141,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
             <label key={student.id} className={`attendance-student-row ${selectedIds.includes(student.id) ? "selected" : ""}`}>
               <input type="checkbox" checked={selectedIds.includes(student.id)} onChange={() => toggleStudent(student.id)} />
               <span className="attendance-student-avatar">{displayName(student.name).charAt(0).toUpperCase()}</span>
-              <span><strong>{displayName(student.name)}</strong><small>{student.age} anos</small></span>
+              <span><strong>{displayName(student.name)}</strong></span>
               <span className="attendance-check">{selectedIds.includes(student.id) ? "Falta" : "Presente"}</span>
             </label>
           ))}
