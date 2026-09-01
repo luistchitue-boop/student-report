@@ -78,20 +78,20 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
 
   return (
     <div style={{ display: "grid", gap: "0.85rem" }}>
-      <div style={{ color: "#4a5d5a", fontSize: "0.92rem", fontWeight: 600 }}>
-        Contactos dos encarregados de educação.
+      <div style={{ color: "var(--muted)", fontSize: "0.92rem", fontWeight: 600, letterSpacing: "0.05em" }}>
+        Contactos dos encarregados de educação
       </div>
 
       {success && (
         <div
           style={{
             padding: "0.65rem 0.85rem",
-            borderRadius: "8px",
-            background: "#e8f5e9",
-            color: "#2e7d32",
+            borderRadius: "10px",
+            background: "var(--green-soft)",
+            color: "#254a3d",
             fontSize: "0.75rem",
             fontWeight: 600,
-            border: "1px solid #c8e6c9",
+            border: "1px solid #c5e1ce",
           }}
         >
           {success}
@@ -106,13 +106,14 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
               style={{
                 display: "grid",
                 gap: "0.75rem",
-                background: "#fbfcf8",
-                border: "1.5px solid #39755d",
+                background: "#fff",
+                border: "1.5px solid var(--green)",
                 padding: "1rem",
-                borderRadius: "10px",
+                borderRadius: "14px",
+                boxShadow: "0 2px 8px rgba(57, 117, 93, 0.1)",
               }}
             >
-              <h3 style={{ margin: 0, color: "#244d3d", fontSize: "0.95rem", fontWeight: 700 }}>
+              <h3 style={{ margin: 0, color: "var(--navy)", fontSize: "0.95rem", fontWeight: 700 }}>
                 Editar Encarregado
               </h3>
 
@@ -144,7 +145,7 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
                     outline: "none",
                     fontSize: "0.9rem",
                   }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "#39755d")}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
                   onBlur={(e) => (e.currentTarget.style.borderColor = "#ccd9ce")}
                 />
               </div>
@@ -177,7 +178,7 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
                     outline: "none",
                     fontSize: "0.9rem",
                   }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "#39755d")}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
                   onBlur={(e) => (e.currentTarget.style.borderColor = "#ccd9ce")}
                 />
               </div>
@@ -210,7 +211,7 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
                     outline: "none",
                     fontSize: "0.9rem",
                   }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "#39755d")}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
                   onBlur={(e) => (e.currentTarget.style.borderColor = "#ccd9ce")}
                 />
               </div>
@@ -240,7 +241,7 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
                     border: "1px solid #ccd7cc",
                     borderRadius: "9px",
                     background: "#fbfcf8",
-                    color: "#244d3d",
+                    color: "var(--ink)",
                     fontWeight: 700,
                     fontSize: "0.75rem",
                     cursor: "pointer",
@@ -257,7 +258,7 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
                     padding: "0.5rem 1rem",
                     border: "0",
                     borderRadius: "9px",
-                    background: "#39755d",
+                    background: "var(--green)",
                     color: "#fff",
                     fontWeight: 700,
                     fontSize: "0.75rem",
@@ -276,14 +277,15 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
               style={{
                 display: "grid",
                 gap: "0.55rem",
-                background: "#f7f8f4",
-                border: "1px solid #e3e8e1",
+                background: "#fff",
+                border: "1px solid #dfe5df",
                 padding: "1rem",
-                borderRadius: "10px",
+                borderRadius: "12px",
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.02)",
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem" }}>
-                <strong style={{ color: "#244d3d", fontSize: "1.05rem" }}>
+                <strong style={{ color: "var(--navy)", fontSize: "1.05rem", fontWeight: 700 }}>
                   {parent.name}
                 </strong>
                 <button
@@ -294,28 +296,37 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
                     border: "1px solid #ccd7cc",
                     borderRadius: "8px",
                     background: "#fbfcf8",
-                    color: "#39755d",
+                    color: "var(--green)",
                     fontWeight: 700,
                     fontSize: "0.7rem",
                     cursor: "pointer",
                     textTransform: "uppercase",
                     whiteSpace: "nowrap",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--green)";
+                    e.currentTarget.style.background = "var(--green-soft)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "#ccd7cc";
+                    e.currentTarget.style.background = "#fbfcf8";
                   }}
                 >
                   Editar
                 </button>
               </div>
-              <div style={{ display: "grid", gap: "0.35rem", color: "#4a5d5a" }}>
+              <div style={{ display: "grid", gap: "0.35rem", color: "var(--muted)" }}>
                 <a
                   href={`tel:${parent.phone}`}
-                  style={{ color: "#39755d", fontWeight: 700 }}
+                  style={{ color: "var(--green)", fontWeight: 700, textDecoration: "none" }}
                 >
                   {parent.phone || "Telefone não informado"}
                 </a>
                 {parent.email ? (
                   <a
                     href={`mailto:${parent.email}`}
-                    style={{ color: "#39755d", overflowWrap: "anywhere" }}
+                    style={{ color: "var(--green)", overflowWrap: "anywhere", textDecoration: "none" }}
                   >
                     {parent.email}
                   </a>
@@ -327,7 +338,7 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
           )
         )
       ) : (
-        <div style={{ color: "#68756d" }}>Nenhum contacto registado.</div>
+        <div style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Nenhum contacto registado.</div>
       )}
     </div>
   );

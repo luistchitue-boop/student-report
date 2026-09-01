@@ -284,21 +284,21 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             </Link>
           </header>
 
-          <section className="student-record-panel" style={{ background: "#fff", border: "1px solid #dfe5df", padding: "1.25rem" }}>
-            <div className="student-tabs" style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem", borderBottom: "1px solid #e5ece5", paddingBottom: "0.8rem", flexWrap: "wrap" }}>
-              <button className="student-tab" type="button" onClick={() => setTab("notas")} style={{ border: tab === "notas" ? "none" : "1px solid #dfe5df", background: tab === "notas" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+          <section className="student-record-panel" style={{ background: "#fff", border: "1px solid #dfe5df", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)" }}>
+            <div className="student-tabs" style={{ display: "flex", gap: "0.5rem", marginBottom: "1.75rem", borderBottom: "2px solid #e5ece5", paddingBottom: "1rem", flexWrap: "wrap" }}>
+              <button className="student-tab" type="button" onClick={() => setTab("notas")} style={{ border: "none", background: tab === "notas" ? "var(--green-soft)" : "transparent", color: tab === "notas" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
                 Notas
               </button>
-              <button className="student-tab" type="button" onClick={() => setTab("faltas")} style={{ border: tab === "faltas" ? "none" : "1px solid #dfe5df", background: tab === "faltas" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+              <button className="student-tab" type="button" onClick={() => setTab("faltas")} style={{ border: "none", background: tab === "faltas" ? "var(--green-soft)" : "transparent", color: tab === "faltas" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
                 Faltas
               </button>
-              <button className="student-tab" type="button" onClick={() => setTab("justificativos")} style={{ border: tab === "justificativos" ? "none" : "1px solid #dfe5df", background: tab === "justificativos" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+              <button className="student-tab" type="button" onClick={() => setTab("justificativos")} style={{ border: "none", background: tab === "justificativos" ? "var(--green-soft)" : "transparent", color: tab === "justificativos" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
                 Justificativos
               </button>
-              <button className="student-tab" type="button" onClick={() => setTab("relatorio")} style={{ border: tab === "relatorio" ? "none" : "1px solid #dfe5df", background: tab === "relatorio" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+              <button className="student-tab" type="button" onClick={() => setTab("relatorio")} style={{ border: "none", background: tab === "relatorio" ? "var(--green-soft)" : "transparent", color: tab === "relatorio" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
                 Relatório
               </button>
-              <button className="student-tab" type="button" onClick={() => setTab("contactos")} style={{ border: tab === "contactos" ? "none" : "1px solid #dfe5df", background: tab === "contactos" ? "#eaf5ea" : "#fff", color: "#244d3d", fontWeight: 800, padding: "0.7rem 1rem", cursor: "pointer" }}>
+              <button className="student-tab" type="button" onClick={() => setTab("contactos")} style={{ border: "none", background: tab === "contactos" ? "var(--green-soft)" : "transparent", color: tab === "contactos" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
                 Contactos
               </button>
             </div>
