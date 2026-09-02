@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { getCoordinatorTurmas } from "@/lib/teacher-data";
+import TurmaDeleteAction from "./turma-delete-action";
 import TurmasActions from "./turmas-actions";
 
 const PAGE_SIZE = 6;
@@ -112,32 +113,38 @@ export default async function TurmasPage({
             const subjectSlots = Array.from({ length: 4 }, (_, index) => turma.subjects[index] ?? "—");
 
             return (
-              <Link key={turma.id} href={`/turmas/${turma.id}`} className="turma-card-link">
-                <article className="turma-card">
-                  <div className="turma-card-header">
-                    <span className="turma-badge">Turma</span>
-                    <strong>{turma.name}</strong>
-                  </div>
-
-                  <div className="turma-card-body">
-                    <div className="metric-row">
-                      <span className="metric-label">Alunos</span>
-                      <span className="metric-value">{turma.students}</span>
+              <div key={turma.id} className="turma-card-wrap">
+                <Link href={`/turmas/${turma.id}`} className="turma-card-link">
+                  <article className="turma-card">
+                    <div className="turma-card-header">
+                      <span className="turma-badge">Turma</span>
+                      <strong>{turma.name}</strong>
                     </div>
-                  </div>
 
-                  <div className="subject-list" aria-label={`Disciplinas da turma ${turma.name}`}>
-                    {subjectSlots.map((subject, index) => (
-                      <span
-                        key={`${turma.id}-${subject}-${index}`}
-                        className={subject === "—" ? "subject-pill empty" : "subject-pill"}
-                      >
-                        {subject}
-                      </span>
-                    ))}
-                  </div>
-                </article>
-              </Link>
+                    <div className="turma-card-body">
+                      <div className="metric-row">
+                        <span className="metric-label">Alunos</span>
+                        <span className="metric-value">{turma.students}</span>
+                      </div>
+                    </div>
+
+                    <div className="subject-list" aria-label={`Disciplinas da turma ${turma.name}`}>
+                      {subjectSlots.map((subject, index) => (
+                        <span
+                          key={`${turma.id}-${subject}-${index}`}
+                          className={subject === "—" ? "subject-pill empty" : "subject-pill"}
+                        >
+                          {subject}
+                        </span>
+                      ))}
+                    </div>
+                  </article>
+                </Link>
+
+                {session.user.role === "ADMIN" && (
+                  <TurmaDeleteAction turmaId={turma.id} turmaName={turma.name} />
+                )}
+              </div>
             );
           })}
         </section>
