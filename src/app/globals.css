@@ -99,6 +99,30 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .attendance-book-button:hover { background:#2f654f; }
 .mini-pauta-button { display:inline-flex; align-items:center; justify-content:center; min-height:2.35rem; padding:0.5rem 0.85rem; border:1px solid #b9cdbd; border-radius:10px; background:#fff; color:var(--green); font-size:0.78rem; font-weight:800; text-decoration:none; }
 .mini-pauta-button:hover { background:#f0f8f1; }
+.disciplinas-button { display:inline-flex; align-items:center; justify-content:center; min-height:2.35rem; padding:0.5rem 0.85rem; border:1px solid #b9cdbd; border-radius:10px; background:#fff; color:var(--green); font-size:0.78rem; font-weight:800; text-decoration:none; cursor:pointer; }
+.disciplinas-button:hover { background:#f0f8f1; }
+.disciplinas-button:disabled { opacity:0.55; cursor:not-allowed; }
+.disciplinas-modal-backdrop { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:1rem; background:rgba(24,38,33,0.42); }
+.disciplinas-modal { width:min(100%, 520px); background:#fff; border:1px solid #dfe5df; border-radius:20px; padding:1.2rem; box-shadow:0 24px 70px rgba(20,35,28,0.2); }
+.disciplinas-modal-header { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:0.9rem; }
+.disciplinas-modal-header h3 { margin:0; color:var(--navy); font-size:1.15rem; }
+.disciplinas-modal-close { border:0; background:transparent; color:#68756d; font-size:1.5rem; line-height:1; }
+.disciplinas-modal-body { display:grid; gap:0.9rem; }
+.disciplinas-list { display:grid; gap:0.6rem; }
+.disciplina-item { display:flex; align-items:center; justify-content:space-between; gap:0.7rem; border:1px solid #e1ebe2; border-radius:12px; background:#f8fbf8; padding:0.7rem 0.8rem; }
+.disciplina-item strong { color:var(--navy); font-size:0.9rem; }
+.disciplina-item-actions { display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap; }
+.disciplina-item-actions button { min-height:2rem; padding:0.38rem 0.7rem; border-radius:8px; font-size:0.7rem; font-weight:800; }
+.disciplina-edit-button { border:1px solid #b9cdbd; background:#fff; color:var(--green); }
+.disciplina-remove-button { border:1px solid #e4c5c0; background:#fff; color:#9e4d43; }
+.disciplinas-add-row { display:grid; grid-template-columns:1fr auto; gap:0.6rem; }
+.disciplinas-add-row input { width:100%; min-height:2.5rem; padding:0.6rem 0.7rem; border:1px solid #ccd9ce; border-radius:10px; background:#fff; color:var(--ink); outline:none; }
+.disciplinas-add-row input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
+.disciplinas-add-row button { min-height:2.5rem; border:0; border-radius:10px; background:var(--green); color:#fff; padding:0.6rem 0.9rem; font-size:0.75rem; font-weight:800; }
+.disciplinas-status { font-size:0.8rem; font-weight:700; }
+.disciplinas-status.error { color:#a14a3a; }
+.disciplinas-status.success { color:#1d6949; }
+.disciplinas-empty { color:#68756d; font-size:0.82rem; font-weight:700; }
 .new-student-button { display:inline-flex; align-items:center; justify-content:center; min-height:2.2rem; padding:0.45rem 0.8rem; border:1px solid #b9cdbd; border-radius:9px; background:#edf5ee; color:var(--green); font-size:0.76rem; font-weight:600; text-decoration:none; }
 .new-student-button:hover { background:#e1efe3; }
 .new-student-shell { max-width:760px !important; }
