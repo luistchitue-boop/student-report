@@ -12,47 +12,30 @@ function formatDisplayName(name: string) {
   return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
-function formatLogValue(value: unknown, studentNames: Record<string, string> = {}): string {
-  if (value == null) return "—";
+function formatInvolvedSubject(
+  entity: string,
+  details: Record<string, unknown> | null,
+  turmaNames: Record<string, string>,
+  studentNames: Record<string, string>
+) {
+  const parts = [entity];
+  const subject = typeof details?.subject === "string" ? details.subject : "";
+  const turmaId = typeof details?.turmaId === "string" ? details.turmaId : "";
+  const studentIds = Array.isArray(details?.studentIds)
+    ? details.studentIds.filter((id): id is string => typeof id === "string")
+    : typeof details?.studentId === "string"
+      ? [details.studentId]
+      : [];
 
-  if (Array.isArray(value)) {
-    if (!value.length) return "Nenhum";
-    return value.map((item) => formatLogValue(item, studentNames)).join(", ");
+  if (subject) parts.push(subject);
+  if (turmaId) parts.push(turmaNames[turmaId] ?? "Turma");
+  if (studentIds.length === 1) {
+    parts.push(formatDisplayName(studentNames[studentIds[0]] ?? "Aluno"));
+  } else if (studentIds.length > 1) {
+    parts.push(`${studentIds.length} alunos`);
   }
 
-  if (typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, nestedValue]) => nestedValue !== null && nestedValue !== undefined && nestedValue !== "")
-      .map(([key, nestedValue]) => `${formatLabel(key)}: ${formatLogValue(nestedValue, studentNames)}`);
-
-    return entries.length ? entries.join(" • ") : "Sem detalhes";
-  }
-
-  if (typeof value === "string" && studentNames[value]) return formatDisplayName(studentNames[value]);
-  if (typeof value === "boolean") return value ? "Sim" : "Não";
-  return String(value);
-}
-
-function formatLabel(key: string) {
-  const map: Record<string, string> = {
-    turmaId: "Turma",
-    subject: "Disciplina",
-    dia: "Dia",
-    tempo: "Tempo lectivo",
-    studentIds: "Alunos",
-    values: "Valores",
-    absenceIds: "Faltas",
-    title: "Título",
-    notes: "Observações",
-    faultType: "Tipo",
-    term: "Período",
-    value: "Valor",
-    studentId: "Aluno",
-    actorName: "Utilizador",
-    createdAt: "Data",
-  };
-
-  return map[key] ?? key.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
+  return parts.join(" • ");
 }
 
 export default async function ActivityLogsPage({
@@ -185,56 +168,22 @@ export default async function ActivityLogsPage({
             ) : (
               filteredLogs.map((entry) => {
                 const details = entry.details && typeof entry.details === "object" ? (entry.details as Record<string, unknown>) : null;
-                const detailEntries = details ? Object.entries(details).filter(([, value]) => value !== null && value !== undefined && value !== "") : [];
 
                 return (
                   <article key={entry.id} className="admin-log-item">
-                    <div className="admin-log-header">
-                      <strong>{entry.actorName}</strong>
-                      <span>{new Date(entry.createdAt).toLocaleString("pt-AO")}</span>
+                    <div className="admin-log-cell admin-log-operation">
+                      <span>Operação</span>
+                      <strong>{entry.action}</strong>
                     </div>
-                    <p>{entry.action}</p>
-                    <small>
-                      {entry.entity} {entry.entityId ? `• ${entry.entityId}` : ""}
-                    </small>
-
-                    {detailEntries.length > 0 ? (
-                      <div className="admin-log-details">
-                        {detailEntries.map(([key, value]) => {
-                          const isStudentCard = key === "studentId" || key === "studentIds";
-
-                          if (isStudentCard) {
-                            const names = Array.isArray(value)
-                              ? value.map((item) => typeof item === "string" ? formatDisplayName(studentNames[item] ?? item) : String(item))
-                              : typeof value === "string"
-                                ? [formatDisplayName(studentNames[value] ?? value)]
-                                : [];
-
-                            return (
-                              <div key={`${entry.id}-${key}`} className="admin-log-row">
-                                <span>{formatLabel(key)}</span>
-                                <div className="admin-log-student-group">
-                                  {names.map((name) => (
-                                    <span key={`${entry.id}-${key}-${name}`} className="admin-log-student-card">{name}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          }
-
-                          const displayValue = key === "turmaId" ? (typeof value === "string" ? turmaNames[value] ?? value : String(value)) : formatLogValue(value, studentNames);
-
-                          return (
-                            <div key={`${entry.id}-${key}`} className="admin-log-row">
-                              <span>{formatLabel(key)}</span>
-                              <strong>{displayValue}</strong>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="admin-log-empty">Sem detalhes adicionais.</p>
-                    )}
+                    <div className="admin-log-cell">
+                      <span>Utilizador</span>
+                      <strong>{entry.actorName}</strong>
+                    </div>
+                    <div className="admin-log-cell">
+                      <span>Envolvido</span>
+                      <strong>{formatInvolvedSubject(entry.entity, details, turmaNames, studentNames)}</strong>
+                    </div>
+                    <time dateTime={entry.createdAt.toISOString()}>{new Date(entry.createdAt).toLocaleString("pt-AO")}</time>
                   </article>
                 );
               })
