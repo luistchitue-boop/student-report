@@ -7,15 +7,26 @@ import { BiometricoClient } from "./biometrico-client";
 
 const prisma = new PrismaClient();
 
-export default async function BiometricoPage() {
+export default async function BiometricoPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ turmaId?: string }>;
+}) {
   const session = await auth();
 
   if (!session?.user?.id || session.user.role !== "COORDENADOR") redirect("/");
 
   const now = new Date();
+  const turmas = await prisma.turma.findMany({
+    where: { coordinator: { userId: session.user.id } },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  const requestedTurmaId = searchParams ? (await searchParams).turmaId : undefined;
+  const turmaId = turmas.some((turma) => turma.id === requestedTurmaId) ? requestedTurmaId! : turmas[0]?.id;
   const periods = getWeeklyCoordinationPeriods(now.getFullYear());
   const reports = await prisma.weeklyCoordinationReport.findMany({
-    where: { userId: session.user.id, weekStart: { in: periods.map((period) => period.start) } },
+    where: { userId: session.user.id, turmaId, weekStart: { in: periods.map((period) => period.start) } },
     select: { id: true, weekStart: true, weekEnd: true, title: true, description: true },
   });
   const reportByWeek = new Map(reports.map((report) => [formatPeriodDate(report.weekStart), report]));
@@ -30,6 +41,8 @@ export default async function BiometricoPage() {
           </div>
         </header>
         <BiometricoClient
+          turmas={turmas}
+          selectedTurmaId={turmaId ?? ""}
           periods={periods.map((period) => ({
             key: period.key,
             start: period.start.toISOString(),

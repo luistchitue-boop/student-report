@@ -15,6 +15,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+    const turmaId = typeof body.turmaId === "string" ? body.turmaId : "";
     const weekStart = typeof body.weekStart === "string" ? body.weekStart : "";
     const title = typeof body.title === "string" ? body.title.trim() : "";
     const description = typeof body.descricao === "string" ? body.descricao.trim() : "";
@@ -25,14 +26,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Só pode preencher o período correspondente à data de hoje." }, { status: 400 });
     }
 
+    const turma = await prisma.turma.findFirst({
+      where: { id: turmaId, coordinator: { userId: session.user.id } },
+      select: { id: true },
+    });
+
+    if (!turma) {
+      return NextResponse.json({ error: "Não tem acesso a esta turma." }, { status: 403 });
+    }
+
     if (!title || !description) {
       return NextResponse.json({ error: "O título e a descrição são obrigatórios." }, { status: 400 });
     }
 
     const report = await prisma.weeklyCoordinationReport.upsert({
-      where: { userId_weekStart: { userId: session.user.id, weekStart: period.start } },
+      where: { userId_turmaId_weekStart: { userId: session.user.id, turmaId: turma.id, weekStart: period.start } },
       create: {
         userId: session.user.id,
+        turmaId: turma.id,
         weekStart: period.start,
         weekEnd: period.end,
         title,

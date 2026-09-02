@@ -37,6 +37,9 @@
 .admin-status.success { color:#1d6949; }
 .admin-status.error { color:#9a3e37; }
 .biometrico-shell { max-width:900px; }
+.biometrico-turma-switcher { display:flex; align-items:center; gap:0.7rem; margin-top:1.2rem; }
+.biometrico-turma-switcher label { color:#64726c; font:0.68rem 'DM Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; }
+.biometrico-turma-switcher select { min-width:220px; padding:0.65rem 0.75rem; border:1px solid #ccd8d0; border-radius:10px; background:#fff; color:var(--navy); font-size:0.82rem; font-weight:700; }
 .biometrico-list { display:grid; gap:0.65rem; margin-top:1.2rem; }
 .biometrico-period { display:grid; grid-template-columns:1fr 1.5fr auto; align-items:center; gap:1rem; width:100%; padding:1rem 1.1rem; border:1px solid #dfe8e1; border-radius:12px; background:#fff; color:var(--ink); text-align:left; box-shadow:0 7px 18px rgba(27,52,41,0.035); }
 .biometrico-period.current { border-color:#9fc4a5; cursor:pointer; box-shadow:0 0 0 2px rgba(57,117,93,0.08); }

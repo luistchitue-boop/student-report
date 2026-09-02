@@ -12,11 +12,13 @@ type Period = {
   isCurrent: boolean;
 };
 
+type Turma = { id: string; name: string };
+
 function displayDate(value: string) {
   return new Date(value).toLocaleDateString("pt-AO", { day: "2-digit", month: "short" });
 }
 
-export function BiometricoClient({ periods }: { periods: Period[] }) {
+export function BiometricoClient({ periods, turmas, selectedTurmaId }: { periods: Period[]; turmas: Turma[]; selectedTurmaId: string }) {
   const [selected, setSelected] = useState<Period | null>(null);
   const [title, setTitle] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -38,7 +40,7 @@ export function BiometricoClient({ periods }: { periods: Period[] }) {
     const response = await fetch("/api/biometrico", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ weekStart: selected?.key, title, descricao }),
+      body: JSON.stringify({ turmaId: selectedTurmaId, weekStart: selected?.key, title, descricao }),
     });
     const data = await response.json();
     setSaving(false);
@@ -58,6 +60,12 @@ export function BiometricoClient({ periods }: { periods: Period[] }) {
           <h3>Períodos de coordenação semanal</h3>
         </div>
       </div>
+      <form method="get" className="biometrico-turma-switcher">
+        <label htmlFor="biometrico-turma">Turma</label>
+        <select id="biometrico-turma" name="turmaId" defaultValue={selectedTurmaId} onChange={(event) => event.currentTarget.form?.submit()}>
+          {turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
+        </select>
+      </form>
       <div className="biometrico-list">
         {periods.map((period) => (
           <button key={period.key} className={`biometrico-period ${period.isCurrent ? "current" : ""}`} onClick={() => openPeriod(period)} disabled={!period.isCurrent}>

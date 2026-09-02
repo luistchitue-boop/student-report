@@ -81,6 +81,7 @@ model Turma {
   coordinator Teacher? @relation(fields: [coordinatorId], references: [id], onDelete: SetNull)
   students    Student[]
   subjects    Subject[]
+  weeklyReports WeeklyCoordinationReport[]
 }
 
 model Subject {
@@ -182,6 +183,7 @@ model ActivityLog {
 model WeeklyCoordinationReport {
   id          String   @id @default(cuid())
   userId      String
+  turmaId     String
   weekStart   DateTime
   weekEnd     DateTime
   title       String
@@ -190,8 +192,10 @@ model WeeklyCoordinationReport {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  turma Turma @relation(fields: [turmaId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, weekStart])
+  @@unique([userId, turmaId, weekStart])
+  @@index([turmaId])
   @@index([weekStart])
 }
 
