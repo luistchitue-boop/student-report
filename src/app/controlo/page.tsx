@@ -46,7 +46,7 @@ export default async function ControloPage({
         <section className="controlo-shell workspace">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">BIOMETRICO</p>
+              <p className="eyebrow">BIOMÉTRICO</p>
               <h3>Verificação da coordenação semanal</h3>
             </div>
           </div>

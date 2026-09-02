@@ -37,7 +37,7 @@ export default async function BiometricoPage({
         <header className="topbar">
           <div>
             <p className="eyebrow">COORDENAÇÃO SEMANAL / {now.getFullYear()}</p>
-            <h1>Biometrico</h1>
+            <h1>Biométrico</h1>
           </div>
         </header>
         <BiometricoClient

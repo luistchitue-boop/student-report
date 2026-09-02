@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     // Validate input
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { error: "O e-mail e a palavra-passe são obrigatórios" },
         { status: 400 }
       )
     }
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: "User already exists" },
+        { error: "O utilizador já existe" },
         { status: 400 }
       )
     }
@@ -49,13 +49,13 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      { message: "User created successfully", userId: user.id },
+      { message: "Utilizador criado com sucesso", userId: user.id },
       { status: 201 }
     )
   } catch (error) {
     console.error("Registration error:", error)
     return NextResponse.json(
-      { error: "Failed to register user" },
+      { error: "Não foi possível registar o utilizador" },
       { status: 500 }
     )
   }

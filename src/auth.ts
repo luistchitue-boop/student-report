@@ -21,14 +21,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   providers: [
     Credentials({
-      name: "Email & Password",
+      name: "E-mail e palavra-passe",
       credentials: {
         email: { label: "Email", type: "email", placeholder: "you@example.com" },
-        password: { label: "Password", type: "password" },
+        password: { label: "Palavra-passe", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email and password are required")
+          throw new Error("O e-mail e a palavra-passe são obrigatórios")
         }
 
         const email = String(credentials.email).trim().toLowerCase()

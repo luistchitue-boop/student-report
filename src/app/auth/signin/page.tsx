@@ -26,7 +26,7 @@ export default function SignIn() {
       if (result?.error) {
         setError(
           result.error === "CredentialsSignin"
-            ? "Email ou senha inválidos."
+            ? "E-mail ou palavra-passe inválidos."
             : `Não foi possível iniciar sessão: ${result.error}`
         );
         return;
@@ -35,7 +35,7 @@ export default function SignIn() {
       router.push("/");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred. Please try again.");
+      setError(err instanceof Error ? err.message : "Ocorreu um erro. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,7 @@ export default function SignIn() {
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">E-mail</label>
             <input
               id="email"
               type="email"
@@ -64,7 +64,7 @@ export default function SignIn() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Senha</label>
+            <label htmlFor="password">Palavra-passe</label>
             <input
               id="password"
               type="password"

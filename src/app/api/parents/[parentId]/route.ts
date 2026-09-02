@@ -71,7 +71,7 @@ export async function PATCH(
     await createActivityLog({
       actorId: session.user.id,
       actorName: describeActorName(session.user),
-      action: "Actualizou encarregado",
+      action: "Atualizou os dados do encarregado",
       entity: "Parent",
       entityId: updatedParent.id,
       details: {

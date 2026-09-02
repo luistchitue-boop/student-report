@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
   try {
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Student record fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch student record" }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível carregar o registo do aluno" }, { status: 500 });
   }
 }
 
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
   const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
   try {
@@ -231,13 +231,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No valid payload provided" }, { status: 400 });
   } catch (error) {
     console.error("Student record save error:", error);
-    return NextResponse.json({ error: "Failed to save student record" }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível guardar o registo do aluno" }, { status: 500 });
   }
 }
 
 export async function PATCH(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -263,7 +263,7 @@ export async function PATCH(request: NextRequest) {
       await createActivityLog({
         actorId: session.user.id,
         actorName: describeActorName(session.user),
-        action: "Actualizou nota",
+        action: "Atualizou a nota",
         entity: "Grade",
         entityId: updated.id,
         details: {
@@ -285,7 +285,7 @@ export async function PATCH(request: NextRequest) {
     await createActivityLog({
       actorId: session.user.id,
       actorName: describeActorName(session.user),
-      action: "Actualizou falta",
+      action: "Atualizou a falta",
       entity: "Absence",
       entityId: updated.id,
       details: {
@@ -300,13 +300,13 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true, record: updated });
   } catch (error) {
     console.error("Student record update error:", error);
-    return NextResponse.json({ error: "Failed to update student record" }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível atualizar o registo do aluno" }, { status: 500 });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -360,6 +360,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Student record delete error:", error);
-    return NextResponse.json({ error: "Failed to delete student record" }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível eliminar o registo do aluno" }, { status: 500 });
   }
 }

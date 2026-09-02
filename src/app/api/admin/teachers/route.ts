@@ -62,7 +62,7 @@ export async function PATCH(request: Request) {
     await createActivityLog({
       actorId: session.user.id,
       actorName: describeActorName(session.user),
-      action: "Actualizou perfil e atribuições",
+      action: "Atualizou o perfil e as atribuições",
       entity: "Teacher",
       entityId: teacher.id,
       details: { role: requestedRole, previousRole: teacher.role, turmaIds, previousTurmaIds: teacher.turmas.map((turma) => turma.id) },

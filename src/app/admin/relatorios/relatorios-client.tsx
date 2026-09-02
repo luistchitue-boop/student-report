@@ -48,7 +48,7 @@ export function RelatoriosClient({
       }
 
       setStatus("success");
-      setMessage(`Relatórios enviados com sucesso: ${data.sent ?? 0} email(s) enviados.`);
+      setMessage(`Relatórios enviados com sucesso: ${data.sent ?? 0} e-mail(s) enviados.`);
       setSelectedTurmas([]);
     } catch (error) {
       setStatus("error");
@@ -61,7 +61,7 @@ export function RelatoriosClient({
       <div className="section-heading admin-heading">
         <div>
           <p className="eyebrow">SELECIONE AS TURMAS</p>
-          <h3>Gerar e enviar relatórios por email</h3>
+          <h3>Gerar e enviar relatórios por e-mail</h3>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ export function RelatoriosClient({
           onClick={handleSendReports}
           disabled={status === "sending" || selectedTurmas.length === 0}
         >
-          {status === "sending" ? "A enviar..." : "Send reports"}
+          {status === "sending" ? "A enviar..." : "Enviar relatórios"}
         </button>
       </div>
 

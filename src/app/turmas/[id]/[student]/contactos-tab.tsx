@@ -195,7 +195,7 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
                     marginBottom: "0.4rem",
                   }}
                 >
-                  Email
+                  E-mail
                 </label>
                 <input
                   type="email"
@@ -267,7 +267,7 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
                     opacity: isLoading ? 0.55 : 1,
                   }}
                 >
-                  {isLoading ? "Guardando..." : "Guardar"}
+                  {isLoading ? "A guardar..." : "Guardar"}
                 </button>
               </div>
             </div>
@@ -303,7 +303,7 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
                       {parent.email}
                     </a>
                   ) : (
-                    <span>Email não informado</span>
+                    <span>E-mail não indicado</span>
                   )}
                 </div>
               </div>

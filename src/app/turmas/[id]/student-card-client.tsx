@@ -64,7 +64,7 @@ export function StudentCardClient({
         setIsActive(selectedState);
         setShowModal(false);
       } else {
-        let errorMessage = "Falha ao guardar o estado do aluno";
+        let errorMessage = "Não foi possível guardar o estado do aluno";
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
@@ -103,9 +103,9 @@ export function StudentCardClient({
             onClick={handleOpenModal}
             disabled={isLoading}
             className={`attendance-pill ${isActive ? "present" : "absent"}`}
-            title="Click para mudar estado"
+            title="Clique para alterar o estado"
           >
-            {isActive ? "Activo(a)" : "Inactivo(a)"}
+            {isActive ? "Ativo" : "Inativo"}
           </button>
         </article>
       </Link>
@@ -139,7 +139,7 @@ export function StudentCardClient({
                     checked={selectedState === true}
                     onChange={() => setSelectedState(true)}
                   />
-                  <span>Activo(a)</span>
+                  <span>Ativo</span>
                 </label>
                 <label>
                   <input
@@ -149,7 +149,7 @@ export function StudentCardClient({
                     checked={selectedState === false}
                     onChange={() => setSelectedState(false)}
                   />
-                  <span>Inactivo(a)</span>
+                  <span>Inativo</span>
                 </label>
               </div>
               {error && <div className="modal-error">{error}</div>}
@@ -169,7 +169,7 @@ export function StudentCardClient({
                 onClick={handleSaveState}
                 disabled={isLoading || selectedState === isActive}
               >
-                {isLoading ? "Guardando..." : "Guardar"}
+                {isLoading ? "A guardar..." : "Guardar"}
               </button>
             </div>
           </div>

@@ -62,7 +62,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
           setGrades(Object.fromEntries((data.grades ?? []).map((grade) => [grade.studentId, String(grade.value)])));
           setAlreadyRecorded(Boolean(data.alreadyRecorded ?? (data.grades ?? []).length > 0));
           if (data.alreadyRecorded || (data.grades ?? []).length > 0) {
-            setStatus("Já existe uma mini pauta para esta disciplina no intervalo seleccionado. Não pode guardar novamente o mesmo período.");
+            setStatus("Já existe uma mini pauta para esta disciplina no intervalo selecionado. Não pode guardar novamente o mesmo período.");
           } else {
             setStatus("");
           }
@@ -87,7 +87,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
     }
 
     if (alreadyRecorded) {
-      setStatus("Já existe uma mini pauta para esta disciplina no intervalo semanal seleccionado. Não pode guardar novamente o mesmo período.");
+      setStatus("Já existe uma mini pauta para esta disciplina no intervalo semanal selecionado. Não pode guardar novamente o mesmo período.");
       return;
     }
 
@@ -110,7 +110,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível guardar a mini pauta.");
-      setStatus(`${data.saved} nota(s) guardada(s) para o intervalo seleccionado.`);
+      setStatus(`${data.saved} nota(s) guardada(s) para o intervalo selecionado.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível guardar a mini pauta.");
     } finally {
@@ -131,7 +131,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
     const start = new Date(`${exportStart}T12:00:00Z`);
     const end = new Date(`${exportEnd}T12:00:00Z`);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
-      setExportStatus("O intervalo seleccionado não é válido.");
+      setExportStatus("O intervalo selecionado não é válido.");
       return;
     }
     setIsExporting(true);

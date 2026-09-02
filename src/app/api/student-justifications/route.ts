@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -60,6 +60,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Justification save error:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to save justification" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Não foi possível guardar a justificação" }, { status: 500 });
   }
 }

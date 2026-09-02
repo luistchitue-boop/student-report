@@ -23,12 +23,12 @@ export function SettingsClient() {
   async function fetchProfile() {
     try {
       const response = await fetch("/api/user/profile");
-      if (!response.ok) throw new Error("Failed to fetch profile");
+      if (!response.ok) throw new Error("Não foi possível carregar o perfil");
       const data = await response.json();
       setUser(data);
       setName(data.name || "");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar perfil");
+      setError(err instanceof Error ? err.message : "Erro ao carregar o perfil");
     } finally {
       setIsLoading(false);
     }
@@ -40,17 +40,17 @@ export function SettingsClient() {
     setSuccess("");
 
     if (!name.trim() && !newPassword) {
-      setError("Altere o nome ou a senha");
+      setError("Altere o nome ou a palavra-passe");
       return;
     }
 
     if (newPassword && newPassword !== confirmPassword) {
-      setError("As senhas não coincidem");
+      setError("As palavras-passe não coincidem");
       return;
     }
 
     if (newPassword && !currentPassword) {
-      setError("Senha atual é obrigatória para alterar a senha");
+      setError("A palavra-passe atual é obrigatória para alterar a palavra-passe");
       return;
     }
 
@@ -70,7 +70,7 @@ export function SettingsClient() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Falha ao atualizar perfil");
+        setError(data.error || "Não foi possível atualizar o perfil");
         return;
       }
 
@@ -96,7 +96,7 @@ export function SettingsClient() {
 
   return (
     <div style={{ padding: "2rem", maxWidth: "600px" }}>
-      <h1 style={{ color: "var(--navy)", marginBottom: "2rem" }}>Definições da Conta</h1>
+          <h1 style={{ color: "var(--navy)", marginBottom: "2rem" }}>Definições da conta</h1>
 
       {error && (
         <div
@@ -136,7 +136,7 @@ export function SettingsClient() {
         {/* Email Display */}
         <div style={{ display: "grid", gap: "0.5rem" }}>
           <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--navy)", textTransform: "uppercase" }}>
-            Email
+            E-mail
           </label>
           <div
             style={{
@@ -149,7 +149,7 @@ export function SettingsClient() {
           >
             {user?.email}
           </div>
-          <small style={{ color: "var(--muted)", fontSize: "0.75rem" }}>Email não pode ser alterado</small>
+          <small style={{ color: "var(--muted)", fontSize: "0.75rem" }}>O e-mail não pode ser alterado</small>
         </div>
 
         {/* Name Field */}
@@ -162,7 +162,7 @@ export function SettingsClient() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Seu nome completo"
+            placeholder="O seu nome completo"
             style={{
               padding: "0.75rem",
               border: "1px solid #ccd9ce",
@@ -186,19 +186,19 @@ export function SettingsClient() {
           }}
         >
           <legend style={{ fontWeight: 700, color: "var(--navy)", fontSize: "0.9rem" }}>
-            Alterar Senha
+            Alterar palavra-passe
           </legend>
 
           <div style={{ display: "grid", gap: "0.5rem" }}>
             <label htmlFor="currentPassword" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--navy)", textTransform: "uppercase" }}>
-              Senha Atual
+              Palavra-passe atual
             </label>
             <input
               id="currentPassword"
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Digite sua senha atual"
+              placeholder="Introduza a sua palavra-passe atual"
               style={{
                 padding: "0.75rem",
                 border: "1px solid #ccd9ce",
@@ -213,14 +213,14 @@ export function SettingsClient() {
 
           <div style={{ display: "grid", gap: "0.5rem" }}>
             <label htmlFor="newPassword" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--navy)", textTransform: "uppercase" }}>
-              Nova Senha
+              Nova palavra-passe
             </label>
             <input
               id="newPassword"
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Digite uma nova senha (mín. 6 caracteres)"
+              placeholder="Introduza uma nova palavra-passe (mín. 6 caracteres)"
               style={{
                 padding: "0.75rem",
                 border: "1px solid #ccd9ce",
@@ -235,14 +235,14 @@ export function SettingsClient() {
 
           <div style={{ display: "grid", gap: "0.5rem" }}>
             <label htmlFor="confirmPassword" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--navy)", textTransform: "uppercase" }}>
-              Confirmar Nova Senha
+              Confirmar nova palavra-passe
             </label>
             <input
               id="confirmPassword"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirme a nova senha"
+              placeholder="Confirme a nova palavra-passe"
               style={{
                 padding: "0.75rem",
                 border: "1px solid #ccd9ce",

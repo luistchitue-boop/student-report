@@ -102,7 +102,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
       : { type, id: record.id, subject: record.subject, dia: (record as AbsenceRecord).dia.slice(0, 10), tempo: (record as AbsenceRecord).tempo, faultType: (record as AbsenceRecord).faultType, notes: (record as AbsenceRecord).notes };
     const response = await fetch("/api/student-record", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error ?? "Não foi possível actualizar o registo.");
+    if (!response.ok) throw new Error(result.error ?? "Não foi possível atualizar o registo.");
   }
 
   async function deleteRecord(type: "grade" | "absence", id: string) {
@@ -172,7 +172,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
         <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #1b3d34;padding:0 0 20px;margin-bottom:24px;">
           <div style="display:flex;align-items:center;gap:16px;">
             <img src="/school-logo.png" alt="Logo da escola" style="width:72px;height:72px;object-fit:contain;" />
-            <div><div style="font-size:22px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#1b3d34;">NEPH RELATORIOS</div><div style="margin-top:7px;color:#60716a;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;">Relatório escolar</div></div>
+            <div><div style="font-size:22px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#1b3d34;">NEPH RELATÓRIOS</div><div style="margin-top:7px;color:#60716a;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;">Relatório escolar</div></div>
           </div>
           <div style="text-align:right;color:#60716a;font-size:11px;line-height:1.6;"><strong style="display:block;color:#1b3d34;font-size:12px;">PERÍODO</strong>${escapeHtml(reportStart)} a ${escapeHtml(reportEnd)}</div>
         </div>
@@ -275,13 +275,13 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
                   <label>Início da semana<input type="date" value={gradeStart} onChange={(event) => setGradeStart(event.target.value)} /></label>
                   <label>Fim da semana<input type="date" value={gradeEnd} onChange={(event) => setGradeEnd(event.target.value)} /></label>
                 </div>
-                {!gradeStart || !gradeEnd ? <p className="student-record-empty">Seleccione o período semanal para ver as notas.</p> : !validGradePeriod ? <p className="student-record-empty record-warning">O período deve ter exactamente 7 dias.</p> : <>
+                {!gradeStart || !gradeEnd ? <p className="student-record-empty">Selecione o período semanal para ver as notas.</p> : !validGradePeriod ? <p className="student-record-empty record-warning">O período deve ter exatamente 7 dias.</p> : <>
                 <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO ACADÉMICO</p><h2>Notas registadas</h2></div><span>{grades.length} registo(s)</span></div>
                 {recordsLoading ? <p className="student-record-empty">A carregar notas...</p> : grades.length ? grades.map((grade) => (
                   <div className="student-record-row" key={grade.id}>
                     <label>Disciplina<select value={grade.subject} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, subject: event.target.value } : item))}>{turma.subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select></label>
                     <label>Nota<input type="number" min="0" max="20" step="0.1" value={grade.value} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, value: Number(event.target.value) } : item))} /></label>
-                    <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("grade", grade); setStatusMessage("Nota actualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível actualizar a nota."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("grade", grade.id); setGrades((current) => current.filter((item) => item.id !== grade.id)); setStatusMessage("Nota eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a nota."); } }}>Eliminar</button></div>
+                    <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("grade", grade); setStatusMessage("Nota atualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível atualizar a nota."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("grade", grade.id); setGrades((current) => current.filter((item) => item.id !== grade.id)); setStatusMessage("Nota eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a nota."); } }}>Eliminar</button></div>
                   </div>
                 )) : <p className="student-record-empty">Nenhuma nota registada.</p>}
                 {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
@@ -298,7 +298,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
                     <label>Dia<input type="date" value={absence.dia.slice(0, 10)} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, dia: event.target.value } : item))} /></label>
                     <label>Tempo<select value={absence.tempo} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, tempo: event.target.value } : item))}>{tempos.map((tempo) => <option key={tempo} value={tempo}>{tempo}</option>)}</select></label>
                     <label>Tipo<select value={absence.faultType} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, faultType: event.target.value } : item))}><option value="FALTA_DE_MATERIAL">Falta de material</option><option value="AUSENCIA_NA_SALA">Ausência na sala</option></select></label>
-                    <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("absence", absence); setStatusMessage("Falta actualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível actualizar a falta."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("absence", absence.id); setAbsences((current) => current.filter((item) => item.id !== absence.id)); setStatusMessage("Falta eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a falta."); } }}>Eliminar</button></div>
+                    <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("absence", absence); setStatusMessage("Falta atualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível atualizar a falta."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("absence", absence.id); setAbsences((current) => current.filter((item) => item.id !== absence.id)); setStatusMessage("Falta eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a falta."); } }}>Eliminar</button></div>
                   </div>
                 )) : <p className="student-record-empty">Nenhuma falta registada.</p>}
                 {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
@@ -311,9 +311,9 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
                   <label>Início do intervalo<input type="date" value={justificationStart} onChange={(event) => setJustificationStart(event.target.value)} /></label>
                   <label>Fim do intervalo<input type="date" value={justificationEnd} onChange={(event) => setJustificationEnd(event.target.value)} /></label>
                 </div>
-                {!justificationStart || !justificationEnd ? <p className="student-record-empty">Seleccione o intervalo para ver as faltas.</p> : recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : (
+                {!justificationStart || !justificationEnd ? <p className="student-record-empty">Selecione o intervalo para ver as faltas.</p> : recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : (
                   <>
-                    <div className="student-record-list-heading"><div><p className="eyebrow">JUSTIFICAÇÃO DE FALTAS</p><h2>Seleccione as faltas</h2></div><span>{absences.filter((absence) => !absence.justified).length} por justificar</span></div>
+                    <div className="student-record-list-heading"><div><p className="eyebrow">JUSTIFICAÇÃO DE FALTAS</p><h2>Selecione as faltas</h2></div><span>{absences.filter((absence) => !absence.justified).length} por justificar</span></div>
                     {absences.length ? absences.map((absence) => (
                       <label key={absence.id} className={`justification-row ${absence.justified ? "justified" : ""}`}>
                         <input type="checkbox" checked={selectedAbsenceIds.includes(absence.id)} disabled={absence.justified} onChange={() => setSelectedAbsenceIds((current) => current.includes(absence.id) ? current.filter((id) => id !== absence.id) : [...current, absence.id])} />
@@ -321,7 +321,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
                         <span className="justification-status">{absence.justified ? "Justificada" : "Injustificada"}</span>
                       </label>
                     )) : <p className="student-record-empty">Nenhuma falta neste intervalo.</p>}
-                    <div className="justification-footer"><span>{selectedAbsenceIds.length} falta(s) seleccionada(s)</span><button type="button" className="mini-pauta-save-button" disabled={!selectedAbsenceIds.length} onClick={() => setShowJustificationModal(true)}>Justificar</button></div>
+                    <div className="justification-footer"><span>{selectedAbsenceIds.length} falta(s) selecionada(s)</span><button type="button" className="mini-pauta-save-button" disabled={!selectedAbsenceIds.length} onClick={() => setShowJustificationModal(true)}>Justificar</button></div>
                   </>
                 )}
                 {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
@@ -378,8 +378,8 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             <div className="justification-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowJustificationModal(false); }}>
               <form className="justification-modal" onSubmit={async (event) => { event.preventDefault(); try { await justifySelectedAbsences(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível justificar as faltas."); } }}>
                 <div className="student-record-list-heading"><div><p className="eyebrow">JUSTIFICATIVO</p><h2>Justificar faltas</h2></div><button type="button" className="modal-close" onClick={() => setShowJustificationModal(false)} aria-label="Fechar">×</button></div>
-                <label>Titulo do justificativo<input required value={justificationTitle} onChange={(event) => setJustificationTitle(event.target.value)} /></label>
-                <label>Observacoes<textarea required rows={4} value={justificationNotes} onChange={(event) => setJustificationNotes(event.target.value)} /></label>
+                <label>Título do justificativo<input required value={justificationTitle} onChange={(event) => setJustificationTitle(event.target.value)} /></label>
+                <label>Observações<textarea required rows={4} value={justificationNotes} onChange={(event) => setJustificationNotes(event.target.value)} /></label>
                 <button type="submit" className="mini-pauta-save-button">Confirmar justificativo</button>
               </form>
             </div>

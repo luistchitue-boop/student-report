@@ -31,7 +31,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
               <BookOpen size={18} strokeWidth={2.2} />
             </span>
             <span>
-              NEPH <small>Relatorios</small>
+              NEPH <small>Relatórios</small>
             </span>
           </div>
 
@@ -49,14 +49,14 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
 
         <nav className={`sidebar-nav ${menuOpen ? "menu-open" : ""}`}>
           <Link href="/" className={active === "inicio" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-            <House size={16} strokeWidth={2.1} /> Inicio
+            <House size={16} strokeWidth={2.1} /> Início
           </Link>
           <Link href="/turmas" className={active === "turmas" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
             <Building2 size={16} strokeWidth={2.1} /> Turmas
           </Link>
           {session?.user?.role === "COORDENADOR" && (
             <Link href="/biometrico" className={active === "biometrico" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-              <Fingerprint size={16} strokeWidth={2.1} /> Biometrico
+              <Fingerprint size={16} strokeWidth={2.1} /> Biométrico
             </Link>
           )}
           {isAdmin && (
@@ -68,13 +68,13 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
                 <ShieldCheck size={16} strokeWidth={2.1} /> Admin
               </Link>
               <Link href="/admin/direccao" className={active === "direccao" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-                <Landmark size={16} strokeWidth={2.1} /> Direccao
+                <Landmark size={16} strokeWidth={2.1} /> Direção
               </Link>
               <Link href="/admin/logs" className={active === "logs" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
                 <ScrollText size={16} strokeWidth={2.1} /> Registo
               </Link>
               <Link href="/admin/relatorios" className={active === "relatorios" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-                <FileText size={16} strokeWidth={2.1} /> Relatorios
+                <FileText size={16} strokeWidth={2.1} /> Relatórios
               </Link>
             </>
           )}

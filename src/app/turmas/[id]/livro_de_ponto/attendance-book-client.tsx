@@ -146,7 +146,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
         </div>
 
         <div className="attendance-book-footer">
-          <span>{isLoading ? "A carregar registos..." : `${selectedIds.length} de ${turma.roster.length} alunos seleccionados`}</span>
+          <span>{isLoading ? "A carregar registos..." : `${selectedIds.length} de ${turma.roster.length} alunos selecionados`}</span>
           <button type="button" className="attendance-save-button" onClick={saveAttendance} disabled={isSaving || isLoading}>{isSaving ? "A guardar..." : "Guardar faltas"}</button>
         </div>
         {status ? <p className="attendance-book-status">{status}</p> : null}

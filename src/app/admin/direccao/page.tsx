@@ -15,14 +15,14 @@ export default async function AdminDireccaoPage() {
       <main className="main-content">
         <header className="topbar">
           <div>
-            <p className="eyebrow">DIRECÇÃO</p>
-            <h1>Gestão da direcção</h1>
+            <p className="eyebrow">DIREÇÃO</p>
+            <h1>Gestão da direção</h1>
           </div>
         </header>
 
         <AdminClient
-          eyebrow="NOVA DIRECÇÃO"
-          title="Criar conta de direcção e atribuir turmas"
+          eyebrow="NOVA DIREÇÃO"
+          title="Criar conta de direção e atribuir turmas"
           defaultRole="DIRECCAO"
         />
       </main>

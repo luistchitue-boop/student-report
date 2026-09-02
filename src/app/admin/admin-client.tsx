@@ -80,7 +80,7 @@ export function AdminClient({
       }
 
       setStatus("success");
-      const roleLabel = defaultRole === "DIRECCAO" ? "Direcção" : "Professor";
+      const roleLabel = defaultRole === "DIRECCAO" ? "Direção" : "Professor";
       setMessage(`${roleLabel} criado com sucesso: ${data.teacher.name}`);
       setForm({ name: "", email: "", password: "" });
       setSelectedTurmas(["10CEJ", "10CFBA", "10CFBB"]);
@@ -187,7 +187,7 @@ export function AdminClient({
 
         <div className="admin-actions">
           <button className="admin-submit" type="submit" disabled={status === "saving"}>
-            {status === "saving" ? "A guardar..." : defaultRole === "DIRECCAO" ? "Criar direcção" : "Criar professor"}
+            {status === "saving" ? "A guardar..." : defaultRole === "DIRECCAO" ? "Criar direção" : "Criar professor"}
           </button>
         </div>
 
@@ -208,7 +208,7 @@ export function AdminClient({
               {existingTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name} · {teacher.user.email}</option>)}
             </select></label>
             <div className="admin-assignment-header"><div><strong>{selectedTeacher.name}</strong><small>{selectedRole} · {selectedTeacherTurmas.length} turma(s) atribuída(s)</small></div><button type="button" className="admin-submit" onClick={() => saveAssignments(selectedTeacher.id)}>Guardar alterações</button></div>
-            <label className="admin-field"><span>Perfil</span><select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value as "COORDENADOR" | "DIRECCAO" | "ADMIN")}><option value="COORDENADOR">Coordenador</option><option value="DIRECCAO">Direcção</option><option value="ADMIN">Administrador</option></select></label>
+            <label className="admin-field"><span>Perfil</span><select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value as "COORDENADOR" | "DIRECCAO" | "ADMIN")}><option value="COORDENADOR">Coordenador</option><option value="DIRECCAO">Direção</option><option value="ADMIN">Administrador</option></select></label>
             <div className="admin-assignment-chips">
               {selectedTeacherTurmas.length ? selectedTeacherTurmas.map((turmaId) => <span key={turmaId} className="admin-assignment-chip">{existingTurmas.find((turma) => turma.id === turmaId)?.name ?? "Turma"}<button type="button" onClick={() => removeAssignment(turmaId)} aria-label="Remover turma">×</button></span>) : <span className="admin-assignment-empty">Nenhuma turma atribuída</span>}
             </div>

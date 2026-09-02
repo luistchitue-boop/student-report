@@ -24,7 +24,7 @@ async function getAuthorizedTurma(userId: string, turmaId: string, userRole?: st
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const turmaId = searchParams.get("turmaId") ?? "";
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     const start = new Date(`${weekStart}T12:00:00Z`);
     const end = new Date(`${weekEnd}T12:00:00Z`);
     if (end.getTime() - start.getTime() !== 6 * 24 * 60 * 60 * 1000) {
-      return NextResponse.json({ error: "O intervalo semanal deve ter exactamente 7 dias." }, { status: 400 });
+      return NextResponse.json({ error: "O intervalo semanal deve ter exatamente 7 dias." }, { status: 400 });
     }
 
     const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     if (existingGradeCount > 0) {
       return NextResponse.json(
         {
-          error: "Já existe uma mini pauta registada para esta disciplina no intervalo semanal seleccionado. Não pode voltar a guardar o mesmo intervalo.",
+          error: "Já existe uma mini pauta registada para esta disciplina no intervalo semanal selecionado. Não pode voltar a guardar o mesmo intervalo.",
         },
         { status: 409 }
       );
@@ -127,6 +127,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, saved: validGrades.length });
   } catch (error) {
     console.error("Mini pauta save error:", error);
-    return NextResponse.json({ error: "Failed to save mini pauta" }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível guardar a mini pauta" }, { status: 500 });
   }
 }
