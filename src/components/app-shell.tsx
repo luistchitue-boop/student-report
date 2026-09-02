@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import {
   BookOpen,
   Building2,
+  ClipboardCheck,
   FileText,
   Fingerprint,
   House,
@@ -16,7 +17,7 @@ import {
   Landmark,
 } from "lucide-react";
 
-export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" | "direccao" | "biometrico" | "relatorios" | "logs" }) {
+export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" | "direccao" | "biometrico" | "controlo" | "relatorios" | "logs" }) {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = session?.user?.role === "ADMIN";
@@ -60,6 +61,9 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
           )}
           {isAdmin && (
             <>
+              <Link href="/controlo" className={active === "controlo" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+                <ClipboardCheck size={16} strokeWidth={2.1} /> Controlo
+              </Link>
               <Link href="/admin" className={active === "admin" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
                 <ShieldCheck size={16} strokeWidth={2.1} /> Admin
               </Link>
@@ -73,6 +77,11 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
                 <FileText size={16} strokeWidth={2.1} /> Relatorios
               </Link>
             </>
+          )}
+          {session?.user?.role === "DIRECCAO" && (
+            <Link href="/controlo" className={active === "controlo" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+              <ClipboardCheck size={16} strokeWidth={2.1} /> Controlo
+            </Link>
           )}
           <Link href="/settings" className={active === "settings" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
             <Settings size={16} strokeWidth={2.1} /> Definições
