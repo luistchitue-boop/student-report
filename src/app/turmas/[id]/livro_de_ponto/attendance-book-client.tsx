@@ -39,7 +39,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
 
     let cancelled = false;
     setIsLoading(true);
-    fetch(`/api/attendance-book?turmaId=${encodeURIComponent(turma.id)}&date=${encodeURIComponent(date)}&subject=${encodeURIComponent(subject)}`)
+    fetch(`/api/attendance-book?turmaId=${encodeURIComponent(turma.id)}&date=${encodeURIComponent(date)}&subject=${encodeURIComponent(subject)}&tempo=${encodeURIComponent(tempo)}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("Não foi possível carregar as faltas.");
         return response.json();
@@ -47,8 +47,6 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
       .then((data: { absences?: Array<{ studentId: string; tempo: string; faultType: (typeof faultTypes)[number]["value"] }> }) => {
         if (!cancelled) {
           setSelectedIds((data.absences ?? []).map((absence) => absence.studentId));
-          const savedTempo = data.absences?.[0]?.tempo;
-          if (savedTempo) setTempo(savedTempo);
           const savedFaultType = data.absences?.[0]?.faultType;
           if (savedFaultType) setFaultType(savedFaultType);
         }
@@ -63,7 +61,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
     return () => {
       cancelled = true;
     };
-  }, [date, subject, turma.id]);
+  }, [date, subject, tempo, turma.id]);
 
   function toggleStudent(studentId: string) {
     setSelectedIds((current) => current.includes(studentId) ? current.filter((id) => id !== studentId) : [...current, studentId]);

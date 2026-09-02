@@ -148,7 +148,7 @@ model Absence {
 
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  @@unique([studentId, subject, dia])
+  @@unique([studentId, subject, dia, tempo])
 }
 
 model StudentNote {

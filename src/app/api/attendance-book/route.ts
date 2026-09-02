@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
   const turmaId = searchParams.get("turmaId");
   const date = searchParams.get("date");
   const subject = searchParams.get("subject");
+  const tempo = searchParams.get("tempo");
 
   if (!turmaId || !date || !subject) return NextResponse.json({ error: "Turma, date, and subject are required" }, { status: 400 });
 
@@ -36,7 +37,12 @@ export async function GET(request: NextRequest) {
 
   const dia = normalizeDay(date);
   const absences = await prisma.absence.findMany({
-    where: { studentId: { in: turma.students.map((student) => student.id) }, subject, dia },
+    where: {
+      studentId: { in: turma.students.map((student) => student.id) },
+      subject,
+      dia,
+      ...(tempo ? { tempo } : {}),
+    },
     select: { studentId: true, tempo: true, faultType: true, notes: true },
   });
 
@@ -72,19 +78,36 @@ export async function POST(request: NextRequest) {
     const dia = normalizeDay(date);
     const validStudentIds: string[] = [...new Set(studentIds)].filter((studentId) => turmaStudentIds.has(studentId));
 
-    await prisma.$transaction(async (transaction) => {
-      await transaction.absence.deleteMany({
-        where: { studentId: { in: turma.students.map((student) => student.id) }, subject, dia },
-      });
-
-      if (validStudentIds.length) {
-        await transaction.absence.createMany({
-          data: validStudentIds.map((studentId) => ({ studentId, subject, dia, tempo, faultType, notes: "" })),
-        });
-      }
+    const existingAbsences = await prisma.absence.findMany({
+      where: {
+        studentId: { in: validStudentIds },
+        subject,
+        dia,
+        tempo,
+      },
+      select: { studentId: true },
     });
 
-    return NextResponse.json({ success: true, saved: validStudentIds.length });
+    const duplicatedStudentIds = new Set(existingAbsences.map((absence) => absence.studentId));
+    if (duplicatedStudentIds.size > 0) {
+      return NextResponse.json(
+        {
+          error: "Já existe uma falta para este aluno na mesma disciplina, no mesmo dia e no mesmo tempo lectivo.",
+          duplicatedStudentIds: [...duplicatedStudentIds],
+        },
+        { status: 409 }
+      );
+    }
+
+    const newStudentIds = validStudentIds.filter((studentId) => !duplicatedStudentIds.has(studentId));
+
+    if (newStudentIds.length) {
+      await prisma.absence.createMany({
+        data: newStudentIds.map((studentId) => ({ studentId, subject, dia, tempo, faultType, notes: "" })),
+      });
+    }
+
+    return NextResponse.json({ success: true, saved: newStudentIds.length });
   } catch (error) {
     console.error("Attendance book save error:", error);
     return NextResponse.json({ error: "Failed to save attendance book" }, { status: 500 });
