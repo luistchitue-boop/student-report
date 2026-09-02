@@ -8,6 +8,7 @@ import {
   BookOpen,
   Building2,
   FileText,
+  Fingerprint,
   House,
   ShieldCheck,
   Settings,
@@ -15,7 +16,7 @@ import {
   Landmark,
 } from "lucide-react";
 
-export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" | "direccao" | "relatorios" | "logs" }) {
+export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" | "direccao" | "biometrico" | "relatorios" | "logs" }) {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = session?.user?.role === "ADMIN";
@@ -52,6 +53,11 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
           <Link href="/turmas" className={active === "turmas" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
             <Building2 size={16} strokeWidth={2.1} /> Turmas
           </Link>
+          {session?.user?.role === "COORDENADOR" && (
+            <Link href="/biometrico" className={active === "biometrico" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+              <Fingerprint size={16} strokeWidth={2.1} /> Biometrico
+            </Link>
+          )}
           {isAdmin && (
             <>
               <Link href="/admin" className={active === "admin" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
