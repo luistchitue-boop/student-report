@@ -43,15 +43,18 @@ export async function PATCH(request: Request) {
   try {
     const body = await request.json();
     const teacherId = typeof body.teacherId === "string" ? body.teacherId : "";
+    const requestedRole = body.role === "ADMIN" || body.role === "DIRECCAO" || body.role === "COORDENADOR" ? body.role : "";
     const requestedTurmaIds: unknown[] = Array.isArray(body.turmaIds) ? body.turmaIds : [];
     const turmaIds = [...new Set(requestedTurmaIds.filter((id): id is string => typeof id === "string"))];
     const teacher = await prisma.teacher.findFirst({ where: { id: teacherId, role: { not: "ADMIN" } }, include: { turmas: { select: { id: true } } } });
     if (!teacher) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
+    if (!requestedRole) return NextResponse.json({ error: "Perfil inválido" }, { status: 400 });
 
     const validTurmas = await prisma.turma.findMany({ where: { id: { in: turmaIds } }, select: { id: true } });
     if (validTurmas.length !== turmaIds.length) return NextResponse.json({ error: "Uma ou mais turmas não foram encontradas" }, { status: 400 });
 
     await prisma.$transaction([
+      prisma.teacher.update({ where: { id: teacher.id }, data: { role: requestedRole } }),
       prisma.turma.updateMany({ where: { coordinatorId: teacher.id }, data: { coordinatorId: null } }),
       ...(turmaIds.length ? [prisma.turma.updateMany({ where: { id: { in: turmaIds } }, data: { coordinatorId: teacher.id } })] : []),
     ]);
@@ -59,13 +62,13 @@ export async function PATCH(request: Request) {
     await createActivityLog({
       actorId: session.user.id,
       actorName: describeActorName(session.user),
-      action: "Actualizou atribuições",
+      action: "Actualizou perfil e atribuições",
       entity: "Teacher",
       entityId: teacher.id,
-      details: { turmaIds, previousTurmaIds: teacher.turmas.map((turma) => turma.id) },
+      details: { role: requestedRole, previousRole: teacher.role, turmaIds, previousTurmaIds: teacher.turmas.map((turma) => turma.id) },
     });
 
-    return NextResponse.json({ success: true, turmaIds });
+    return NextResponse.json({ success: true, role: requestedRole, turmaIds });
   } catch (error) {
     console.error("Admin teacher assignment error:", error);
     return NextResponse.json({ error: "Não foi possível atualizar as atribuições" }, { status: 500 });

@@ -37,6 +37,7 @@ export function AdminClient({
   const [assignmentState, setAssignmentState] = useState<Record<string, string[]>>({});
   const [assignmentMessage, setAssignmentMessage] = useState("");
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [selectedRole, setSelectedRole] = useState<"COORDENADOR" | "DIRECCAO" | "ADMIN">("COORDENADOR");
   const [turmaToAdd, setTurmaToAdd] = useState("");
 
   async function loadAssignments() {
@@ -46,7 +47,10 @@ export function AdminClient({
     setExistingTeachers(data.teachers);
     setExistingTurmas(data.turmas);
     setAssignmentState(Object.fromEntries(data.teachers.map((teacher: ExistingTeacher) => [teacher.id, teacher.turmas.map((turma) => turma.id)])));
-    setSelectedTeacherId((current) => current || data.teachers[0]?.id || "");
+    const nextTeacherId = data.teachers.some((teacher: ExistingTeacher) => teacher.id === selectedTeacherId) ? selectedTeacherId : data.teachers[0]?.id || "";
+    setSelectedTeacherId(nextTeacherId);
+    const currentTeacher = data.teachers.find((teacher: ExistingTeacher) => teacher.id === nextTeacherId) ?? data.teachers[0];
+    if (currentTeacher) setSelectedRole(currentTeacher.role as "COORDENADOR" | "DIRECCAO" | "ADMIN");
   }
 
   useEffect(() => { loadAssignments(); }, []);
@@ -100,7 +104,7 @@ export function AdminClient({
     const response = await fetch("/api/admin/teachers", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teacherId, turmaIds: assignmentState[teacherId] ?? [] }),
+      body: JSON.stringify({ teacherId, role: teacherId === selectedTeacherId ? selectedRole : existingTeachers.find((teacher) => teacher.id === teacherId)?.role, turmaIds: assignmentState[teacherId] ?? [] }),
     });
     const data = await response.json();
     setAssignmentMessage(response.ok ? "Atribuições atualizadas." : data.error ?? "Não foi possível atualizar as atribuições.");
@@ -200,10 +204,11 @@ export function AdminClient({
         </div>
         {existingTeachers.length > 0 && selectedTeacher && (
           <article className="admin-assignment-card">
-            <label className="admin-field"><span>Conta</span><select value={selectedTeacherId} onChange={(event) => { setSelectedTeacherId(event.target.value); setTurmaToAdd(""); }}>
+            <label className="admin-field"><span>Conta</span><select value={selectedTeacherId} onChange={(event) => { const teacherId = event.target.value; const teacher = existingTeachers.find((item) => item.id === teacherId); setSelectedTeacherId(teacherId); setSelectedRole((teacher?.role as "COORDENADOR" | "DIRECCAO" | "ADMIN") ?? "COORDENADOR"); setTurmaToAdd(""); }}>
               {existingTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name} · {teacher.user.email}</option>)}
             </select></label>
-            <div className="admin-assignment-header"><div><strong>{selectedTeacher.name}</strong><small>{selectedTeacher.role} · {selectedTeacherTurmas.length} turma(s) atribuída(s)</small></div><button type="button" className="admin-submit" onClick={() => saveAssignments(selectedTeacher.id)}>Guardar alterações</button></div>
+            <div className="admin-assignment-header"><div><strong>{selectedTeacher.name}</strong><small>{selectedRole} · {selectedTeacherTurmas.length} turma(s) atribuída(s)</small></div><button type="button" className="admin-submit" onClick={() => saveAssignments(selectedTeacher.id)}>Guardar alterações</button></div>
+            <label className="admin-field"><span>Perfil</span><select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value as "COORDENADOR" | "DIRECCAO" | "ADMIN")}><option value="COORDENADOR">Coordenador</option><option value="DIRECCAO">Direcção</option><option value="ADMIN">Administrador</option></select></label>
             <div className="admin-assignment-chips">
               {selectedTeacherTurmas.length ? selectedTeacherTurmas.map((turmaId) => <span key={turmaId} className="admin-assignment-chip">{existingTurmas.find((turma) => turma.id === turmaId)?.name ?? "Turma"}<button type="button" onClick={() => removeAssignment(turmaId)} aria-label="Remover turma">×</button></span>) : <span className="admin-assignment-empty">Nenhuma turma atribuída</span>}
             </div>
