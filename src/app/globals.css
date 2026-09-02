@@ -18,6 +18,20 @@
 .admin-actions { display:flex; justify-content:flex-end; }
 .admin-submit { min-height:3rem; border:0; border-radius:12px; padding:0.8rem 1.4rem; background:linear-gradient(180deg, #39755d 0%, #2e664f 100%); color:#fff; font-size:0.8rem; font-weight:800; box-shadow:0 12px 20px rgba(57,117,93,0.18); }
 .admin-submit:disabled { opacity:0.7; cursor:not-allowed; }
+.admin-existing-assignments { display:grid; gap:1rem; margin-top:2.5rem; }
+.admin-assignment-card { display:grid; gap:1rem; padding:1.1rem; border:1px solid #dfe8e1; border-radius:16px; background:#fff; box-shadow:0 10px 24px rgba(27,52,41,0.04); }
+.admin-assignment-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.admin-assignment-header strong { display:block; color:var(--navy); font-size:0.9rem; }
+.admin-assignment-header small { display:block; margin-top:0.25rem; color:#718078; font-size:0.72rem; }
+.admin-assignment-card select { min-height:2.7rem; padding:0.65rem 0.75rem; border:1px solid #ccd9ce; border-radius:10px; background:#fbfcf8; color:var(--ink); }
+.admin-assignment-chips { display:flex; flex-wrap:wrap; gap:0.55rem; min-height:2.2rem; }
+.admin-assignment-chip { display:inline-flex; align-items:center; gap:0.45rem; padding:0.45rem 0.65rem; border:1px solid #cfe3d7; border-radius:999px; background:#eaf5ec; color:#173b31; font-size:0.75rem; font-weight:800; }
+.admin-assignment-chip button { display:grid; place-items:center; width:1.1rem; height:1.1rem; border:0; border-radius:50%; background:#c8dfce; color:#28563e; font-size:0.95rem; line-height:1; }
+.admin-assignment-empty { align-self:center; color:#7a887f; font-size:0.78rem; }
+.admin-assignment-add { display:flex; gap:0.6rem; }
+.admin-assignment-add select { flex:1; }
+.admin-assignment-add-button { min-height:2.7rem; padding:0.65rem 0.9rem; border:1px solid #b9cdbd; border-radius:10px; background:#fff; color:var(--green); font-size:0.75rem; font-weight:800; }
+.admin-assignment-add-button:disabled { cursor:not-allowed; opacity:0.5; }
 .admin-log-list { display:grid; gap:0.9rem; }
 .admin-log-filters { display:grid; grid-template-columns:1.3fr 1fr 1fr auto; gap:0.8rem; align-items:end; background:#f6f9f5; border:1px solid #dfe8e1; border-radius:16px; padding:0.9rem 1rem; margin-bottom:1rem; }
 .admin-log-filters label { display:grid; gap:0.42rem; font-size:0.72rem; color:#4c5f59; font-weight:700; }

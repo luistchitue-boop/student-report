@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const turmaOptions = [
   "1A", "1B", "2A", "2B", "2C", "3A", "3B", "4A", "4B", "4C",
@@ -16,6 +16,9 @@ type AdminClientProps = {
   defaultRole?: "COORDENADOR" | "DIRECCAO";
 };
 
+type ExistingTeacher = { id: string; name: string; role: string; user: { email: string }; turmas: { id: string }[] };
+type ExistingTurma = { id: string; name: string; coordinatorId: string | null };
+
 export function AdminClient({
   title = "Criar professor e atribuir turmas",
   eyebrow = "NOVO COORDENADOR",
@@ -29,6 +32,24 @@ export function AdminClient({
   const [selectedTurmas, setSelectedTurmas] = useState<string[]>(["10CEJ", "10CFBA", "10CFBB"]);
   const [status, setStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [existingTeachers, setExistingTeachers] = useState<ExistingTeacher[]>([]);
+  const [existingTurmas, setExistingTurmas] = useState<ExistingTurma[]>([]);
+  const [assignmentState, setAssignmentState] = useState<Record<string, string[]>>({});
+  const [assignmentMessage, setAssignmentMessage] = useState("");
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [turmaToAdd, setTurmaToAdd] = useState("");
+
+  async function loadAssignments() {
+    const response = await fetch("/api/admin/teachers");
+    if (!response.ok) return;
+    const data = await response.json();
+    setExistingTeachers(data.teachers);
+    setExistingTurmas(data.turmas);
+    setAssignmentState(Object.fromEntries(data.teachers.map((teacher: ExistingTeacher) => [teacher.id, teacher.turmas.map((turma) => turma.id)])));
+    setSelectedTeacherId((current) => current || data.teachers[0]?.id || "");
+  }
+
+  useEffect(() => { loadAssignments(); }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,6 +80,7 @@ export function AdminClient({
       setMessage(`${roleLabel} criado com sucesso: ${data.teacher.name}`);
       setForm({ name: "", email: "", password: "" });
       setSelectedTurmas(["10CEJ", "10CFBA", "10CFBB"]);
+      loadAssignments();
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Erro inesperado.");
@@ -71,6 +93,32 @@ export function AdminClient({
         ? current.filter((value) => value !== turma)
         : [...current, turma]
     );
+  }
+
+  async function saveAssignments(teacherId: string) {
+    setAssignmentMessage("");
+    const response = await fetch("/api/admin/teachers", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId, turmaIds: assignmentState[teacherId] ?? [] }),
+    });
+    const data = await response.json();
+    setAssignmentMessage(response.ok ? "Atribuições atualizadas." : data.error ?? "Não foi possível atualizar as atribuições.");
+    if (response.ok) loadAssignments();
+  }
+
+  const selectedTeacher = existingTeachers.find((teacher) => teacher.id === selectedTeacherId);
+  const selectedTeacherTurmas = assignmentState[selectedTeacherId] ?? [];
+  const availableTurmas = existingTurmas.filter((turma) => !selectedTeacherTurmas.includes(turma.id));
+
+  function removeAssignment(turmaId: string) {
+    setAssignmentState((current) => ({ ...current, [selectedTeacherId]: selectedTeacherTurmas.filter((id) => id !== turmaId) }));
+  }
+
+  function addAssignment() {
+    if (!turmaToAdd) return;
+    setAssignmentState((current) => ({ ...current, [selectedTeacherId]: [...selectedTeacherTurmas, turmaToAdd] }));
+    setTurmaToAdd("");
   }
 
   return (
@@ -145,6 +193,26 @@ export function AdminClient({
           </p>
         )}
       </form>
+
+      <div className="admin-existing-assignments">
+        <div className="section-heading admin-heading">
+          <div><p className="eyebrow">ATRIBUIÇÕES EXISTENTES</p><h3>Aumentar ou reduzir turmas</h3></div>
+        </div>
+        {existingTeachers.length > 0 && selectedTeacher && (
+          <article className="admin-assignment-card">
+            <label className="admin-field"><span>Conta</span><select value={selectedTeacherId} onChange={(event) => { setSelectedTeacherId(event.target.value); setTurmaToAdd(""); }}>
+              {existingTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name} · {teacher.user.email}</option>)}
+            </select></label>
+            <div className="admin-assignment-header"><div><strong>{selectedTeacher.name}</strong><small>{selectedTeacher.role} · {selectedTeacherTurmas.length} turma(s) atribuída(s)</small></div><button type="button" className="admin-submit" onClick={() => saveAssignments(selectedTeacher.id)}>Guardar alterações</button></div>
+            <div className="admin-assignment-chips">
+              {selectedTeacherTurmas.length ? selectedTeacherTurmas.map((turmaId) => <span key={turmaId} className="admin-assignment-chip">{existingTurmas.find((turma) => turma.id === turmaId)?.name ?? "Turma"}<button type="button" onClick={() => removeAssignment(turmaId)} aria-label="Remover turma">×</button></span>) : <span className="admin-assignment-empty">Nenhuma turma atribuída</span>}
+            </div>
+            <div className="admin-assignment-add"><select value={turmaToAdd} onChange={(event) => setTurmaToAdd(event.target.value)}><option value="">Adicionar uma turma...</option>{availableTurmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}</select><button type="button" className="admin-assignment-add-button" onClick={addAssignment} disabled={!turmaToAdd}>Adicionar</button></div>
+          </article>
+        )}
+        {!existingTeachers.length && <p className="admin-status idle">Ainda não existem contas para editar.</p>}
+        {assignmentMessage && <p className="admin-status success">{assignmentMessage}</p>}
+      </div>
     </section>
   );
 }
