@@ -80,6 +80,43 @@ export async function PATCH(request: Request) {
   }
 }
 
+export async function DELETE(request: Request) {
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+
+  try {
+    const body = await request.json();
+    const teacherId = typeof body.teacherId === "string" ? body.teacherId : "";
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: teacherId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+
+    if (!teacher) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
+    if (teacher.userId === session.user.id) return NextResponse.json({ error: "Não pode remover a sua própria conta" }, { status: 400 });
+
+    if (teacher.role === "ADMIN") {
+      const adminCount = await prisma.teacher.count({ where: { role: "ADMIN" } });
+      if (adminCount <= 1) return NextResponse.json({ error: "Não pode remover o último administrador" }, { status: 400 });
+    }
+
+    await createActivityLog({
+      actorId: session.user.id,
+      actorName: describeActorName(session.user),
+      action: "Removeu uma conta",
+      entity: "User",
+      entityId: teacher.user.id,
+      details: { name: teacher.user.name, email: teacher.user.email, role: teacher.role },
+    });
+    await prisma.user.delete({ where: { id: teacher.user.id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Admin user removal error:", error);
+    return NextResponse.json({ error: "Não foi possível remover a conta" }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   const session = await auth();
 

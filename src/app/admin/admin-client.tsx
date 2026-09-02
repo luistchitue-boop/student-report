@@ -111,6 +111,21 @@ export function AdminClient({
     if (response.ok) loadAssignments();
   }
 
+  async function removeUser(teacherId: string) {
+    const teacher = existingTeachers.find((item) => item.id === teacherId);
+    if (!teacher || !window.confirm(`Remover a conta de ${teacher.name}? Esta ação não pode ser anulada.`)) return;
+
+    setAssignmentMessage("");
+    const response = await fetch("/api/admin/teachers", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId }),
+    });
+    const data = await response.json();
+    setAssignmentMessage(response.ok ? "Conta removida com sucesso." : data.error ?? "Não foi possível remover a conta.");
+    if (response.ok) loadAssignments();
+  }
+
   const selectedTeacher = existingTeachers.find((teacher) => teacher.id === selectedTeacherId);
   const selectedTeacherTurmas = assignmentState[selectedTeacherId] ?? [];
   const availableTurmas = existingTurmas.filter((turma) => !selectedTeacherTurmas.includes(turma.id));
@@ -207,7 +222,7 @@ export function AdminClient({
             <label className="admin-field"><span>Conta</span><select value={selectedTeacherId} onChange={(event) => { const teacherId = event.target.value; const teacher = existingTeachers.find((item) => item.id === teacherId); setSelectedTeacherId(teacherId); setSelectedRole((teacher?.role as "COORDENADOR" | "DIRECCAO" | "ADMIN") ?? "COORDENADOR"); setTurmaToAdd(""); }}>
               {existingTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name} · {teacher.user.email}</option>)}
             </select></label>
-            <div className="admin-assignment-header"><div><strong>{selectedTeacher.name}</strong><small>{selectedRole} · {selectedTeacherTurmas.length} turma(s) atribuída(s)</small></div><button type="button" className="admin-submit" onClick={() => saveAssignments(selectedTeacher.id)}>Guardar alterações</button></div>
+            <div className="admin-assignment-header"><div><strong>{selectedTeacher.name}</strong><small>{selectedRole} · {selectedTeacherTurmas.length} turma(s) atribuída(s)</small></div><div className="admin-assignment-actions"><button type="button" className="admin-submit" onClick={() => saveAssignments(selectedTeacher.id)}>Guardar alterações</button><button type="button" className="admin-remove-button" onClick={() => removeUser(selectedTeacher.id)}>Remover conta</button></div></div>
             <label className="admin-field"><span>Perfil</span><select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value as "COORDENADOR" | "DIRECCAO" | "ADMIN")}><option value="COORDENADOR">Coordenador</option><option value="DIRECCAO">Direção</option><option value="ADMIN">Administrador</option></select></label>
             <div className="admin-assignment-chips">
               {selectedTeacherTurmas.length ? selectedTeacherTurmas.map((turmaId) => <span key={turmaId} className="admin-assignment-chip">{existingTurmas.find((turma) => turma.id === turmaId)?.name ?? "Turma"}<button type="button" onClick={() => removeAssignment(turmaId)} aria-label="Remover turma">×</button></span>) : <span className="admin-assignment-empty">Nenhuma turma atribuída</span>}
