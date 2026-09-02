@@ -28,7 +28,7 @@ export async function GET() {
     prisma.teacher.findMany({
       where: { role: { not: "ADMIN" } },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, role: true, user: { select: { email: true } }, turmas: { select: { id: true } } },
+      select: { id: true, name: true, role: true, user: { select: { email: true } }, turmas: { select: { id: true } }, direccaoAssignments: { select: { turmaId: true } } },
     }),
     prisma.turma.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, coordinatorId: true } }),
   ]);
@@ -46,18 +46,23 @@ export async function PATCH(request: Request) {
     const requestedRole = body.role === "ADMIN" || body.role === "DIRECCAO" || body.role === "COORDENADOR" ? body.role : "";
     const requestedTurmaIds: unknown[] = Array.isArray(body.turmaIds) ? body.turmaIds : [];
     const turmaIds = [...new Set(requestedTurmaIds.filter((id): id is string => typeof id === "string"))];
-    const teacher = await prisma.teacher.findFirst({ where: { id: teacherId, role: { not: "ADMIN" } }, include: { turmas: { select: { id: true } } } });
+    const teacher = await prisma.teacher.findFirst({ where: { id: teacherId, role: { not: "ADMIN" } }, include: { turmas: { select: { id: true } }, direccaoAssignments: { select: { turmaId: true } } } });
     if (!teacher) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
     if (!requestedRole) return NextResponse.json({ error: "Perfil inválido" }, { status: 400 });
 
     const validTurmas = await prisma.turma.findMany({ where: { id: { in: turmaIds } }, select: { id: true } });
     if (validTurmas.length !== turmaIds.length) return NextResponse.json({ error: "Uma ou mais turmas não foram encontradas" }, { status: 400 });
 
-    await prisma.$transaction([
-      prisma.teacher.update({ where: { id: teacher.id }, data: { role: requestedRole } }),
-      prisma.turma.updateMany({ where: { coordinatorId: teacher.id }, data: { coordinatorId: null } }),
-      ...(turmaIds.length ? [prisma.turma.updateMany({ where: { id: { in: turmaIds } }, data: { coordinatorId: teacher.id } })] : []),
-    ]);
+    await prisma.$transaction(async (transaction) => {
+      await transaction.teacher.update({ where: { id: teacher.id }, data: { role: requestedRole } });
+      await transaction.turma.updateMany({ where: { coordinatorId: teacher.id }, data: { coordinatorId: null } });
+      await transaction.direccaoTurma.deleteMany({ where: { teacherId: teacher.id } });
+      if (requestedRole === "DIRECCAO" && turmaIds.length) {
+        await transaction.direccaoTurma.createMany({ data: turmaIds.map((turmaId) => ({ teacherId: teacher.id, turmaId })) });
+      } else if (requestedRole === "COORDENADOR" && turmaIds.length) {
+        await transaction.turma.updateMany({ where: { id: { in: turmaIds } }, data: { coordinatorId: teacher.id } });
+      }
+    });
 
     await createActivityLog({
       actorId: session.user.id,
@@ -65,7 +70,7 @@ export async function PATCH(request: Request) {
       action: "Atualizou o perfil e as atribuições",
       entity: "Teacher",
       entityId: teacher.id,
-      details: { role: requestedRole, previousRole: teacher.role, turmaIds, previousTurmaIds: teacher.turmas.map((turma) => turma.id) },
+      details: { role: requestedRole, previousRole: teacher.role, turmaIds, previousTurmaIds: [...teacher.turmas.map((turma) => turma.id), ...teacher.direccaoAssignments.map((assignment) => assignment.turmaId)] },
     });
 
     return NextResponse.json({ success: true, role: requestedRole, turmaIds });
@@ -141,10 +146,17 @@ export async function POST(request: Request) {
     for (const turmaName of turmaNames) {
       if (!turmaName) continue;
 
-      await prisma.turma.updateMany({
-        where: { name: turmaName },
-        data: { coordinatorId: teacher.id },
-      });
+      const turma = await prisma.turma.findFirst({ where: { name: turmaName }, select: { id: true } });
+      if (!turma) continue;
+      if (requestedRole === "DIRECCAO") {
+        await prisma.direccaoTurma.upsert({
+          where: { teacherId_turmaId: { teacherId: teacher.id, turmaId: turma.id } },
+          create: { teacherId: teacher.id, turmaId: turma.id },
+          update: {},
+        });
+      } else {
+        await prisma.turma.update({ where: { id: turma.id }, data: { coordinatorId: teacher.id } });
+      }
     }
 
     return NextResponse.json({

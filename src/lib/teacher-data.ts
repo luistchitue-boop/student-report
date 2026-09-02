@@ -37,66 +37,31 @@ function mapTurmaForCoordinator(turma: any) {
   };
 }
 
+const turmaInclude = {
+  _count: { select: { students: true } },
+  subjects: { orderBy: { name: "asc" as const }, select: { name: true } },
+  students: {
+    orderBy: { name: "asc" as const },
+    select: {
+      id: true, name: true, age: true, attendance: true, active: true,
+      parents: { orderBy: { name: "asc" as const }, select: { id: true, name: true, phone: true, email: true } },
+    },
+  },
+};
+
 export async function getCoordinatorTurmas(userId: string) {
-  const teacher = await prisma.teacher.findUnique({
-    where: { userId },
-    select: { role: true },
-  });
-
+  const teacher = await prisma.teacher.findUnique({ where: { userId }, select: { role: true } });
   if (teacher?.role === "ADMIN") {
-    const turmas = await prisma.turma.findMany({
-      orderBy: { name: "asc" },
-      include: {
-        _count: { select: { students: true } },
-        subjects: { orderBy: { name: "asc" }, select: { name: true } },
-        students: {
-          orderBy: { name: "asc" },
-          select: {
-            id: true,
-            name: true,
-            age: true,
-            attendance: true,
-            active: true,
-            parents: {
-              orderBy: { name: "asc" },
-              select: { id: true, name: true, phone: true, email: true },
-            },
-          },
-        },
-      },
-    });
-
-    return turmas.map(mapTurmaForCoordinator);
+    return (await prisma.turma.findMany({ orderBy: { name: "asc" }, include: turmaInclude })).map(mapTurmaForCoordinator);
   }
 
   const coordinator = await prisma.teacher.findUnique({
     where: { userId },
-    include: {
-      turmas: {
-        orderBy: { name: "asc" },
-        include: {
-          _count: { select: { students: true } },
-          subjects: { orderBy: { name: "asc" }, select: { name: true } },
-          students: {
-            orderBy: { name: "asc" },
-            select: {
-              id: true,
-              name: true,
-              age: true,
-              attendance: true,
-              active: true,
-              parents: {
-                orderBy: { name: "asc" },
-                select: { id: true, name: true, phone: true, email: true },
-              },
-            },
-          },
-        },
-      },
-    },
+    include: { turmas: { orderBy: { name: "asc" }, include: turmaInclude }, direccaoAssignments: { include: { turma: { include: turmaInclude } } } },
   });
-
-  return coordinator?.turmas.map(mapTurmaForCoordinator) ?? [];
+  if (!coordinator) return [];
+  const assignedTurmas = coordinator.role === "DIRECCAO" ? coordinator.direccaoAssignments.map((assignment) => assignment.turma) : coordinator.turmas;
+  return assignedTurmas.map(mapTurmaForCoordinator);
 }
 
 export async function getCoordinatorTurmaById(userId: string, turmaId: string) {
@@ -106,14 +71,6 @@ export async function getCoordinatorTurmaById(userId: string, turmaId: string) {
 
 export async function getCoordinatorStudentBySlug(userId: string, turmaId: string, studentSlug: string) {
   const turma = await getCoordinatorTurmaById(userId, turmaId);
-
-  if (!turma) {
-    return null;
-  }
-
-  return (
-    turma.roster.find((student: { id: string; name: string }) => student.id === studentSlug) ??
-    turma.roster.find((student: { id: string; name: string }) => buildStudentSlug(student.name) === studentSlug) ??
-    null
-  );
+  if (!turma) return null;
+  return turma.roster.find((student: { id: string; name: string }) => student.id === studentSlug) ?? turma.roster.find((student: { id: string; name: string }) => buildStudentSlug(student.name) === studentSlug) ?? null;
 }

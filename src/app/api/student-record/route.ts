@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     const student = await prisma.student.findFirst({
       where: {
         id: studentId,
-        turma: { coordinator: { userId: session.user.id } },
+        turma: { OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] },
       },
       select: { id: true },
     });
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
         ? { id: studentId }
         : {
             id: studentId,
-            turma: { coordinator: { userId: session.user.id } },
+            turma: { OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] },
           },
       select: { turma: { select: { subjects: { select: { name: true } } } } },
     });
@@ -253,7 +253,7 @@ export async function PATCH(request: NextRequest) {
       const grade = await prisma.grade.findFirst({
         where: isAdmin
           ? { id }
-          : { id, student: { turma: { coordinator: { userId: session.user.id } } } },
+          : { id, student: { turma: { OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] } } },
         include: { student: { include: { turma: { select: { subjects: { select: { name: true } } } } } } },
       });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
@@ -276,7 +276,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ success: true, record: updated });
     }
 
-    const absence = await prisma.absence.findFirst({ where: { id, student: { turma: { coordinator: { userId: session.user.id } } } } });
+    const absence = await prisma.absence.findFirst({ where: { id, student: { turma: { OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] } } } });
     if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });
     const subject = typeof body.subject === "string" ? body.subject : absence.subject;
     const dia = typeof body.dia === "string" ? normalizeDay(body.dia) : absence.dia;
@@ -318,7 +318,7 @@ export async function DELETE(request: NextRequest) {
 
     if (type === "grade") {
       const grade = await prisma.grade.findFirst({
-        where: isAdmin ? { id } : { id, student: { turma: { coordinator: { userId: session.user.id } } } },
+        where: isAdmin ? { id } : { id, student: { turma: { OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] } } },
       });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
       await prisma.grade.delete({ where: { id } });
@@ -337,7 +337,7 @@ export async function DELETE(request: NextRequest) {
       });
     } else {
       const absence = await prisma.absence.findFirst({
-        where: isAdmin ? { id } : { id, student: { turma: { coordinator: { userId: session.user.id } } } },
+        where: isAdmin ? { id } : { id, student: { turma: { OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] } } },
       });
       if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });
       await prisma.absence.delete({ where: { id } });

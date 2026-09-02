@@ -39,7 +39,7 @@ export async function PATCH(
     const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
 
     const turma = await prisma.turma.findFirst({
-      where: isAdmin ? { id: student.turmaId } : { id: student.turmaId, coordinator: { userId: session.user.id } },
+      where: isAdmin ? { id: student.turmaId } : { id: student.turmaId, OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] },
       select: { id: true },
     });
 

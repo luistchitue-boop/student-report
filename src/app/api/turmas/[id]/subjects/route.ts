@@ -19,7 +19,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
 
   const turma = await prisma.turma.findFirst({
-    where: isAdmin ? { id } : { id, coordinator: { userId: session.user.id } },
+    where: isAdmin ? { id } : { id, OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] },
     select: { subjects: { orderBy: { name: "asc" }, select: { name: true } } },
   });
 

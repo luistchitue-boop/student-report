@@ -18,7 +18,7 @@ export default async function BiometricoPage({
 
   const now = new Date();
   const turmas = await prisma.turma.findMany({
-    where: { coordinator: { userId: session.user.id } },
+    where: { OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });

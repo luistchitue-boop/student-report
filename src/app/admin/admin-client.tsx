@@ -16,7 +16,7 @@ type AdminClientProps = {
   defaultRole?: "COORDENADOR" | "DIRECCAO";
 };
 
-type ExistingTeacher = { id: string; name: string; role: string; user: { email: string }; turmas: { id: string }[] };
+type ExistingTeacher = { id: string; name: string; role: string; user: { email: string }; turmas: { id: string }[]; direccaoAssignments: { turmaId: string }[] };
 type ExistingTurma = { id: string; name: string; coordinatorId: string | null };
 
 export function AdminClient({
@@ -46,7 +46,7 @@ export function AdminClient({
     const data = await response.json();
     setExistingTeachers(data.teachers);
     setExistingTurmas(data.turmas);
-    setAssignmentState(Object.fromEntries(data.teachers.map((teacher: ExistingTeacher) => [teacher.id, teacher.turmas.map((turma) => turma.id)])));
+    setAssignmentState(Object.fromEntries(data.teachers.map((teacher: ExistingTeacher) => [teacher.id, teacher.role === "DIRECCAO" ? teacher.direccaoAssignments.map((assignment) => assignment.turmaId) : teacher.turmas.map((turma) => turma.id)])));
     const nextTeacherId = data.teachers.some((teacher: ExistingTeacher) => teacher.id === selectedTeacherId) ? selectedTeacherId : data.teachers[0]?.id || "";
     setSelectedTeacherId(nextTeacherId);
     const currentTeacher = data.teachers.find((teacher: ExistingTeacher) => teacher.id === nextTeacherId) ?? data.teachers[0];

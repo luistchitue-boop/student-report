@@ -68,6 +68,7 @@ model Teacher {
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   turmas  Turma[]
+  direccaoAssignments DireccaoTurma[]
 }
 
 model Turma {
@@ -82,6 +83,18 @@ model Turma {
   students    Student[]
   subjects    Subject[]
   weeklyReports WeeklyCoordinationReport[]
+  direccaoAssignments DireccaoTurma[]
+}
+
+model DireccaoTurma {
+  teacherId String
+  turmaId   String
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  turma   Turma   @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, turmaId])
+  @@index([turmaId])
 }
 
 model Subject {

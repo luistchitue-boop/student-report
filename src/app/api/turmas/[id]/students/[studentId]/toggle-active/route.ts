@@ -19,7 +19,7 @@ export async function PATCH(
 
     // Verify the coordinator owns this turma
     const turma = await prisma.turma.findFirst({
-      where: isAdmin ? { id: turmaId } : { id: turmaId, coordinator: { userId: session.user.id } },
+      where: isAdmin ? { id: turmaId } : { id: turmaId, OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] },
       select: { id: true },
     });
 
