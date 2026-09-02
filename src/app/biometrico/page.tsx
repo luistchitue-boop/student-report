@@ -47,6 +47,7 @@ export default async function BiometricoPage({
             key: period.key,
             start: period.start.toISOString(),
             end: period.end.toISOString(),
+            isTest: period.isTest,
             status: reportByWeek.has(period.key) ? "registado" : "ausente",
             title: reportByWeek.get(period.key)?.title ?? "",
             description: reportByWeek.get(period.key)?.description ?? "",

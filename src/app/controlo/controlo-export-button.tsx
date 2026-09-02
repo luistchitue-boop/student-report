@@ -8,6 +8,7 @@ type ExportPeriod = {
   end: string;
   title: string;
   registered: boolean;
+  isTest?: boolean;
 };
 
 export function ControloExportButton({
@@ -58,7 +59,7 @@ export function ControloExportButton({
       const start = new Date(period.start).toLocaleDateString("pt-AO", { day: "2-digit", month: "2-digit" });
       const end = new Date(period.end).toLocaleDateString("pt-AO", { day: "2-digit", month: "2-digit" });
       pdf.setTextColor(70, 82, 76);
-      pdf.text(`${start} - ${end}`, margin, y);
+      pdf.text(`${period.isTest ? "Teste - " : ""}${start} - ${end}`, margin, y);
       pdf.setTextColor(period.registered ? 57 : 154, period.registered ? 117 : 104, period.registered ? 93 : 72);
       pdf.text(period.registered ? "Registado" : "Ausente", 105, y);
       pdf.setTextColor(29, 43, 41);

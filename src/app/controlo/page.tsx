@@ -74,6 +74,7 @@ export default async function ControloPage({
                   periods={periods.map((period) => ({
                     start: period.start.toISOString(),
                     end: period.end.toISOString(),
+                    isTest: period.isTest,
                     title: reportsByWeek.get(period.key)?.title ?? "",
                     registered: reportsByWeek.has(period.key),
                   }))}

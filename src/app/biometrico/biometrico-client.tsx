@@ -10,6 +10,7 @@ type Period = {
   title: string;
   description: string;
   isCurrent: boolean;
+  isTest?: boolean;
 };
 
 type Turma = { id: string; name: string };
@@ -69,7 +70,7 @@ export function BiometricoClient({ periods, turmas, selectedTurmaId }: { periods
       <div className="biometrico-list">
         {periods.map((period) => (
           <button key={period.key} className={`biometrico-period ${period.isCurrent ? "current" : ""}`} onClick={() => openPeriod(period)} disabled={!period.isCurrent}>
-            <span className="biometrico-period-date">{displayDate(period.start)} - {displayDate(period.end)}</span>
+            <span className="biometrico-period-date">{period.isTest ? "Teste · " : ""}{displayDate(period.start)} - {displayDate(period.end)}</span>
             <strong>{period.status === "registado" ? period.title : "Ausente"}</strong>
             <span className={`biometrico-status ${period.status}`}>{period.status === "registado" ? "Registado" : "Ausente"}</span>
           </button>
