@@ -10,7 +10,17 @@ const turmaOptions = [
   "12INF", "12OCC", "13CGB", "13CG", "13ETC", "13INF", "13OCC"
 ];
 
-export function AdminClient() {
+type AdminClientProps = {
+  title?: string;
+  eyebrow?: string;
+  defaultRole?: "COORDENADOR" | "DIRECCAO";
+};
+
+export function AdminClient({
+  title = "Criar professor e atribuir turmas",
+  eyebrow = "NOVO COORDENADOR",
+  defaultRole = "COORDENADOR",
+}: AdminClientProps) {
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -34,6 +44,7 @@ export function AdminClient() {
           email: form.email,
           password: form.password,
           turmaNames: selectedTurmas,
+          role: defaultRole,
         }),
       });
 
@@ -44,7 +55,8 @@ export function AdminClient() {
       }
 
       setStatus("success");
-      setMessage(`Professor criado com sucesso: ${data.teacher.name}`);
+      const roleLabel = defaultRole === "DIRECCAO" ? "Direcção" : "Professor";
+      setMessage(`${roleLabel} criado com sucesso: ${data.teacher.name}`);
       setForm({ name: "", email: "", password: "" });
       setSelectedTurmas(["10CEJ", "10CFBA", "10CFBB"]);
     } catch (error) {
@@ -65,8 +77,8 @@ export function AdminClient() {
     <section className="admin-shell workspace">
       <div className="section-heading admin-heading">
         <div>
-          <p className="eyebrow">NOVO COORDENADOR</p>
-          <h3>Criar professor e atribuir turmas</h3>
+          <p className="eyebrow">{eyebrow}</p>
+          <h3>{title}</h3>
         </div>
       </div>
 
@@ -123,7 +135,7 @@ export function AdminClient() {
 
         <div className="admin-actions">
           <button className="admin-submit" type="submit" disabled={status === "saving"}>
-            {status === "saving" ? "A guardar..." : "Criar professor"}
+            {status === "saving" ? "A guardar..." : defaultRole === "DIRECCAO" ? "Criar direcção" : "Criar professor"}
           </button>
         </div>
 

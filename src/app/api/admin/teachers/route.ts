@@ -26,6 +26,7 @@ export async function POST(request: Request) {
     const email = String(body.email || "").trim().toLowerCase();
     const password = String(body.password || "");
     const turmaNames = Array.isArray(body.turmaNames) ? body.turmaNames : [];
+    const requestedRole = body.role === "DIRECCAO" ? "DIRECCAO" : "COORDENADOR";
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Nome, email e senha são obrigatórios" }, { status: 400 });
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
         data: {
           userId: user.id,
           name,
-          role: "COORDENADOR",
+          role: requestedRole,
         },
       });
     } else {
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
         where: { id: teacher.id },
         data: {
           name,
-          role: "COORDENADOR",
+          role: requestedRole,
         },
       });
     }
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
         id: teacher.id,
         name: teacher.name,
         email: user.email,
+        role: teacher.role,
       },
       turmas: turmaNames,
     });

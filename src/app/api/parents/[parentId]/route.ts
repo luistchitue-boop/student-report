@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { PrismaClient } from "@prisma/client";
+import { createActivityLog, describeActorName } from "@/lib/activity-log";
 
 const prisma = new PrismaClient();
 
@@ -18,7 +19,7 @@ export async function PATCH(
     // Get the parent to find the student and turma
     const parent = await prisma.parent.findUnique({
       where: { id: parentId },
-      select: { studentId: true },
+      select: { studentId: true, name: true, phone: true, email: true },
     });
 
     if (!parent) {
@@ -65,6 +66,27 @@ export async function PATCH(
       where: { id: parentId },
       data: { name, phone, email },
       select: { id: true, name: true, phone: true, email: true },
+    });
+
+    await createActivityLog({
+      actorId: session.user.id,
+      actorName: describeActorName(session.user),
+      action: "Actualizou encarregado",
+      entity: "Parent",
+      entityId: updatedParent.id,
+      details: {
+        studentId: parent.studentId,
+        before: {
+          name: parent.name,
+          phone: parent.phone,
+          email: parent.email,
+        },
+        after: {
+          name: updatedParent.name,
+          phone: updatedParent.phone,
+          email: updatedParent.email,
+        },
+      },
     });
 
     return Response.json(updatedParent);
