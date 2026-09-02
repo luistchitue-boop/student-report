@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { createActivityLog, describeActorName } from "@/lib/activity-log";
 
 const prisma = new PrismaClient();
 
@@ -36,6 +37,19 @@ export async function POST(request: NextRequest) {
         select: { id: true, justified: true, justificationTitle: true, justificationNotes: true },
       })),
     );
+
+    await createActivityLog({
+      actorId: session.user.id,
+      actorName: describeActorName(session.user),
+      action: "Justificou faltas",
+      entity: "Absence",
+      entityId: null,
+      details: {
+        absenceIds: justifiedAbsences.map((absence) => absence.id),
+        title,
+        notes,
+      },
+    });
 
     return NextResponse.json({
       success: true,

@@ -28,3 +28,7 @@ export async function createActivityLog({
     },
   });
 }
+
+export function describeActorName(sessionUser: { name?: string | null; email?: string | null }) {
+  return sessionUser.name ?? sessionUser.email ?? "Utilizador";
+}

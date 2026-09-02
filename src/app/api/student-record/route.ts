@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { createActivityLog, describeActorName } from "@/lib/activity-log";
 
 const prisma = new PrismaClient();
 
@@ -144,12 +145,26 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        await prisma.grade.create({
+        const createdGrade = await prisma.grade.create({
           data: {
             studentId,
             subject: entry.subject,
             value: numericValue,
             term: entry.term ?? "Semanal",
+          },
+        });
+
+        await createActivityLog({
+          actorId: session.user.id,
+          actorName: describeActorName(session.user),
+          action: "Registou nota",
+          entity: "Grade",
+          entityId: createdGrade.id,
+          details: {
+            studentId,
+            subject: entry.subject,
+            term: entry.term ?? "Semanal",
+            value: numericValue,
           },
         });
       }
@@ -168,7 +183,7 @@ export async function POST(request: NextRequest) {
         const dia = normalizeDay(entry.dia);
         const faultType = entry.faultType === "AUSENCIA_NA_SALA" ? "AUSENCIA_NA_SALA" : "FALTA_DE_MATERIAL";
 
-        await prisma.absence.upsert({
+        const savedAbsence = await prisma.absence.upsert({
           where: {
             studentId_subject_dia_tempo: {
               studentId: entry.studentId,
@@ -187,6 +202,22 @@ export async function POST(request: NextRequest) {
             studentId: entry.studentId,
             subject: entry.subject,
             dia,
+            tempo: entry.tempo,
+            faultType,
+            notes: entry.notes ?? "",
+          },
+        });
+
+        await createActivityLog({
+          actorId: session.user.id,
+          actorName: describeActorName(session.user),
+          action: "Registou falta",
+          entity: "Absence",
+          entityId: savedAbsence.id,
+          details: {
+            studentId: entry.studentId,
+            subject: entry.subject,
+            dia: entry.dia,
             tempo: entry.tempo,
             faultType,
             notes: entry.notes ?? "",
@@ -229,6 +260,19 @@ export async function PATCH(request: NextRequest) {
       const subject = typeof body.subject === "string" ? body.subject : grade.subject;
       if (!grade.student.turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
       const updated = await prisma.grade.update({ where: { id }, data: { value, subject, term: typeof body.term === "string" ? body.term : grade.term } });
+      await createActivityLog({
+        actorId: session.user.id,
+        actorName: describeActorName(session.user),
+        action: "Actualizou nota",
+        entity: "Grade",
+        entityId: updated.id,
+        details: {
+          studentId: grade.studentId,
+          subject,
+          value,
+          term: typeof body.term === "string" ? body.term : grade.term,
+        },
+      });
       return NextResponse.json({ success: true, record: updated });
     }
 
@@ -238,6 +282,21 @@ export async function PATCH(request: NextRequest) {
     const dia = typeof body.dia === "string" ? normalizeDay(body.dia) : absence.dia;
     const faultType = body.faultType === "AUSENCIA_NA_SALA" ? "AUSENCIA_NA_SALA" : body.faultType === "FALTA_DE_MATERIAL" ? "FALTA_DE_MATERIAL" : absence.faultType;
     const updated = await prisma.absence.update({ where: { id }, data: { subject, dia, tempo: typeof body.tempo === "string" ? body.tempo : absence.tempo, faultType, notes: typeof body.notes === "string" ? body.notes : absence.notes } });
+    await createActivityLog({
+      actorId: session.user.id,
+      actorName: describeActorName(session.user),
+      action: "Actualizou falta",
+      entity: "Absence",
+      entityId: updated.id,
+      details: {
+        studentId: absence.studentId,
+        subject,
+        dia: dia.toISOString(),
+        tempo: typeof body.tempo === "string" ? body.tempo : absence.tempo,
+        faultType,
+        notes: typeof body.notes === "string" ? body.notes : absence.notes,
+      },
+    });
     return NextResponse.json({ success: true, record: updated });
   } catch (error) {
     console.error("Student record update error:", error);
@@ -263,12 +322,39 @@ export async function DELETE(request: NextRequest) {
       });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
       await prisma.grade.delete({ where: { id } });
+      await createActivityLog({
+        actorId: session.user.id,
+        actorName: describeActorName(session.user),
+        action: "Eliminou nota",
+        entity: "Grade",
+        entityId: id,
+        details: {
+          studentId: grade.studentId,
+          subject: grade.subject,
+          value: grade.value,
+          term: grade.term,
+        },
+      });
     } else {
       const absence = await prisma.absence.findFirst({
         where: isAdmin ? { id } : { id, student: { turma: { coordinator: { userId: session.user.id } } } },
       });
       if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });
       await prisma.absence.delete({ where: { id } });
+      await createActivityLog({
+        actorId: session.user.id,
+        actorName: describeActorName(session.user),
+        action: "Eliminou falta",
+        entity: "Absence",
+        entityId: id,
+        details: {
+          studentId: absence.studentId,
+          subject: absence.subject,
+          dia: absence.dia.toISOString(),
+          tempo: absence.tempo,
+          faultType: absence.faultType,
+        },
+      });
     }
 
     return NextResponse.json({ success: true });

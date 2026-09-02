@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { createActivityLog, describeActorName } from "@/lib/activity-log";
 
 const prisma = new PrismaClient();
 
@@ -97,6 +98,23 @@ export async function POST(request: NextRequest) {
         });
       }
     });
+
+    if (validGrades.length) {
+      await createActivityLog({
+        actorId: session.user.id,
+        actorName: describeActorName(session.user),
+        action: "Registou notas",
+        entity: "Grade",
+        entityId: null,
+        details: {
+          turmaId,
+          subject,
+          term,
+          studentIds: validGrades.map((entry) => entry.studentId),
+          values: validGrades,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, saved: validGrades.length });
   } catch (error) {
