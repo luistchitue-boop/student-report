@@ -50,6 +50,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   teacher       Teacher?
+  activityLogs  ActivityLog[]
 }
 
 enum FaultType {
@@ -159,6 +160,22 @@ model StudentNote {
   createdAt DateTime @default(now())
 
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actorName String
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId])
+  @@index([createdAt])
 }
 
 model VerificationToken {

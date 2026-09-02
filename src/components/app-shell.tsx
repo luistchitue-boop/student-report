@@ -11,9 +11,10 @@ import {
   House,
   ShieldCheck,
   Settings,
+  ScrollText,
 } from "lucide-react";
 
-export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" | "relatorios" }) {
+export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" | "relatorios" | "logs" }) {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = session?.user?.role === "ADMIN";
@@ -54,6 +55,9 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
             <>
               <Link href="/admin" className={active === "admin" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
                 <ShieldCheck size={16} strokeWidth={2.1} /> Admin
+              </Link>
+              <Link href="/admin/logs" className={active === "logs" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+                <ScrollText size={16} strokeWidth={2.1} /> Registo
               </Link>
               <Link href="/admin/relatorios" className={active === "relatorios" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
                 <FileText size={16} strokeWidth={2.1} /> Relatorios

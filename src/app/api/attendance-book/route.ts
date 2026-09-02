@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { createActivityLog } from "@/lib/activity-log";
 
 const prisma = new PrismaClient();
 
@@ -104,6 +105,22 @@ export async function POST(request: NextRequest) {
     if (newStudentIds.length) {
       await prisma.absence.createMany({
         data: newStudentIds.map((studentId) => ({ studentId, subject, dia, tempo, faultType, notes: "" })),
+      });
+
+      await createActivityLog({
+        actorId: session.user.id,
+        actorName: session.user.name ?? session.user.email ?? "Utilizador",
+        action: "Registou faltas",
+        entity: "Absence",
+        entityId: null,
+        details: {
+          turmaId,
+          subject,
+          dia: date,
+          tempo,
+          studentIds: newStudentIds,
+          faultType,
+        },
       });
     }
 

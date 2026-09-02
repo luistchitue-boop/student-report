@@ -170,10 +170,11 @@ export async function POST(request: NextRequest) {
 
         await prisma.absence.upsert({
           where: {
-            studentId_subject_dia: {
+            studentId_subject_dia_tempo: {
               studentId: entry.studentId,
               subject: entry.subject,
               dia,
+              tempo: entry.tempo,
             },
           },
           update: {
