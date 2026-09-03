@@ -71,7 +71,7 @@ export default async function ControloPage({
           {selectedTurma ? (
             <>
               <div className="controlo-summary">
-                <span>Coordenador</span>
+                <span>Coordenador(a)</span>
                 <strong>{coordinatorNames || "Sem coordenador atribuído"}</strong>
               </div>
               <div className="controlo-actions">

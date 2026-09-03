@@ -35,7 +35,7 @@ export function ControloExportButton({
     pdf.setTextColor(90, 105, 97);
     pdf.text(`Turma: ${turmaName}`, margin, y);
     y += 6;
-    pdf.text(`Coordenador: ${coordinatorName}`, margin, y);
+    pdf.text(`Coordenador(a): ${coordinatorName}`, margin, y);
     y += 6;
     pdf.text(`Ano lectivo: ${year}`, margin, y);
     y += 12;
