@@ -6,11 +6,12 @@ import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coo
 import { ControloExportButton } from "./controlo-export-button";
 
 const prisma = new PrismaClient();
+const PAGE_SIZE = 6;
 
 export default async function ControloPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ turmaId?: string }>;
+  searchParams?: Promise<{ turmaId?: string; page?: string }>;
 }) {
   const session = await auth();
   const role = session?.user?.role ?? "COORDENADOR";
@@ -23,8 +24,13 @@ export default async function ControloPage({
     select: { id: true, name: true, teacherAssignments: { select: { isMain: true, teacher: { select: { id: true, name: true, userId: true, role: true } } } } },
   });
   const requestedTurmaId = searchParams ? (await searchParams).turmaId : undefined;
+  const requestedPage = searchParams ? Number((await searchParams).page ?? "1") : 1;
   const selectedTurma = turmas.find((turma) => turma.id === requestedTurmaId) ?? turmas[0];
   const periods = getWeeklyCoordinationPeriods(new Date().getFullYear());
+  const totalPages = Math.max(1, Math.ceil(periods.length / PAGE_SIZE));
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const visiblePeriods = periods.slice(startIndex, startIndex + PAGE_SIZE);
   const mainCoordinator = selectedTurma?.teacherAssignments.find((assignment) => assignment.isMain && assignment.teacher.role === "COORDENADOR")?.teacher;
   const reportRangeStart = periods[0]?.start;
   const reportRangeEnd = periods[periods.length - 1]?.end;
@@ -89,7 +95,7 @@ export default async function ControloPage({
                 />
               </div>
               <div className="controlo-list">
-                {periods.map((period) => {
+                {visiblePeriods.map((period) => {
                   const periodReports = reportsByWeek.get(period.key) ?? [];
                   return (
                     <div key={period.key} className="controlo-period">
@@ -99,6 +105,17 @@ export default async function ControloPage({
                   );
                 })}
               </div>
+              {totalPages > 1 && (
+                <nav className="pagination" aria-label="Paginação dos períodos de coordenação">
+                  <a href={`/controlo?turmaId=${selectedTurma.id}&page=${Math.max(1, currentPage - 1)}`} className={currentPage === 1 ? "page-button disabled" : "page-button"} aria-disabled={currentPage === 1}>Anterior</a>
+                  <div className="pagination-compact" aria-label="Páginas dos períodos">
+                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                      <a key={page} href={`/controlo?turmaId=${selectedTurma.id}&page=${page}`} className={page === currentPage ? "page-button active" : "page-button"} aria-current={page === currentPage ? "page" : undefined}>{page}</a>
+                    ))}
+                  </div>
+                  <a href={`/controlo?turmaId=${selectedTurma.id}&page=${Math.min(totalPages, currentPage + 1)}`} className={currentPage === totalPages ? "page-button disabled" : "page-button"} aria-disabled={currentPage === totalPages}>Seguinte</a>
+                </nav>
+              )}
             </>
           ) : (
             <p className="admin-status idle">Não existem turmas disponíveis para controlo.</p>
