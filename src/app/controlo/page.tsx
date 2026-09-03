@@ -43,7 +43,7 @@ export default async function ControloPage({
   const reports = mainCoordinator
     ? await prisma.weeklyCoordinationReport.findMany({
         where: { turmaId: selectedTurma.id, userId: mainCoordinator.userId, weekStart: { gte: reportRangeStart, lte: reportRangeEnd } },
-        select: { weekStart: true, title: true, userId: true, user: { select: { name: true, email: true } } },
+        select: { weekStart: true, title: true, description: true, userId: true, user: { select: { name: true, email: true } } },
       })
     : [];
   const reportsByWeek = new Map<string, typeof reports>();
@@ -101,6 +101,7 @@ export default async function ControloPage({
                     end: period.end.toISOString(),
                     isTest: period.isTest,
                     title: reportsByWeek.get(period.key)?.map((report) => `${report.user.name ?? report.user.email}: ${report.title}`).join(", ") ?? "",
+                    description: reportsByWeek.get(period.key)?.map((report) => report.description).join("\n\n") ?? "",
                     registered: reportsByWeek.has(period.key),
                   }))}
                 />

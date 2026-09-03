@@ -78,8 +78,11 @@
 .controlo-summary span { color:#718078; font:0.65rem 'DM Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; }
 .controlo-summary strong { color:var(--navy); font-size:0.85rem; }
 .controlo-actions { display:flex; justify-content:flex-end; margin-top:1rem; }
+.controlo-export-actions { display:flex; gap:0.6rem; flex-wrap:wrap; justify-content:flex-end; }
 .controlo-export-button { display:inline-flex; align-items:center; gap:0.5rem; min-height:2.7rem; padding:0.65rem 0.9rem; border:1px solid #b9cdbd; border-radius:10px; background:#fff; color:var(--green); font-size:0.75rem; font-weight:800; }
 .controlo-export-button:hover { background:#edf4ef; }
+.controlo-report-button { display:inline-flex; align-items:center; gap:0.5rem; min-height:2.7rem; padding:0.65rem 0.9rem; border:0; border-radius:10px; background:var(--green); color:#fff; font-size:0.75rem; font-weight:800; }
+.controlo-report-button:hover { background:#2e664f; }
 .controlo-list { display:grid; gap:0.65rem; margin-top:1rem; }
 .controlo-period { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:0.9rem 1rem; border:1px solid #dfe8e1; border-radius:12px; background:#fff; box-shadow:0 7px 18px rgba(27,52,41,0.035); }
 .controlo-period > div { display:grid; min-width:0; gap:0.3rem; }
