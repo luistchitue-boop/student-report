@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
+import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 const prisma = new PrismaClient();
 
@@ -74,6 +75,13 @@ export async function POST(request: NextRequest) {
     const end = new Date(`${weekEnd}T12:00:00Z`);
     if (end.getTime() - start.getTime() !== 6 * 24 * 60 * 60 * 1000) {
       return NextResponse.json({ error: "O intervalo semanal deve ter exatamente 7 dias." }, { status: 400 });
+    }
+    const officialPeriod = getWeeklyCoordinationPeriods(start.getUTCFullYear()).find((period) => period.key === formatPeriodDate(start) && period.end.getTime() === end.getTime());
+    if (!officialPeriod) return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
+    const today = new Date();
+    const todayStart = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    if (officialPeriod.start.getTime() > todayStart) {
+      return NextResponse.json({ error: "Não é possível registar notas num período semanal futuro." }, { status: 400 });
     }
 
     const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");

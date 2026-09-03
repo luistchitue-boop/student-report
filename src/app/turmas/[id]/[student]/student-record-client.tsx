@@ -6,12 +6,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { ContactosTab } from "./contactos-tab";
+import { getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
 type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; createdAt: string };
 const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 
 export function StudentRecordClient({ turma, student }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> } }) {
+  const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
   const [tab, setTab] = useState<"notas" | "faltas" | "justificativos" | "relatorio" | "contactos">("relatorio");
   const [gradeStart, setGradeStart] = useState("");
   const [gradeEnd, setGradeEnd] = useState("");
@@ -272,8 +274,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             {tab === "notas" && (
               <div className="student-record-list-panel">
                 <div className="weekly-period-selector">
-                  <label>Início da semana<input type="date" value={gradeStart} onChange={(event) => setGradeStart(event.target.value)} /></label>
-                  <label>Fim da semana<input type="date" value={gradeEnd} onChange={(event) => setGradeEnd(event.target.value)} /></label>
+                  <label>Período semanal<select value={gradeStart} onChange={(event) => { const period = weeklyPeriods.find((item) => item.key === event.target.value); setGradeStart(event.target.value); setGradeEnd(period?.end.toISOString().slice(0, 10) ?? ""); }}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}</option>)}</select></label>
                 </div>
                 {!gradeStart || !gradeEnd ? <p className="student-record-empty">Selecione o período semanal para ver as notas.</p> : !validGradePeriod ? <p className="student-record-empty record-warning">O período deve ter exatamente 7 dias.</p> : <>
                 <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO ACADÉMICO</p><h2>Notas registadas</h2></div><span>{grades.length} registo(s)</span></div>

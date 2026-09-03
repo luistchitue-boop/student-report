@@ -4,6 +4,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 type Turma = {
   id: string;
@@ -17,13 +18,8 @@ function displayName(name: string) {
   return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1]}` : parts[0] ?? name;
 }
 
-function addDays(value: string, days: number) {
-  const date = new Date(`${value}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
 export function MiniPautaClient({ turma }: { turma: Turma }) {
+  const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
   const [weekStart, setWeekStart] = useState("");
   const [weekEnd, setWeekEnd] = useState("");
   const [subject, setSubject] = useState(turma.subjects[0] ?? "");
@@ -41,12 +37,29 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
 
   function changeWeekStart(value: string) {
     setWeekStart(value);
-    setWeekEnd(value ? addDays(value, 6) : "");
+    setWeekEnd(weeklyPeriods.find((period) => period.key === value)?.end.toISOString().slice(0, 10) ?? "");
+  }
+
+  function changeExportPeriod(value: string) {
+    setExportStart(value);
+    setExportEnd(weeklyPeriods.find((period) => period.key === value)?.end.toISOString().slice(0, 10) ?? "");
+  }
+
+  function isFuturePeriod(periodKey: string) {
+    const period = weeklyPeriods.find((item) => item.key === periodKey);
+    if (!period) return false;
+    const today = new Date();
+    return period.start.getTime() > new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12).getTime();
   }
 
   useEffect(() => {
     if (!weekStart || !weekEnd || !subject) {
       setGrades({});
+      return;
+    }
+
+    if (isFuturePeriod(weekStart)) {
+      setStatus("Não é possível registar notas num período semanal futuro.");
       return;
     }
 
@@ -83,6 +96,11 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
   async function saveGrades() {
     if (!weekStart || !weekEnd || !subject) {
       setStatus("Escolha a disciplina e o intervalo semanal antes de guardar.");
+      return;
+    }
+
+    if (isFuturePeriod(weekStart)) {
+      setStatus("Não é possível registar notas num período semanal futuro.");
       return;
     }
 
@@ -207,8 +225,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       <section className="mini-pauta-panel">
         <div className="mini-pauta-toolbar">
           <label>Disciplina<select value={subject} onChange={(event) => setSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
-          <label>Início da semana<input type="date" value={weekStart} onChange={(event) => changeWeekStart(event.target.value)} /></label>
-          <label>Fim da semana<input type="date" value={weekEnd} onChange={(event) => setWeekEnd(event.target.value)} /></label>
+          <label>Período semanal<select value={weekStart} onChange={(event) => changeWeekStart(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
         </div>
 
         <div className="mini-pauta-heading">
@@ -228,11 +245,11 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
 
         <div className="mini-pauta-footer">
           <span>{isLoading ? "A carregar notas..." : `${Object.values(grades).filter(Boolean).length} de ${turma.roster.length} alunos avaliados`}</span>
-          <div className="mini-pauta-footer-actions"><button type="button" className="mini-pauta-export-button" onClick={() => { setExportSubject(subject); setShowExportModal(true); }}>Export</button><button type="button" className="mini-pauta-save-button" onClick={saveGrades} disabled={isSaving || isLoading || alreadyRecorded}>{isSaving ? "A guardar..." : "Guardar notas"}</button></div>
+          <div className="mini-pauta-footer-actions"><button type="button" className="mini-pauta-export-button" onClick={() => { setExportSubject(subject); setShowExportModal(true); }}>Export</button><button type="button" className="mini-pauta-save-button" onClick={saveGrades} disabled={isSaving || isLoading || alreadyRecorded || !weekStart || isFuturePeriod(weekStart)}>{isSaving ? "A guardar..." : "Guardar notas"}</button></div>
         </div>
         {status ? <p className="mini-pauta-status">{status}</p> : null}
       </section>
-      {showExportModal ? <div className="mini-pauta-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowExportModal(false); }}><form className="mini-pauta-export-modal" onSubmit={(event) => { event.preventDefault(); void exportGrades(); }}><div className="mini-pauta-modal-heading"><div><p className="eyebrow">EXPORTAR MINI PAUTA</p><h2>Gerar relatório</h2></div><button type="button" className="mini-pauta-modal-close" onClick={() => setShowExportModal(false)} aria-label="Fechar">×</button></div><label>Disciplina<select value={exportSubject} onChange={(event) => setExportSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label><label>Início do intervalo<input required type="date" value={exportStart} onChange={(event) => setExportStart(event.target.value)} /></label><label>Fim do intervalo<input required type="date" value={exportEnd} onChange={(event) => setExportEnd(event.target.value)} /></label><p className="mini-pauta-export-help">A média será calculada com todas as notas registadas para a disciplina e intervalo seleccionados.</p>{exportStatus ? <p className="mini-pauta-status">{exportStatus}</p> : null}<button type="submit" className="mini-pauta-save-button" disabled={isExporting}>{isExporting ? "A gerar..." : "Exportar PDF"}</button></form></div> : null}
+      {showExportModal ? <div className="mini-pauta-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowExportModal(false); }}><form className="mini-pauta-export-modal" onSubmit={(event) => { event.preventDefault(); void exportGrades(); }}><div className="mini-pauta-modal-heading"><div><p className="eyebrow">EXPORTAR MINI PAUTA</p><h2>Gerar relatório</h2></div><button type="button" className="mini-pauta-modal-close" onClick={() => setShowExportModal(false)} aria-label="Fechar">×</button></div><label>Disciplina<select value={exportSubject} onChange={(event) => setExportSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label><label>Período semanal<select required value={exportStart} onChange={(event) => changeExportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}</option>)}</select></label><p className="mini-pauta-export-help">A média será calculada com todas as notas registadas para a disciplina e período selecionado.</p>{exportStatus ? <p className="mini-pauta-status">{exportStatus}</p> : null}<button type="submit" className="mini-pauta-save-button" disabled={isExporting || !exportStart}>{isExporting ? "A gerar..." : "Exportar PDF"}</button></form></div> : null}
     </main>
   );
 }
