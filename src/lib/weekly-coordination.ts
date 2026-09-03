@@ -9,8 +9,6 @@ export function getWeeklyCoordinationPeriods(year: number): WeeklyPeriod[] {
   const periods: WeeklyPeriod[] = [];
   const start = new Date(year, 8, 3, 12);
   const finalDate = new Date(year, 11, 31, 12);
-  const testStart = new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
-  periods.push({ start: testStart, end: new Date(start.getTime() - 24 * 60 * 60 * 1000), key: formatPeriodDate(testStart), isTest: true });
 
   for (let current = start; current <= finalDate; current = new Date(current.getTime() + 7 * 24 * 60 * 60 * 1000)) {
     const end = new Date(Math.min(current.getTime() + 6 * 24 * 60 * 60 * 1000, finalDate.getTime()));
