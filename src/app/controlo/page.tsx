@@ -11,7 +11,7 @@ const PAGE_SIZE = 6;
 export default async function ControloPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ turmaId?: string; page?: string }>;
+  searchParams?: Promise<{ turmaId?: string; page?: string; month?: string }>;
 }) {
   const session = await auth();
   const role = session?.user?.role ?? "COORDENADOR";
@@ -23,14 +23,20 @@ export default async function ControloPage({
     orderBy: { name: "asc" },
     select: { id: true, name: true, teacherAssignments: { select: { isMain: true, teacher: { select: { id: true, name: true, userId: true, role: true } } } } },
   });
-  const requestedTurmaId = searchParams ? (await searchParams).turmaId : undefined;
-  const requestedPage = searchParams ? Number((await searchParams).page ?? "1") : 1;
+  const params = searchParams ? await searchParams : {};
+  const requestedTurmaId = params.turmaId;
+  const requestedPage = Number(params.page ?? "1");
+  const requestedMonth = params.month ?? "";
   const selectedTurma = turmas.find((turma) => turma.id === requestedTurmaId) ?? turmas[0];
   const periods = getWeeklyCoordinationPeriods(new Date().getFullYear());
-  const totalPages = Math.max(1, Math.ceil(periods.length / PAGE_SIZE));
+  const filteredPeriods = requestedMonth
+    ? periods.filter((period) => String(period.start.getMonth() + 1) === requestedMonth)
+    : periods;
+  const monthOptions = [...new Set(periods.map((period) => period.start.getMonth() + 1))];
+  const totalPages = Math.max(1, Math.ceil(filteredPeriods.length / PAGE_SIZE));
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
   const startIndex = (currentPage - 1) * PAGE_SIZE;
-  const visiblePeriods = periods.slice(startIndex, startIndex + PAGE_SIZE);
+  const visiblePeriods = filteredPeriods.slice(startIndex, startIndex + PAGE_SIZE);
   const mainCoordinator = selectedTurma?.teacherAssignments.find((assignment) => assignment.isMain && assignment.teacher.role === "COORDENADOR")?.teacher;
   const reportRangeStart = periods[0]?.start;
   const reportRangeEnd = periods[periods.length - 1]?.end;
@@ -71,6 +77,11 @@ export default async function ControloPage({
               {!turmas.length && <option value="">Nenhuma turma disponível</option>}
               {turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
             </select>
+            <label htmlFor="controlo-month">Mês</label>
+            <select id="controlo-month" name="month" defaultValue={requestedMonth}>
+              <option value="">Todos os meses</option>
+              {monthOptions.map((month) => <option key={month} value={month}>{new Date(new Date().getFullYear(), month - 1, 1).toLocaleDateString("pt-AO", { month: "long" })}</option>)}
+            </select>
             <button type="submit" className="admin-submit" disabled={!turmas.length}>Verificar</button>
           </form>
 
@@ -85,7 +96,7 @@ export default async function ControloPage({
                   turmaName={selectedTurma.name}
                   coordinatorName={coordinatorNames || "Sem coordenador atribuído"}
                   year={new Date().getFullYear()}
-                  periods={periods.map((period) => ({
+                  periods={filteredPeriods.map((period) => ({
                     start: period.start.toISOString(),
                     end: period.end.toISOString(),
                     isTest: period.isTest,
@@ -107,13 +118,13 @@ export default async function ControloPage({
               </div>
               {totalPages > 1 && (
                 <nav className="pagination" aria-label="Paginação dos períodos de coordenação">
-                  <a href={`/controlo?turmaId=${selectedTurma.id}&page=${Math.max(1, currentPage - 1)}`} className={currentPage === 1 ? "page-button disabled" : "page-button"} aria-disabled={currentPage === 1}>Anterior</a>
+                  <a href={`/controlo?turmaId=${selectedTurma.id}${requestedMonth ? `&month=${requestedMonth}` : ""}&page=${Math.max(1, currentPage - 1)}`} className={currentPage === 1 ? "page-button disabled" : "page-button"} aria-disabled={currentPage === 1}>Anterior</a>
                   <div className="pagination-compact" aria-label="Páginas dos períodos">
                     {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                      <a key={page} href={`/controlo?turmaId=${selectedTurma.id}&page=${page}`} className={page === currentPage ? "page-button active" : "page-button"} aria-current={page === currentPage ? "page" : undefined}>{page}</a>
+                      <a key={page} href={`/controlo?turmaId=${selectedTurma.id}${requestedMonth ? `&month=${requestedMonth}` : ""}&page=${page}`} className={page === currentPage ? "page-button active" : "page-button"} aria-current={page === currentPage ? "page" : undefined}>{page}</a>
                     ))}
                   </div>
-                  <a href={`/controlo?turmaId=${selectedTurma.id}&page=${Math.min(totalPages, currentPage + 1)}`} className={currentPage === totalPages ? "page-button disabled" : "page-button"} aria-disabled={currentPage === totalPages}>Seguinte</a>
+                  <a href={`/controlo?turmaId=${selectedTurma.id}${requestedMonth ? `&month=${requestedMonth}` : ""}&page=${Math.min(totalPages, currentPage + 1)}`} className={currentPage === totalPages ? "page-button disabled" : "page-button"} aria-disabled={currentPage === totalPages}>Seguinte</a>
                 </nav>
               )}
             </>
