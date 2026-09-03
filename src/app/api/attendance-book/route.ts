@@ -13,7 +13,7 @@ async function getAuthorizedTurma(userId: string, turmaId: string, userRole?: st
   const isAdmin = userRole === "ADMIN";
 
   return prisma.turma.findFirst({
-    where: isAdmin ? { id: turmaId } : { id: turmaId, OR: [{ coordinator: { userId } }, { direccaoAssignments: { some: { teacher: { userId } } } }] },
+    where: isAdmin ? { id: turmaId } : { id: turmaId, teacherAssignments: { some: { teacher: { userId } } } },
     include: {
       subjects: { orderBy: { name: "asc" }, select: { name: true } },
       students: { where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, age: true } },

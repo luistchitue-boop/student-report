@@ -18,7 +18,7 @@ export default async function ControloPage({
   if (!session?.user?.id || (role !== "ADMIN" && role !== "DIRECCAO")) redirect("/");
 
   const turmas = await prisma.turma.findMany({
-    where: role === "ADMIN" ? undefined : { OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] },
+    where: role === "ADMIN" ? undefined : { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
     orderBy: { name: "asc" },
     select: { id: true, name: true, coordinator: { select: { id: true, name: true, userId: true } } },
   });

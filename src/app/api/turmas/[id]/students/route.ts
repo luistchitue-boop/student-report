@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
 
     const turma = await prisma.turma.findFirst({
-      where: isAdmin ? { id: turmaId } : { id: turmaId, OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] },
+      where: isAdmin ? { id: turmaId } : { id: turmaId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
       select: { id: true },
     });
     if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });

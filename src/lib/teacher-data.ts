@@ -57,10 +57,10 @@ export async function getCoordinatorTurmas(userId: string) {
 
   const coordinator = await prisma.teacher.findUnique({
     where: { userId },
-    include: { turmas: { orderBy: { name: "asc" }, include: turmaInclude }, direccaoAssignments: { include: { turma: { include: turmaInclude } } } },
+    include: { turmaAssignments: { include: { turma: { include: turmaInclude } } } },
   });
   if (!coordinator) return [];
-  const assignedTurmas = coordinator.role === "DIRECCAO" ? coordinator.direccaoAssignments.map((assignment) => assignment.turma) : coordinator.turmas;
+  const assignedTurmas = coordinator.turmaAssignments.map((assignment) => assignment.turma);
   return assignedTurmas.map(mapTurmaForCoordinator);
 }
 

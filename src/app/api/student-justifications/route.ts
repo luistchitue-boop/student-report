@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const absences = await prisma.absence.findMany({
       where: isAdmin
         ? { id: { in: uniqueAbsenceIds } }
-        : { id: { in: uniqueAbsenceIds }, student: { turma: { OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] } } },
+        : { id: { in: uniqueAbsenceIds }, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
       select: { id: true },
     });
 

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     const turma = await prisma.turma.findFirst({
-      where: { id: turmaId, OR: [{ coordinator: { userId: session.user.id } }, { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }] },
+      where: { id: turmaId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
       select: { id: true },
     });
 
