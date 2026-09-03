@@ -28,7 +28,7 @@ export async function GET() {
     prisma.teacher.findMany({
       where: { role: { not: "ADMIN" } },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, role: true, user: { select: { email: true } }, turmaAssignments: { select: { turmaId: true } } },
+      select: { id: true, name: true, role: true, user: { select: { email: true } }, turmaAssignments: { select: { turmaId: true, isMain: true } } },
     }),
     prisma.turma.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, coordinatorId: true } }),
   ]);
@@ -46,17 +46,20 @@ export async function PATCH(request: Request) {
     const requestedRole = body.role === "ADMIN" || body.role === "DIRECCAO" || body.role === "COORDENADOR" ? body.role : "";
     const requestedTurmaIds: unknown[] = Array.isArray(body.turmaIds) ? body.turmaIds : [];
     const turmaIds = [...new Set(requestedTurmaIds.filter((id): id is string => typeof id === "string"))];
-    const teacher = await prisma.teacher.findFirst({ where: { id: teacherId, role: { not: "ADMIN" } }, include: { turmaAssignments: { select: { turmaId: true } } } });
+    const requestedMainTurmaId = typeof body.mainTurmaId === "string" ? body.mainTurmaId : null;
+    const teacher = await prisma.teacher.findFirst({ where: { id: teacherId, role: { not: "ADMIN" } }, include: { turmaAssignments: { select: { turmaId: true, isMain: true } } } });
     if (!teacher) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
     if (!requestedRole) return NextResponse.json({ error: "Perfil inválido" }, { status: 400 });
 
     const validTurmas = await prisma.turma.findMany({ where: { id: { in: turmaIds } }, select: { id: true } });
     if (validTurmas.length !== turmaIds.length) return NextResponse.json({ error: "Uma ou mais turmas não foram encontradas" }, { status: 400 });
+    if (requestedMainTurmaId && (!turmaIds.includes(requestedMainTurmaId) || requestedRole !== "COORDENADOR")) return NextResponse.json({ error: "O coordenador principal deve estar atribuído à turma" }, { status: 400 });
 
     await prisma.$transaction(async (transaction) => {
       await transaction.teacher.update({ where: { id: teacher.id }, data: { role: requestedRole } });
       await transaction.teacherTurma.deleteMany({ where: { teacherId: teacher.id } });
-      if (turmaIds.length) await transaction.teacherTurma.createMany({ data: turmaIds.map((turmaId) => ({ teacherId: teacher.id, turmaId })) });
+      if (requestedMainTurmaId) await transaction.teacherTurma.updateMany({ where: { turmaId: requestedMainTurmaId }, data: { isMain: false } });
+      if (turmaIds.length) await transaction.teacherTurma.createMany({ data: turmaIds.map((turmaId) => ({ teacherId: teacher.id, turmaId, isMain: requestedRole === "COORDENADOR" && turmaId === requestedMainTurmaId })) });
     });
 
     await createActivityLog({
@@ -65,7 +68,7 @@ export async function PATCH(request: Request) {
       action: "Atualizou o perfil e as atribuições",
       entity: "Teacher",
       entityId: teacher.id,
-      details: { role: requestedRole, previousRole: teacher.role, turmaIds, previousTurmaIds: teacher.turmaAssignments.map((assignment) => assignment.turmaId) },
+      details: { role: requestedRole, mainTurmaId: requestedMainTurmaId, previousRole: teacher.role, turmaIds, previousTurmaIds: teacher.turmaAssignments.map((assignment) => assignment.turmaId) },
     });
 
     return NextResponse.json({ success: true, role: requestedRole, turmaIds });

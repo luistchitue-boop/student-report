@@ -1,0 +1,1 @@
+ALTER TABLE "TeacherTurma" ADD COLUMN "isMain" BOOLEAN NOT NULL DEFAULT false;

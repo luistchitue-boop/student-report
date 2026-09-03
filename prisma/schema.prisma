@@ -102,6 +102,7 @@ model DireccaoTurma {
 model TeacherTurma {
   teacherId String
   turmaId   String
+  isMain    Boolean  @default(false)
 
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   turma   Turma   @relation(fields: [turmaId], references: [id], onDelete: Cascade)

@@ -20,18 +20,24 @@ export default async function ControloPage({
   const turmas = await prisma.turma.findMany({
     where: role === "ADMIN" ? undefined : { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, coordinator: { select: { id: true, name: true, userId: true } } },
+    select: { id: true, name: true, teacherAssignments: { select: { isMain: true, teacher: { select: { id: true, name: true, userId: true, role: true } } } } },
   });
   const requestedTurmaId = searchParams ? (await searchParams).turmaId : undefined;
   const selectedTurma = turmas.find((turma) => turma.id === requestedTurmaId) ?? turmas[0];
   const periods = getWeeklyCoordinationPeriods(new Date().getFullYear());
-  const reports = selectedTurma?.coordinator
+  const mainCoordinator = selectedTurma?.teacherAssignments.find((assignment) => assignment.isMain && assignment.teacher.role === "COORDENADOR")?.teacher;
+  const reports = mainCoordinator
     ? await prisma.weeklyCoordinationReport.findMany({
-        where: { turmaId: selectedTurma.id, userId: selectedTurma.coordinator.userId, weekStart: { in: periods.map((period) => period.start) } },
-        select: { weekStart: true, title: true },
+        where: { turmaId: selectedTurma.id, userId: mainCoordinator.userId, weekStart: { in: periods.map((period) => period.start) } },
+        select: { weekStart: true, title: true, userId: true, user: { select: { name: true, email: true } } },
       })
     : [];
-  const reportsByWeek = new Map(reports.map((report) => [formatPeriodDate(report.weekStart), report]));
+  const reportsByWeek = new Map<string, typeof reports>();
+  for (const report of reports) {
+    const current = reportsByWeek.get(formatPeriodDate(report.weekStart)) ?? [];
+    reportsByWeek.set(formatPeriodDate(report.weekStart), [...current, report]);
+  }
+  const coordinatorNames = mainCoordinator?.name ?? "";
 
   return (
     <AppShell active="controlo">
@@ -64,29 +70,29 @@ export default async function ControloPage({
             <>
               <div className="controlo-summary">
                 <span>Coordenador</span>
-                <strong>{selectedTurma.coordinator?.name ?? "Sem coordenador atribuído"}</strong>
+                <strong>{coordinatorNames || "Sem coordenador atribuído"}</strong>
               </div>
               <div className="controlo-actions">
                 <ControloExportButton
                   turmaName={selectedTurma.name}
-                  coordinatorName={selectedTurma.coordinator?.name ?? "Sem coordenador atribuído"}
+                  coordinatorName={coordinatorNames || "Sem coordenador atribuído"}
                   year={new Date().getFullYear()}
                   periods={periods.map((period) => ({
                     start: period.start.toISOString(),
                     end: period.end.toISOString(),
                     isTest: period.isTest,
-                    title: reportsByWeek.get(period.key)?.title ?? "",
+                    title: reportsByWeek.get(period.key)?.map((report) => `${report.user.name ?? report.user.email}: ${report.title}`).join(", ") ?? "",
                     registered: reportsByWeek.has(period.key),
                   }))}
                 />
               </div>
               <div className="controlo-list">
                 {periods.map((period) => {
-                  const report = reportsByWeek.get(period.key);
+                  const periodReports = reportsByWeek.get(period.key) ?? [];
                   return (
                     <div key={period.key} className="controlo-period">
-                      <div><span className="controlo-period-date">{period.start.toLocaleDateString("pt-AO", { day: "2-digit", month: "short" })} - {period.end.toLocaleDateString("pt-AO", { day: "2-digit", month: "short" })}</span><strong>{report?.title ?? "Sem registo semanal"}</strong></div>
-                      <span className={`biometrico-status ${report ? "registado" : selectedTurma.coordinator ? "ausente" : "sem-coordenador"}`}>{report ? "Registado" : selectedTurma.coordinator ? "Ausente" : "Sem coordenador"}</span>
+                      <div><span className="controlo-period-date">{period.start.toLocaleDateString("pt-AO", { day: "2-digit", month: "short" })} - {period.end.toLocaleDateString("pt-AO", { day: "2-digit", month: "short" })}</span><strong>{periodReports.length ? periodReports.map((report) => `${report.user.name ?? report.user.email}: ${report.title}`).join(", ") : "Sem registo semanal"}</strong></div>
+                      <span className={`biometrico-status ${periodReports.length ? "registado" : mainCoordinator ? "ausente" : "sem-coordenador"}`}>{periodReports.length ? "Registado" : mainCoordinator ? "Ausente" : "Sem coordenador principal"}</span>
                     </div>
                   );
                 })}
