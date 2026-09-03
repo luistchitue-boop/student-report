@@ -26,9 +26,11 @@ export default async function ControloPage({
   const selectedTurma = turmas.find((turma) => turma.id === requestedTurmaId) ?? turmas[0];
   const periods = getWeeklyCoordinationPeriods(new Date().getFullYear());
   const mainCoordinator = selectedTurma?.teacherAssignments.find((assignment) => assignment.isMain && assignment.teacher.role === "COORDENADOR")?.teacher;
+  const reportRangeStart = periods[0]?.start;
+  const reportRangeEnd = periods[periods.length - 1]?.end;
   const reports = mainCoordinator
     ? await prisma.weeklyCoordinationReport.findMany({
-        where: { turmaId: selectedTurma.id, userId: mainCoordinator.userId, weekStart: { in: periods.map((period) => period.start) } },
+        where: { turmaId: selectedTurma.id, userId: mainCoordinator.userId, weekStart: { gte: reportRangeStart, lte: reportRangeEnd } },
         select: { weekStart: true, title: true, userId: true, user: { select: { name: true, email: true } } },
       })
     : [];

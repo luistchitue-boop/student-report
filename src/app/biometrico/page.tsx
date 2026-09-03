@@ -26,7 +26,7 @@ export default async function BiometricoPage({
   const turmaId = turmas.some((turma) => turma.id === requestedTurmaId) ? requestedTurmaId! : turmas[0]?.id;
   const periods = getWeeklyCoordinationPeriods(now.getFullYear());
   const reports = await prisma.weeklyCoordinationReport.findMany({
-    where: { userId: session.user.id, turmaId, weekStart: { in: periods.map((period) => period.start) } },
+    where: { userId: session.user.id, turmaId, weekStart: { gte: periods[0]?.start, lte: periods[periods.length - 1]?.end } },
     select: { id: true, weekStart: true, weekEnd: true, title: true, description: true },
   });
   const reportByWeek = new Map(reports.map((report) => [formatPeriodDate(report.weekStart), report]));
