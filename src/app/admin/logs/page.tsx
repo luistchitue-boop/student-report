@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+const PAGE_SIZE = 12;
 
 function formatDisplayName(name: string) {
   const trimmed = name.trim();
@@ -53,6 +54,7 @@ export default async function ActivityLogsPage({
   const turmaFilter = typeof params.turmaId === "string" ? params.turmaId : "";
   const fromFilter = typeof params.from === "string" ? params.from : "";
   const toFilter = typeof params.to === "string" ? params.to : "";
+  const requestedPage = Number(typeof params.page === "string" ? params.page : "1");
 
   const logs = await prisma.activityLog.findMany({
     orderBy: { createdAt: "desc" },
@@ -73,6 +75,24 @@ export default async function ActivityLogsPage({
 
     return true;
   });
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const visibleLogs = filteredLogs.slice(startIndex, startIndex + PAGE_SIZE);
+
+  const buildPageHref = (page: number) => {
+    const query = new URLSearchParams();
+    if (turmaFilter) query.set("turmaId", turmaFilter);
+    if (fromFilter) query.set("from", fromFilter);
+    if (toFilter) query.set("to", toFilter);
+    if (page > 1) query.set("page", String(page));
+    const queryString = query.toString();
+    return queryString ? `/admin/logs?${queryString}` : "/admin/logs";
+  };
+
+  const pageItems = totalPages <= 5
+    ? Array.from({ length: totalPages }, (_, index) => index + 1)
+    : [1, ...(currentPage > 3 ? ["ellipsis-start"] : []), ...Array.from({ length: 3 }, (_, index) => Math.max(2, Math.min(currentPage - 1, totalPages - 3) + index)), ...(currentPage < totalPages - 2 ? ["ellipsis-end"] : []), totalPages];
 
   const turmas = await prisma.turma.findMany({
     orderBy: { name: "asc" },
@@ -166,7 +186,7 @@ export default async function ActivityLogsPage({
             {filteredLogs.length === 0 ? (
               <p className="admin-status idle">Ainda não existem registos de atividade para este filtro.</p>
             ) : (
-              filteredLogs.map((entry) => {
+              visibleLogs.map((entry) => {
                 const details = entry.details && typeof entry.details === "object" ? (entry.details as Record<string, unknown>) : null;
 
                 return (
@@ -189,6 +209,17 @@ export default async function ActivityLogsPage({
               })
             )}
           </div>
+          {totalPages > 1 && (
+            <nav className="pagination" aria-label="Paginação dos registos de atividade">
+              <a href={buildPageHref(Math.max(1, currentPage - 1))} className={currentPage === 1 ? "page-button disabled" : "page-button"} aria-disabled={currentPage === 1}>Anterior</a>
+              <div className="pagination-compact" aria-label="Páginas dos registos">
+                {pageItems.map((page, index) => typeof page === "number" ? (
+                  <a key={`${page}-${index}`} href={buildPageHref(page)} className={page === currentPage ? "page-button active" : "page-button"} aria-current={page === currentPage ? "page" : undefined}>{page}</a>
+                ) : <span key={page} className="page-button page-ellipsis" aria-hidden="true">…</span>)}
+              </div>
+              <a href={buildPageHref(Math.min(totalPages, currentPage + 1))} className={currentPage === totalPages ? "page-button disabled" : "page-button"} aria-disabled={currentPage === totalPages}>Seguinte</a>
+            </nav>
+          )}
         </section>
       </main>
     </AppShell>
