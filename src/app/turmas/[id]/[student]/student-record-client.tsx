@@ -21,6 +21,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
   const [gradeEnd, setGradeEnd] = useState("");
   const [reportStart, setReportStart] = useState<string>("");
   const [reportEnd, setReportEnd] = useState<string>("");
+  const [behavior, setBehavior] = useState("");
   const [absenceStart, setAbsenceStart] = useState("");
   const [absenceEnd, setAbsenceEnd] = useState("");
   const [reportNote, setReportNote] = useState<string>("");
@@ -223,10 +224,11 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
           </div>
           <div style="text-align:right;color:#60716a;font-size:11px;line-height:1.6;"><strong style="display:block;color:#1b3d34;font-size:12px;">PERÍODO</strong>${escapeHtml(reportStart)} a ${escapeHtml(reportEnd)}</div>
         </div>
-        <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;margin:18px 0 28px;">
+        <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:12px;margin:18px 0 28px;">
           <div style="background:#1b3d34;color:#fff;border-radius:12px;padding:16px 18px;"><span style="display:block;color:#b9d7c4;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Aluno</span><span style="font-size:19px;font-weight:800;">${escapeHtml(student.name)}</span></div>
           <div style="background:#f1f7f2;border:1px solid #d8e7dc;border-radius:12px;padding:16px 18px;"><span style="display:block;color:#5b6d68;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Turma</span><span style="font-size:16px;font-weight:800;color:#1b3d34;">${escapeHtml(turma.name)}</span></div>
           <div style="background:#fff7df;border:1px solid #f0dfaa;border-radius:12px;padding:16px 18px;"><span style="display:block;color:#806b2c;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Média geral</span><span style="font-size:24px;font-weight:800;color:#6d581e;">${normalizedGrades.length ? (normalizedGrades.reduce((total, grade) => total + grade.value, 0) / normalizedGrades.length).toFixed(1) : "0.0"}</span></div>
+          <div style="background:#edf4ee;border:1px solid #cfe1d2;border-radius:12px;padding:16px 18px;"><span style="display:block;color:#5b6d68;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Comportamento</span><span style="font-size:16px;font-weight:800;color:#1b3d34;">${escapeHtml(behavior || "Não informado")}</span></div>
         </div>
         <h2 style="color:#1b3d34;font-size:17px;margin:24px 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Notas</h2>
         <table style="width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid #d8e7dc;border-radius:10px;margin-top:10px;"><thead><tr><th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Disciplina</th><th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Nota</th></tr></thead><tbody>${normalizedGrades.length ? normalizedGrades.map((grade, index) => `<tr style="background:${index % 2 ? "#fbfdfb" : "#ffffff"};"><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(grade.subject)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;font-weight:800;color:#1b3d34;">${grade.value.toFixed(1)}</td></tr>`).join("") : `<tr><td colspan="2" style="padding:12px;">Sem notas registadas.</td></tr>`}</tbody></table>
@@ -398,6 +400,17 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
                     {reportNote.length}/90 caracteres
                   </div>
                 </div>
+
+                <label className="report-behavior-field">
+                  Comportamento
+                  <select value={behavior} onChange={(event) => setBehavior(event.target.value)}>
+                    <option value="">Selecione uma opção</option>
+                    <option value="Muito bom">Muito bom</option>
+                    <option value="Bom">Bom</option>
+                    <option value="Razoavel">Razoavel</option>
+                    <option value="Mau">Mau</option>
+                  </select>
+                </label>
 
                 <div style={{ display: "grid", gap: "0.75rem" }}>
                   <button type="button" onClick={generatePdfReport} disabled={!reportStart || !reportEnd} style={{ padding: "0.9rem 1.2rem", background: !reportStart || !reportEnd ? "#a7b7af" : "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: !reportStart || !reportEnd ? "not-allowed" : "pointer" }}>

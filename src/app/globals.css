@@ -356,6 +356,10 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .weekly-period-selector select:hover { border-color:#8fb59a; }
 .weekly-period-selector select:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); outline:none; }
 .weekly-period-selector select option:disabled { color:#9aa59d; }
+.report-behavior-field { display:grid; gap:0.45rem; color:#31413d; font-size:0.8rem; font-weight:700; }
+.report-behavior-field select { width:100%; min-height:2.7rem; padding:0.65rem 0.8rem; border:1px solid #bfd2c3; border-radius:10px; background:#fff; color:var(--navy); font-size:0.82rem; font-weight:700; cursor:pointer; }
+.report-behavior-field select:hover { border-color:#8fb59a; }
+.report-behavior-field select:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); outline:none; }
 .weekly-period-selector input { min-height:2.45rem; padding:0.55rem 0.65rem; border:1px solid #ccd9ce; border-radius:9px; background:#fff; outline:none; }
 .weekly-period-selector input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
 .record-warning { color:#a14a3a; }
