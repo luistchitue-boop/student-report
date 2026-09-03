@@ -11,7 +11,7 @@ const PAGE_SIZE = 6;
 export default async function TurmasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string | string[] | undefined }>;
+  searchParams: Promise<{ page?: string | string[] | undefined; q?: string | string[] | undefined }>;
 }) {
   const session = await auth();
 
@@ -19,8 +19,14 @@ export default async function TurmasPage({
     redirect("/auth/signin");
   }
 
-  const turmas = await getCoordinatorTurmas(session.user.id);
-  const rawPage = (await searchParams)?.page;
+  const allTurmas = await getCoordinatorTurmas(session.user.id);
+  const params = await searchParams;
+  const rawPage = params?.page;
+  const rawQuery = params?.q;
+  const query = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery ?? "").trim();
+  const turmas = query
+    ? allTurmas.filter((turma) => turma.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
+    : allTurmas;
   const requestedPage = Number(Array.isArray(rawPage) ? rawPage[0] : rawPage ?? "1");
   const totalPages = Math.max(1, Math.ceil(turmas.length / PAGE_SIZE));
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
@@ -29,7 +35,13 @@ export default async function TurmasPage({
   const totalStudents = turmas.reduce((sum, turma) => sum + turma.students, 0);
   const averageStudents = turmas.length ? Math.round(totalStudents / turmas.length) : 0;
 
-  const buildPageHref = (page: number) => (page === 1 ? "/turmas" : `/turmas?page=${page}`);
+  const buildPageHref = (page: number) => {
+    const search = new URLSearchParams();
+    if (query) search.set("q", query);
+    if (page > 1) search.set("page", String(page));
+    const queryString = search.toString();
+    return queryString ? `/turmas?${queryString}` : "/turmas";
+  };
   const getMobilePageItems = (currentPage: number, totalPages: number) => {
     if (totalPages <= 4) {
       return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -99,6 +111,15 @@ export default async function TurmasPage({
             <p className="eyebrow">VISÃO GERAL</p>
             <h2>Gestão de turmas</h2>
           </div>
+
+          <form method="get" className="turma-search-form">
+            <label htmlFor="turma-search">Pesquisar turma</label>
+            <div className="turma-search-controls">
+              <input id="turma-search" name="q" type="search" defaultValue={query} placeholder="Ex.: 10CEJ" />
+              <button type="submit" className="turma-search-button">Pesquisar</button>
+              {query && <Link href="/turmas" className="turma-search-clear">Limpar</Link>}
+            </div>
+          </form>
 
           <div className="turma-toolbar-actions">
             <div className="page-meta">
