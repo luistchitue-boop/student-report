@@ -14,6 +14,8 @@ const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 
 export function StudentRecordClient({ turma, student }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> } }) {
   const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const [tab, setTab] = useState<"notas" | "faltas" | "justificativos" | "relatorio" | "contactos">("relatorio");
   const [gradeStart, setGradeStart] = useState("");
   const [gradeEnd, setGradeEnd] = useState("");
@@ -30,6 +32,12 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
   const [justificationTitle, setJustificationTitle] = useState("");
   const [justificationNotes, setJustificationNotes] = useState("");
   const [showJustificationModal, setShowJustificationModal] = useState(false);
+
+  function isFuturePeriod(periodKey: string) {
+    const period = weeklyPeriods.find((item) => item.key === periodKey);
+    if (!period) return false;
+    return period.start.getTime() > new Date(`${todayKey}T12:00:00`).getTime();
+  }
 
   useEffect(() => {
     if (tab !== "notas" && tab !== "faltas" && tab !== "justificativos") return;
@@ -274,7 +282,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             {tab === "notas" && (
               <div className="student-record-list-panel">
                 <div className="weekly-period-selector">
-                  <label>Período semanal<select value={gradeStart} onChange={(event) => { const period = weeklyPeriods.find((item) => item.key === event.target.value); setGradeStart(event.target.value); setGradeEnd(period?.end.toISOString().slice(0, 10) ?? ""); }}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}</option>)}</select></label>
+                  <label>Período semanal<select value={gradeStart} onChange={(event) => { const period = weeklyPeriods.find((item) => item.key === event.target.value); setGradeStart(event.target.value); setGradeEnd(period?.end.toISOString().slice(0, 10) ?? ""); }}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
                 </div>
                 {!gradeStart || !gradeEnd ? <p className="student-record-empty">Selecione o período semanal para ver as notas.</p> : !validGradePeriod ? <p className="student-record-empty record-warning">O período deve ter exatamente 7 dias.</p> : <>
                 <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO ACADÉMICO</p><h2>Notas registadas</h2></div><span>{grades.length} registo(s)</span></div>
@@ -296,7 +304,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
                 {recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : absences.length ? absences.map((absence) => (
                   <div className="student-record-row absence" key={absence.id}>
                     <label>Disciplina<select value={absence.subject} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, subject: event.target.value } : item))}>{turma.subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select></label>
-                    <label>Dia<input type="date" value={absence.dia.slice(0, 10)} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, dia: event.target.value } : item))} /></label>
+                    <label>Dia<input type="date" max={todayKey} value={absence.dia.slice(0, 10)} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, dia: event.target.value } : item))} /></label>
                     <label>Tempo<select value={absence.tempo} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, tempo: event.target.value } : item))}>{tempos.map((tempo) => <option key={tempo} value={tempo}>{tempo}</option>)}</select></label>
                     <label>Tipo<select value={absence.faultType} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, faultType: event.target.value } : item))}><option value="FALTA_DE_MATERIAL">Falta de material</option><option value="AUSENCIA_NA_SALA">Ausência na sala</option></select></label>
                     <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("absence", absence); setStatusMessage("Falta atualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível atualizar a falta."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("absence", absence.id); setAbsences((current) => current.filter((item) => item.id !== absence.id)); setStatusMessage("Falta eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a falta."); } }}>Eliminar</button></div>
@@ -309,8 +317,8 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             {tab === "justificativos" && (
               <div className="student-record-list-panel">
                 <div className="weekly-period-selector">
-                  <label>Início do intervalo<input type="date" value={justificationStart} onChange={(event) => setJustificationStart(event.target.value)} /></label>
-                  <label>Fim do intervalo<input type="date" value={justificationEnd} onChange={(event) => setJustificationEnd(event.target.value)} /></label>
+                  <label>Início do intervalo<input type="date" max={todayKey} value={justificationStart} onChange={(event) => setJustificationStart(event.target.value)} /></label>
+                  <label>Fim do intervalo<input type="date" max={todayKey} value={justificationEnd} onChange={(event) => setJustificationEnd(event.target.value)} /></label>
                 </div>
                 {!justificationStart || !justificationEnd ? <p className="student-record-empty">Selecione o intervalo para ver as faltas.</p> : recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : (
                   <>

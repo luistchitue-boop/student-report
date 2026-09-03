@@ -351,7 +351,11 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .student-record-panel a { overflow-wrap:anywhere; }
 .student-record-list-panel { display:grid; gap:0.8rem; }
 .weekly-period-selector { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.75rem; padding:0.85rem; border:1px solid #e1ebe2; border-radius:15px; background:#f6faf6; }
-.weekly-period-selector label { display:grid; gap:0.35rem; color:#53645b; font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; }
+.weekly-period-selector label { display:grid; gap:0.45rem; color:#53645b; font-size:0.7rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; }
+.weekly-period-selector select { width:100%; min-height:2.7rem; padding:0.65rem 0.8rem; border:1px solid #bfd2c3; border-radius:10px; background:#fff; color:var(--navy); font-size:0.82rem; font-weight:700; cursor:pointer; }
+.weekly-period-selector select:hover { border-color:#8fb59a; }
+.weekly-period-selector select:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); outline:none; }
+.weekly-period-selector select option:disabled { color:#9aa59d; }
 .weekly-period-selector input { min-height:2.45rem; padding:0.55rem 0.65rem; border:1px solid #ccd9ce; border-radius:9px; background:#fff; outline:none; }
 .weekly-period-selector input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,0.12); }
 .record-warning { color:#a14a3a; }
