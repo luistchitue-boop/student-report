@@ -39,6 +39,30 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
     return period.start.getTime() > new Date(`${todayKey}T12:00:00`).getTime();
   }
 
+  function isCurrentPeriod(periodKey: string) {
+    const period = weeklyPeriods.find((item) => item.key === periodKey);
+    if (!period) return false;
+    const todayTime = new Date(`${todayKey}T12:00:00`).getTime();
+    return period.start.getTime() <= todayTime && period.end.getTime() >= todayTime;
+  }
+
+  function periodStatus(periodKey: string) {
+    if (isCurrentPeriod(periodKey)) return "";
+    return isFuturePeriod(periodKey) ? " (futuro)" : " (passado)";
+  }
+
+  function selectJustificationPeriod(value: string) {
+    const period = weeklyPeriods.find((item) => item.key === value);
+    setJustificationStart(value);
+    setJustificationEnd(period?.end.toISOString().slice(0, 10) ?? "");
+  }
+
+  function selectReportPeriod(value: string) {
+    const period = weeklyPeriods.find((item) => item.key === value);
+    setReportStart(value);
+    setReportEnd(period?.end.toISOString().slice(0, 10) ?? "");
+  }
+
   useEffect(() => {
     if (tab !== "notas" && tab !== "faltas" && tab !== "justificativos") return;
     if (tab === "notas" && (!gradeStart || !gradeEnd)) {
@@ -317,8 +341,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             {tab === "justificativos" && (
               <div className="student-record-list-panel">
                 <div className="weekly-period-selector">
-                  <label>Início do intervalo<input type="date" max={todayKey} value={justificationStart} onChange={(event) => setJustificationStart(event.target.value)} /></label>
-                  <label>Fim do intervalo<input type="date" max={todayKey} value={justificationEnd} onChange={(event) => setJustificationEnd(event.target.value)} /></label>
+                  <label>Período semanal<select value={justificationStart} onChange={(event) => selectJustificationPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={!isCurrentPeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{periodStatus(period.key)}</option>)}</select></label>
                 </div>
                 {!justificationStart || !justificationEnd ? <p className="student-record-empty">Selecione o intervalo para ver as faltas.</p> : recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : (
                   <>
@@ -339,16 +362,8 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
 
             {tab === "relatorio" && (
               <div style={{ display: "grid", gap: "1rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", background: "#f6f9f5", border: "1px solid #dfe5df", padding: "0.9rem" }}>
-                  <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
-                    Data início do relatório
-                    <input type="date" value={reportStart} onChange={(event) => setReportStart(event.target.value)} style={{ padding: "0.7rem 0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8" }} />
-                  </label>
-
-                  <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
-                    Data fim do relatório
-                    <input type="date" value={reportEnd} onChange={(event) => setReportEnd(event.target.value)} style={{ padding: "0.7rem 0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8" }} />
-                  </label>
+                <div className="weekly-period-selector">
+                  <label>Período semanal<select value={reportStart} onChange={(event) => selectReportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={!isCurrentPeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{periodStatus(period.key)}</option>)}</select></label>
                 </div>
 
                 <div style={{ display: "grid", gap: "0.55rem" }}>
