@@ -21,6 +21,8 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
   const [gradeEnd, setGradeEnd] = useState("");
   const [reportStart, setReportStart] = useState<string>("");
   const [reportEnd, setReportEnd] = useState<string>("");
+  const [absenceStart, setAbsenceStart] = useState("");
+  const [absenceEnd, setAbsenceEnd] = useState("");
   const [reportNote, setReportNote] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [grades, setGrades] = useState<GradeRecord[]>([]);
@@ -57,6 +59,12 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
     setJustificationEnd(period?.end.toISOString().slice(0, 10) ?? "");
   }
 
+  function selectAbsencePeriod(value: string) {
+    const period = weeklyPeriods.find((item) => item.key === value);
+    setAbsenceStart(value);
+    setAbsenceEnd(period?.end.toISOString().slice(0, 10) ?? "");
+  }
+
   function selectReportPeriod(value: string) {
     const period = weeklyPeriods.find((item) => item.key === value);
     setReportStart(value);
@@ -82,10 +90,15 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
       setRecordsLoading(false);
       return;
     }
+    if (tab === "faltas" && (!absenceStart || !absenceEnd)) {
+      setAbsences([]);
+      setRecordsLoading(false);
+      return;
+    }
     let cancelled = false;
     setRecordsLoading(true);
-    const from = tab === "notas" ? gradeStart : tab === "justificativos" ? justificationStart : "2000-01-01";
-    const to = tab === "notas" ? gradeEnd : tab === "justificativos" ? justificationEnd : "2100-12-31";
+    const from = tab === "notas" ? gradeStart : tab === "faltas" ? absenceStart : justificationStart;
+    const to = tab === "notas" ? gradeEnd : tab === "faltas" ? absenceEnd : justificationEnd;
     fetch(`/api/student-record?studentId=${encodeURIComponent(student.id)}&from=${from}&to=${to}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("Não foi possível carregar os registos.");
@@ -104,7 +117,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
         if (!cancelled) setRecordsLoading(false);
       });
     return () => { cancelled = true; };
-  }, [gradeEnd, gradeStart, justificationEnd, justificationStart, student.id, tab]);
+  }, [absenceEnd, absenceStart, gradeEnd, gradeStart, justificationEnd, justificationStart, student.id, tab]);
 
   async function justifySelectedAbsences() {
     if (!selectedAbsenceIds.length || !justificationTitle.trim() || !justificationNotes.trim()) {
@@ -324,8 +337,11 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
 
             {tab === "faltas" && (
               <div className="student-record-list-panel">
+                <div className="weekly-period-selector">
+                  <label>Período semanal<select value={absenceStart} onChange={(event) => selectAbsencePeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
+                </div>
                 <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO DE ASSIDUIDADE</p><h2>Faltas registadas</h2></div><span>{absences.length} registo(s)</span></div>
-                {recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : absences.length ? absences.map((absence) => (
+                {!absenceStart || !absenceEnd ? <p className="student-record-empty">Selecione o período semanal para ver as faltas.</p> : recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : absences.length ? absences.map((absence) => (
                   <div className="student-record-row absence" key={absence.id}>
                     <label>Disciplina<select value={absence.subject} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, subject: event.target.value } : item))}>{turma.subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select></label>
                     <label>Dia<input type="date" max={todayKey} value={absence.dia.slice(0, 10)} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, dia: event.target.value } : item))} /></label>
