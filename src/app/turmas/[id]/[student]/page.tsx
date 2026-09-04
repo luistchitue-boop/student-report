@@ -24,5 +24,5 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  return <StudentRecordClient turma={turma} student={studentRecord} />;
+  return <StudentRecordClient turma={turma} student={studentRecord} canEdit={session.user.role === "ADMIN" || session.user.role === "COORDENADOR"} />;
 }

@@ -90,12 +90,16 @@ export default async function TurmaDetailPage({
           <div className="detail-panel-header">
             <div className="detail-panel-actions">
               <span className="detail-count">{turma.students} alunos</span>
-              <Link href={`/turmas/${turma.id}/livro_de_ponto`} className="attendance-book-button">
-                Livro de ponto
-              </Link>
-              <Link href={`/turmas/${turma.id}/mini_pauta`} className="mini-pauta-button">
-                Mini pauta
-              </Link>
+              {(session.user.role === "ADMIN" || session.user.role === "COORDENADOR") && (
+                <>
+                  <Link href={`/turmas/${turma.id}/livro_de_ponto`} className="attendance-book-button">
+                    Livro de ponto
+                  </Link>
+                  <Link href={`/turmas/${turma.id}/mini_pauta`} className="mini-pauta-button">
+                    Mini pauta
+                  </Link>
+                </>
+              )}
               <TurmaDisciplinasClient turmaId={turma.id} initialSubjects={turma.subjects} isAdmin={session.user.role === "ADMIN"} />
               <Link href={`/turmas/${turma.id}/novo_aluno`} className="new-student-button">
                 Novo aluno
