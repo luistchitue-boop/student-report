@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { Resend } from "resend";
 import { jsPDF } from "jspdf";
 import { auth } from "@/auth";
+import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 declare global {
   var prismaAdminReports: PrismaClient | undefined;
@@ -122,6 +123,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     const rawTurmaIds = Array.isArray(body.turmaIds) ? body.turmaIds : [];
     const turmaIds = rawTurmaIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
+    const periodKey = typeof body.periodKey === "string" ? body.periodKey : "";
+    const period = getWeeklyCoordinationPeriods(new Date().getFullYear()).find((item) => item.key === periodKey);
+
+    if (!period) {
+      return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
+    }
+
+    if (period.key > formatPeriodDate(new Date())) {
+      return NextResponse.json({ error: "Não é possível enviar relatórios de um período futuro." }, { status: 400 });
+    }
 
     if (!turmaIds.length) {
       return NextResponse.json({ error: "Selecione pelo menos uma turma" }, { status: 400 });
@@ -133,8 +144,8 @@ export async function POST(request: Request) {
         students: {
           include: {
             parents: { select: { id: true, name: true, email: true } },
-            grades: true,
-            absences: true,
+            grades: { where: { term: `Semanal:${formatPeriodDate(period.start)}:${formatPeriodDate(period.end)}` } },
+            absences: { where: { dia: { gte: new Date(`${formatPeriodDate(period.start)}T00:00:00Z`), lte: new Date(`${formatPeriodDate(period.end)}T23:59:59.999Z`) } } },
           },
         },
       },

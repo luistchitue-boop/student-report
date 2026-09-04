@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 export function RelatoriosClient({
   turmas,
@@ -12,9 +13,15 @@ export function RelatoriosClient({
     subjects: string[];
   }>;
 }) {
+  const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
+  const [selectedPeriod, setSelectedPeriod] = useState("");
   const [selectedTurmas, setSelectedTurmas] = useState<string[]>([]);
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+
+  function isFuturePeriod(periodKey: string) {
+    return periodKey > formatPeriodDate(new Date());
+  }
 
   function toggleTurma(turmaId: string) {
     setSelectedTurmas((current) =>
@@ -25,6 +32,12 @@ export function RelatoriosClient({
   }
 
   async function handleSendReports() {
+    if (!selectedPeriod) {
+      setStatus("error");
+      setMessage("Selecione um período semanal antes de escolher as turmas.");
+      return;
+    }
+
     if (!selectedTurmas.length) {
       setStatus("error");
       setMessage("Selecione pelo menos uma turma antes de enviar.");
@@ -38,7 +51,7 @@ export function RelatoriosClient({
       const response = await fetch("/api/admin/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turmaIds: selectedTurmas }),
+        body: JSON.stringify({ turmaIds: selectedTurmas, periodKey: selectedPeriod }),
       });
 
       const data = await response.json();
@@ -65,12 +78,26 @@ export function RelatoriosClient({
         </div>
       </div>
 
+      <div className="weekly-period-selector admin-report-period">
+        <label>Período semanal
+          <select value={selectedPeriod} onChange={(event) => { setSelectedPeriod(event.target.value); setSelectedTurmas([]); setMessage(""); setStatus("idle"); }}>
+            <option value="">Selecione um período</option>
+            {weeklyPeriods.map((period) => (
+              <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>
+                {period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <div className="admin-turma-panel">
         <div className="admin-turma-grid">
           {turmas.map((turma) => (
-            <label key={turma.id} className={`admin-checkbox ${selectedTurmas.includes(turma.id) ? "selected" : ""}`}>
+            <label key={turma.id} className={`admin-checkbox ${selectedTurmas.includes(turma.id) ? "selected" : ""} ${!selectedPeriod ? "disabled" : ""}`}>
               <input
                 type="checkbox"
+                disabled={!selectedPeriod}
                 checked={selectedTurmas.includes(turma.id)}
                 onChange={() => toggleTurma(turma.id)}
               />
@@ -88,7 +115,7 @@ export function RelatoriosClient({
           className="admin-submit"
           type="button"
           onClick={handleSendReports}
-          disabled={status === "sending" || selectedTurmas.length === 0}
+          disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}
         >
           {status === "sending" ? "A enviar..." : "Enviar relatórios"}
         </button>
@@ -114,6 +141,10 @@ export function RelatoriosClient({
           padding: 1.2rem;
         }
 
+        .admin-report-period {
+          max-width: 520px;
+        }
+
         .admin-turma-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -135,6 +166,11 @@ export function RelatoriosClient({
         .admin-checkbox.selected {
           border-color: #1d4ed8;
           background: #eff6ff;
+        }
+
+        .admin-checkbox.disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
         }
 
         .admin-checkbox input {
