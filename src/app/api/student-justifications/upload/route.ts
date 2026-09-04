@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
     const safeName = uploadedFile.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
     const result = await put(`justifications/${validAbsenceIds[0]}/${crypto.randomUUID()}-${safeName}`, uploadedFile, {
-      access: "private",
+      access: "public",
       addRandomSuffix: true,
       contentType: uploadedFile.type,
       token: process.env.BLOB_READ_WRITE_TOKEN,

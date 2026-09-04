@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       absenceIds: justifiedAbsences.filter((absence) => absence.justified).map((absence) => absence.id),
       title,
       notes,
-      attachment: justifiedAbsences[0]?.attachmentUrl ? { url: justifiedAbsences[0].attachmentUrl, name: justifiedAbsences[0].attachmentName } : null,
+      attachment: justifiedAbsences[0]?.attachmentUrl ? { name: justifiedAbsences[0].attachmentName, hasAttachment: true } : null,
     });
   } catch (error) {
     console.error("Justification save error:", error);

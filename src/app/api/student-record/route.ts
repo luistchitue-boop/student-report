@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
         justified: absence.justified,
         justificationTitle: absence.justificationTitle ?? "",
         justificationNotes: absence.justificationNotes ?? "",
-        attachmentUrl: absence.attachmentUrl,
+        hasAttachment: Boolean(absence.attachmentUrl),
         attachmentName: absence.attachmentName,
         createdAt: absence.createdAt.toISOString(),
       })),

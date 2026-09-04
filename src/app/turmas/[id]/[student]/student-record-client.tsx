@@ -9,7 +9,7 @@ import { ContactosTab } from "./contactos-tab";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
-type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; attachmentUrl?: string | null; attachmentName?: string | null; createdAt: string };
+type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; hasAttachment?: boolean; attachmentName?: string | null; createdAt: string };
 const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 
 export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> }; canEdit: boolean }) {
@@ -148,7 +148,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Não foi possível justificar as faltas.");
     const justifiedIds: string[] = Array.isArray(result.absenceIds) ? result.absenceIds : [];
-    setAbsences((current) => current.map((absence) => justifiedIds.includes(absence.id) ? { ...absence, justified: true, justificationTitle: result.title ?? justificationTitle, justificationNotes: result.notes ?? justificationNotes, attachmentUrl: result.attachment?.url ?? absence.attachmentUrl, attachmentName: result.attachment?.name ?? absence.attachmentName } : absence));
+    setAbsences((current) => current.map((absence) => justifiedIds.includes(absence.id) ? { ...absence, justified: true, justificationTitle: result.title ?? justificationTitle, justificationNotes: result.notes ?? justificationNotes, hasAttachment: result.attachment?.hasAttachment ?? absence.hasAttachment, attachmentName: result.attachment?.name ?? absence.attachmentName } : absence));
     setSelectedAbsenceIds([]);
     setShowJustificationModal(false);
     setJustificationTitle("");
@@ -388,7 +388,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                       <label key={absence.id} className={`justification-row ${absence.justified ? "justified" : ""}`}>
                         <input type="checkbox" checked={selectedAbsenceIds.includes(absence.id)} disabled={!canEdit || absence.justified} onChange={() => setSelectedAbsenceIds((current) => current.includes(absence.id) ? current.filter((id) => id !== absence.id) : [...current, absence.id])} />
                         <span><strong>{absence.subject}</strong><small>{absence.dia.slice(0, 10)} · {absence.tempo} · {absence.faultType === "AUSENCIA_NA_SALA" ? "Ausência na sala" : "Falta de material"}</small></span>
-                        <span className="justification-status">{absence.justified ? "Justificada" : "Injustificada"}{absence.attachmentUrl && <a href={`/api/student-justifications/${absence.id}/attachment`} target="_blank" rel="noreferrer" className="justification-attachment-link">Comprovativo</a>}</span>
+                        <span className="justification-status">{absence.justified ? "Justificada" : "Injustificada"}{absence.hasAttachment && <a href={`/api/student-justifications/${absence.id}/attachment`} target="_blank" rel="noreferrer" className="justification-attachment-link">Comprovativo</a>}</span>
                       </label>
                     )) : <p className="student-record-empty">Nenhuma falta neste intervalo.</p>}
                     {canEdit && <div className="justification-footer"><span>{selectedAbsenceIds.length} falta(s) selecionada(s)</span><button type="button" className="mini-pauta-save-button" disabled={!selectedAbsenceIds.length} onClick={() => setShowJustificationModal(true)}>Justificar</button></div>}
