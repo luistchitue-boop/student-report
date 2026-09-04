@@ -134,7 +134,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
       uploadData.append("file", justificationFile);
       uploadData.append("absenceIds", JSON.stringify(selectedAbsenceIds));
       const uploadResponse = await fetch("/api/student-justifications/upload", { method: "POST", body: uploadData });
-      const blob = await uploadResponse.json();
+      const blob = await uploadResponse.json().catch(() => ({}));
       if (!uploadResponse.ok) throw new Error(blob.error ?? "Não foi possível carregar o comprovativo.");
       attachment = {
         url: blob.url,

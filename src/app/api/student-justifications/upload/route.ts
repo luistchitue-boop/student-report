@@ -21,12 +21,18 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file");
     const rawAbsenceIds = formData.get("absenceIds");
-    const absenceIds = typeof rawAbsenceIds === "string" ? JSON.parse(rawAbsenceIds) as unknown : [];
+    let absenceIds: unknown = [];
+    try {
+      absenceIds = typeof rawAbsenceIds === "string" ? JSON.parse(rawAbsenceIds) as unknown : [];
+    } catch {
+      return NextResponse.json({ error: "A seleção de faltas é inválida." }, { status: 400 });
+    }
     const validAbsenceIds = Array.isArray(absenceIds) ? absenceIds.filter((id): id is string => typeof id === "string") : [];
 
-    if (!(file instanceof File)) return NextResponse.json({ error: "Selecione um comprovativo." }, { status: 400 });
-    if (!allowedContentTypes.includes(file.type)) return NextResponse.json({ error: "Formato não suportado. Use PDF, JPG ou PNG." }, { status: 400 });
-    if (file.size > 10 * 1024 * 1024) return NextResponse.json({ error: "O comprovativo não pode exceder 10 MB." }, { status: 400 });
+    if (!file || typeof file !== "object" || typeof (file as File).arrayBuffer !== "function") return NextResponse.json({ error: "Selecione um comprovativo." }, { status: 400 });
+    const uploadedFile = file as File;
+    if (!allowedContentTypes.includes(uploadedFile.type)) return NextResponse.json({ error: "Formato não suportado. Use PDF, JPG ou PNG." }, { status: 400 });
+    if (uploadedFile.size > 10 * 1024 * 1024) return NextResponse.json({ error: "O comprovativo não pode exceder 10 MB." }, { status: 400 });
     if (!validAbsenceIds.length) return NextResponse.json({ error: "Selecione pelo menos uma falta." }, { status: 400 });
 
     const isAdmin = session.user.role === "ADMIN";
@@ -37,17 +43,17 @@ export async function POST(request: Request) {
     });
     if (accessibleCount !== new Set(validAbsenceIds).size) throw new Error("Uma ou mais faltas não foram encontradas.");
 
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
-    const result = await put(`justifications/${validAbsenceIds[0]}/${crypto.randomUUID()}-${safeName}`, file, {
+    const safeName = uploadedFile.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
+    const result = await put(`justifications/${validAbsenceIds[0]}/${crypto.randomUUID()}-${safeName}`, uploadedFile, {
       access: "private",
       addRandomSuffix: true,
-      contentType: file.type,
+      contentType: uploadedFile.type,
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
 
     return NextResponse.json(result);
   } catch (error) {
     console.error("Justification attachment upload error:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Não foi possível preparar o upload." }, { status: 400 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Não foi possível preparar o upload." }, { status: 500 });
   }
 }
