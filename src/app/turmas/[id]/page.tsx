@@ -14,7 +14,7 @@ export default async function TurmaDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ page?: string | string[] | undefined }>;
+  searchParams: Promise<{ page?: string | string[] | undefined; q?: string | string[] | undefined }>;
 }) {
   const session = await auth();
 
@@ -29,14 +29,26 @@ export default async function TurmaDetailPage({
     notFound();
   }
 
-  const rawPage = (await searchParams)?.page;
+  const resolvedSearchParams = await searchParams;
+  const rawPage = resolvedSearchParams?.page;
+  const rawQuery = resolvedSearchParams?.q;
+  const query = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery ?? "").trim();
+  const filteredStudents = query
+    ? turma.roster.filter((student: { name: string }) => student.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
+    : turma.roster;
   const requestedPage = Number(Array.isArray(rawPage) ? rawPage[0] : rawPage ?? "1");
-  const totalPages = Math.max(1, Math.ceil(turma.roster.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
   const startIndex = (currentPage - 1) * PAGE_SIZE;
-  const visibleStudents = turma.roster.slice(startIndex, startIndex + PAGE_SIZE);
+  const visibleStudents = filteredStudents.slice(startIndex, startIndex + PAGE_SIZE);
 
-  const buildPageHref = (page: number) => (page === 1 ? `/turmas/${turma.id}` : `/turmas/${turma.id}?page=${page}`);
+  const buildPageHref = (page: number) => {
+    const search = new URLSearchParams();
+    if (query) search.set("q", query);
+    if (page > 1) search.set("page", String(page));
+    const queryString = search.toString();
+    return queryString ? `/turmas/${turma.id}?${queryString}` : `/turmas/${turma.id}`;
+  };
   const getMobilePageItems = (currentPage: number, totalPages: number) => {
     if (totalPages <= 4) {
       return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -107,11 +119,21 @@ export default async function TurmaDetailPage({
             </div>
           </div>
 
+          <form method="get" className="student-search-form">
+            <label htmlFor="student-search">Pesquisar aluno</label>
+            <div className="student-search-controls">
+              <input id="student-search" name="q" type="search" defaultValue={query} placeholder="Ex.: Alicia Manuela" />
+              <button type="submit" className="student-search-button">Pesquisar</button>
+              {query && <Link href={`/turmas/${turma.id}`} className="student-search-clear">Limpar</Link>}
+            </div>
+          </form>
+
           <div className="student-grid" aria-label={`Lista de alunos da turma ${turma.name}`}>
             {visibleStudents.map((student: { id: string; name: string; age: number; attendance: string; active: boolean; parents: unknown[] }) => (
               <StudentCardClient key={student.id} turmaId={turma.id} student={student} />
             ))}
           </div>
+          {!visibleStudents.length && <p className="student-search-empty">Nenhum aluno encontrado.</p>}
         </section>
 
         {totalPages > 1 && (
