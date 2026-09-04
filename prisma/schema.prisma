@@ -174,6 +174,11 @@ model Absence {
   justified  Boolean   @default(false)
   justificationTitle String?
   justificationNotes String? @db.Text
+  attachmentUrl String?
+  attachmentPathname String?
+  attachmentName String?
+  attachmentContentType String?
+  attachmentSize Int?
   createdAt  DateTime  @default(now())
 
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)

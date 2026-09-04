@@ -381,6 +381,8 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .justification-row small { color:#746b55; font-size:0.72rem; overflow-wrap:anywhere; }
 .justification-row.justified { border-color:#cfe3d2; background:#f1f8f2; cursor:default; }
 .justification-status { padding:0.35rem 0.55rem; border-radius:999px; background:#f6e9c6; color:#806b2c; font-size:0.7rem; font-weight:800; white-space:nowrap; }
+.justification-attachment-link { display:block; margin-top:0.25rem; color:var(--green); font-size:0.65rem; text-decoration:underline; }
+.justification-file-name { margin:0; color:#68756d; font-size:0.75rem; overflow-wrap:anywhere; }
 .justification-row.justified .justification-status { background:#d9eedc; color:#286044; }
 .justification-footer { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:0.75rem; padding-top:1rem; border-top:1px solid #e5ece5; color:#68756d; font-size:0.8rem; font-weight:700; }
 .justification-modal-backdrop { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:1rem; background:rgba(24,38,33,0.42); }

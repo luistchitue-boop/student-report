@@ -2,6 +2,7 @@
 
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
+import { upload } from "@vercel/blob/client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -9,7 +10,7 @@ import { ContactosTab } from "./contactos-tab";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
-type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; createdAt: string };
+type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; attachmentUrl?: string | null; attachmentName?: string | null; createdAt: string };
 const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 
 export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> }; canEdit: boolean }) {
@@ -34,6 +35,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
   const [selectedAbsenceIds, setSelectedAbsenceIds] = useState<string[]>([]);
   const [justificationTitle, setJustificationTitle] = useState("");
   const [justificationNotes, setJustificationNotes] = useState("");
+  const [justificationFile, setJustificationFile] = useState<File | null>(null);
   const [showJustificationModal, setShowJustificationModal] = useState(false);
 
   function isFuturePeriod(periodKey: string) {
@@ -127,15 +129,32 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
       throw new Error("Selecione faltas e preencha os dois campos.");
     }
 
-    const response = await fetch("/api/student-justifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ absenceIds: selectedAbsenceIds, title: justificationTitle, notes: justificationNotes }) });
+    let attachment: { url: string; pathname: string; name: string; contentType: string; size: number } | undefined;
+    if (justificationFile) {
+      const blob = await upload(`justifications/${student.id}/${crypto.randomUUID()}-${justificationFile.name}`, justificationFile, {
+        access: "private",
+        handleUploadUrl: "/api/student-justifications/upload",
+        clientPayload: JSON.stringify({ absenceIds: selectedAbsenceIds }),
+        contentType: justificationFile.type,
+      });
+      attachment = {
+        url: blob.url,
+        pathname: blob.pathname,
+        name: justificationFile.name,
+        contentType: justificationFile.type,
+        size: justificationFile.size,
+      };
+    }
+    const response = await fetch("/api/student-justifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ absenceIds: selectedAbsenceIds, title: justificationTitle, notes: justificationNotes, attachment }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Não foi possível justificar as faltas.");
     const justifiedIds: string[] = Array.isArray(result.absenceIds) ? result.absenceIds : [];
-    setAbsences((current) => current.map((absence) => justifiedIds.includes(absence.id) ? { ...absence, justified: true, justificationTitle: result.title ?? justificationTitle, justificationNotes: result.notes ?? justificationNotes } : absence));
+    setAbsences((current) => current.map((absence) => justifiedIds.includes(absence.id) ? { ...absence, justified: true, justificationTitle: result.title ?? justificationTitle, justificationNotes: result.notes ?? justificationNotes, attachmentUrl: result.attachment?.url ?? absence.attachmentUrl, attachmentName: result.attachment?.name ?? absence.attachmentName } : absence));
     setSelectedAbsenceIds([]);
     setShowJustificationModal(false);
     setJustificationTitle("");
     setJustificationNotes("");
+    setJustificationFile(null);
     setStatusMessage(`${result.justified} falta(s) justificadas.`);
   }
 
@@ -370,7 +389,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                       <label key={absence.id} className={`justification-row ${absence.justified ? "justified" : ""}`}>
                         <input type="checkbox" checked={selectedAbsenceIds.includes(absence.id)} disabled={!canEdit || absence.justified} onChange={() => setSelectedAbsenceIds((current) => current.includes(absence.id) ? current.filter((id) => id !== absence.id) : [...current, absence.id])} />
                         <span><strong>{absence.subject}</strong><small>{absence.dia.slice(0, 10)} · {absence.tempo} · {absence.faultType === "AUSENCIA_NA_SALA" ? "Ausência na sala" : "Falta de material"}</small></span>
-                        <span className="justification-status">{absence.justified ? "Justificada" : "Injustificada"}</span>
+                        <span className="justification-status">{absence.justified ? "Justificada" : "Injustificada"}{absence.attachmentUrl && <a href={`/api/student-justifications/${absence.id}/attachment`} target="_blank" rel="noreferrer" className="justification-attachment-link">Comprovativo</a>}</span>
                       </label>
                     )) : <p className="student-record-empty">Nenhuma falta neste intervalo.</p>}
                     {canEdit && <div className="justification-footer"><span>{selectedAbsenceIds.length} falta(s) selecionada(s)</span><button type="button" className="mini-pauta-save-button" disabled={!selectedAbsenceIds.length} onClick={() => setShowJustificationModal(true)}>Justificar</button></div>}
@@ -435,6 +454,8 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                 <div className="student-record-list-heading"><div><p className="eyebrow">JUSTIFICATIVO</p><h2>Justificar faltas</h2></div><button type="button" className="modal-close" onClick={() => setShowJustificationModal(false)} aria-label="Fechar">×</button></div>
                 <label>Título do justificativo<input required value={justificationTitle} onChange={(event) => setJustificationTitle(event.target.value)} /></label>
                 <label>Observações<textarea required rows={4} value={justificationNotes} onChange={(event) => setJustificationNotes(event.target.value)} /></label>
+                <label>Comprovativo<input type="file" accept="application/pdf,image/jpeg,image/png" onChange={(event) => setJustificationFile(event.target.files?.[0] ?? null)} /></label>
+                {justificationFile && <p className="justification-file-name">{justificationFile.name}</p>}
                 <button type="submit" className="mini-pauta-save-button">Confirmar justificativo</button>
               </form>
             </div>
