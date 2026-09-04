@@ -2,7 +2,6 @@
 
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
-import { upload } from "@vercel/blob/client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -131,12 +130,12 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
 
     let attachment: { url: string; pathname: string; name: string; contentType: string; size: number } | undefined;
     if (justificationFile) {
-      const blob = await upload(`justifications/${student.id}/${crypto.randomUUID()}-${justificationFile.name}`, justificationFile, {
-        access: "private",
-        handleUploadUrl: "/api/student-justifications/upload",
-        clientPayload: JSON.stringify({ absenceIds: selectedAbsenceIds }),
-        contentType: justificationFile.type,
-      });
+      const uploadData = new FormData();
+      uploadData.append("file", justificationFile);
+      uploadData.append("absenceIds", JSON.stringify(selectedAbsenceIds));
+      const uploadResponse = await fetch("/api/student-justifications/upload", { method: "POST", body: uploadData });
+      const blob = await uploadResponse.json();
+      if (!uploadResponse.ok) throw new Error(blob.error ?? "Não foi possível carregar o comprovativo.");
       attachment = {
         url: blob.url,
         pathname: blob.pathname,

@@ -1,4 +1,4 @@
-import { handleUpload } from "@vercel/blob/client";
+import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
@@ -14,37 +14,35 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
-    const result = await handleUpload({
-      request,
-      body,
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      return NextResponse.json({ error: "O armazenamento de comprovativos não está configurado." }, { status: 500 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get("file");
+    const rawAbsenceIds = formData.get("absenceIds");
+    const absenceIds = typeof rawAbsenceIds === "string" ? JSON.parse(rawAbsenceIds) as unknown : [];
+    const validAbsenceIds = Array.isArray(absenceIds) ? absenceIds.filter((id): id is string => typeof id === "string") : [];
+
+    if (!(file instanceof File)) return NextResponse.json({ error: "Selecione um comprovativo." }, { status: 400 });
+    if (!allowedContentTypes.includes(file.type)) return NextResponse.json({ error: "Formato não suportado. Use PDF, JPG ou PNG." }, { status: 400 });
+    if (file.size > 10 * 1024 * 1024) return NextResponse.json({ error: "O comprovativo não pode exceder 10 MB." }, { status: 400 });
+    if (!validAbsenceIds.length) return NextResponse.json({ error: "Selecione pelo menos uma falta." }, { status: 400 });
+
+    const isAdmin = session.user.role === "ADMIN";
+    const accessibleCount = await prisma.absence.count({
+      where: isAdmin
+        ? { id: { in: validAbsenceIds } }
+        : { id: { in: validAbsenceIds }, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+    });
+    if (accessibleCount !== new Set(validAbsenceIds).size) throw new Error("Uma ou mais faltas não foram encontradas.");
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
+    const result = await put(`justifications/${validAbsenceIds[0]}/${crypto.randomUUID()}-${safeName}`, file, {
+      access: "private",
+      addRandomSuffix: true,
+      contentType: file.type,
       token: process.env.BLOB_READ_WRITE_TOKEN,
-      onBeforeGenerateToken: async (pathname, clientPayload) => {
-        if (!pathname.startsWith("justifications/") || pathname.includes("..")) {
-          throw new Error("Caminho de anexo inválido.");
-        }
-
-        const payload = clientPayload ? JSON.parse(clientPayload) as { absenceIds?: unknown } : {};
-        const absenceIds = Array.isArray(payload.absenceIds)
-          ? payload.absenceIds.filter((id): id is string => typeof id === "string")
-          : [];
-        if (!absenceIds.length) throw new Error("Selecione pelo menos uma falta.");
-
-        const isAdmin = session.user.role === "ADMIN";
-        const accessibleCount = await prisma.absence.count({
-          where: isAdmin
-            ? { id: { in: absenceIds } }
-            : { id: { in: absenceIds }, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
-        });
-        if (accessibleCount !== new Set(absenceIds).size) throw new Error("Uma ou mais faltas não foram encontradas.");
-
-        return {
-          allowedContentTypes,
-          maximumSizeInBytes: 10 * 1024 * 1024,
-          addRandomSuffix: true,
-          tokenPayload: JSON.stringify({ userId: session.user.id }),
-        };
-      },
     });
 
     return NextResponse.json(result);
