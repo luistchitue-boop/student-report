@@ -329,7 +329,10 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .student-card-link { color:inherit; text-decoration:none; }
 .student-card { background:linear-gradient(180deg, #ffffff 0%, #f7faf7 100%); border:1px solid #e2e9e2; border-radius:20px; padding:1rem 0.9rem; min-height:210px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; text-align:center; transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease; }
 .student-card:hover { border-color:#bfd2c2; transform:translateY(-2px); box-shadow:0 14px 26px rgba(25,40,35,0.05); }
-.student-avatar-wrap { display:flex; align-items:center; justify-content:center; width:64px; height:64px; border-radius:50%; background:linear-gradient(180deg, #edf4ee 0%, #e3efe6 100%); border:1px solid #d7e4d9; margin-bottom:0.8rem; }
+.student-avatar-wrap { position:relative; display:flex; align-items:center; justify-content:center; width:64px; height:64px; border-radius:50%; overflow:visible; background:linear-gradient(180deg, #edf4ee 0%, #e3efe6 100%); border:1px solid #d7e4d9; margin-bottom:0.8rem; }
+.student-avatar-image { width:100%; height:100%; border-radius:50%; object-fit:cover; }
+.student-avatar-upload { position:absolute; right:-4px; bottom:-4px; display:grid; place-items:center; width:22px; height:22px; border:2px solid #fff; border-radius:50%; background:var(--green); color:#fff; cursor:pointer; font-size:1rem; line-height:1; box-shadow:0 3px 8px rgba(24,38,33,0.18); }
+.student-avatar-upload input { position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; }
 .student-avatar { display:grid; place-items:center; font-size:1.7rem; color:#3d5d53; }
 .student-card-body { display:flex; flex-direction:column; gap:0.2rem; margin-bottom:0.75rem; }
 .student-card-body strong { font-size:1rem; letter-spacing:-0.03em; color:var(--navy); }

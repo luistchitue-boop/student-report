@@ -130,6 +130,7 @@ model Student {
   age         Int?
   attendance  String?  @default("P")
   active      Boolean  @default(true)
+  avatarUrl   String?
   createdAt   DateTime @default(now())
 
   turma       Turma         @relation(fields: [turmaId], references: [id], onDelete: Cascade)

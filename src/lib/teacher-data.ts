@@ -32,6 +32,7 @@ function mapTurmaForCoordinator(turma: any) {
       age: student.age ?? 0,
       attendance: student.attendance ?? "P",
       active: student.active,
+      avatarUrl: student.avatarUrl,
       parents: student.parents,
     })),
   };
@@ -43,7 +44,7 @@ const turmaInclude = {
   students: {
     orderBy: { name: "asc" as const },
     select: {
-      id: true, name: true, age: true, attendance: true, active: true,
+      id: true, name: true, age: true, attendance: true, active: true, avatarUrl: true,
       parents: { orderBy: { name: "asc" as const }, select: { id: true, name: true, phone: true, email: true } },
     },
   },
