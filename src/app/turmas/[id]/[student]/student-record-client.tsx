@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { ContactosTab } from "./contactos-tab";
-import { getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
 type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; createdAt: string };
@@ -100,7 +100,9 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
     setRecordsLoading(true);
     const from = tab === "notas" ? gradeStart : tab === "faltas" ? absenceStart : justificationStart;
     const to = tab === "notas" ? gradeEnd : tab === "faltas" ? absenceEnd : justificationEnd;
-    fetch(`/api/student-record?studentId=${encodeURIComponent(student.id)}&from=${from}&to=${to}`)
+    const term = tab === "notas" ? `Semanal:${from}:${to}` : "";
+    const termQuery = term ? `&term=${encodeURIComponent(term)}` : "";
+    fetch(`/api/student-record?studentId=${encodeURIComponent(student.id)}&from=${from}&to=${to}${termQuery}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("Não foi possível carregar os registos.");
         return response.json();
@@ -321,7 +323,7 @@ export function StudentRecordClient({ turma, student }: { turma: { id: string; n
             {tab === "notas" && (
               <div className="student-record-list-panel">
                 <div className="weekly-period-selector">
-                  <label>Período semanal<select value={gradeStart} onChange={(event) => { const period = weeklyPeriods.find((item) => item.key === event.target.value); setGradeStart(event.target.value); setGradeEnd(period?.end.toISOString().slice(0, 10) ?? ""); }}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
+                  <label>Período semanal<select value={gradeStart} onChange={(event) => { const period = weeklyPeriods.find((item) => item.key === event.target.value); setGradeStart(event.target.value); setGradeEnd(period ? formatPeriodDate(period.end) : ""); }}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
                 </div>
                 {!gradeStart || !gradeEnd ? <p className="student-record-empty">Selecione o período semanal para ver as notas.</p> : !validGradePeriod ? <p className="student-record-empty record-warning">O período deve ter exatamente 7 dias.</p> : <>
                 <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO ACADÉMICO</p><h2>Notas registadas</h2></div><span>{grades.length} registo(s)</span></div>

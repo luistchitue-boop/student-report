@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     const studentId = searchParams.get("studentId");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const term = searchParams.get("term");
 
     if (!studentId) {
       return NextResponse.json({ error: "studentId is required" }, { status: 400 });
@@ -37,11 +38,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid date range" }, { status: 400 });
     }
 
+    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
     const student = await prisma.student.findFirst({
-      where: {
-        id: studentId,
-        turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
-      },
+      where: isAdmin
+        ? { id: studentId }
+        : {
+            id: studentId,
+            turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+          },
       select: { id: true },
     });
 
@@ -53,10 +57,7 @@ export async function GET(request: NextRequest) {
       prisma.grade.findMany({
         where: {
           studentId: student.id,
-          createdAt: {
-            gte: fromDate,
-            lte: toDate,
-          },
+          ...(term ? { term } : { createdAt: { gte: fromDate, lte: toDate } }),
         },
         orderBy: { createdAt: "asc" },
       }),

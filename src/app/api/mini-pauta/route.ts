@@ -78,9 +78,7 @@ export async function POST(request: NextRequest) {
     }
     const officialPeriod = getWeeklyCoordinationPeriods(start.getUTCFullYear()).find((period) => period.key === formatPeriodDate(start) && formatPeriodDate(period.end) === weekEnd);
     if (!officialPeriod) return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
-    const today = new Date();
-    const todayStart = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-    if (officialPeriod.start.getTime() > todayStart) {
+    if (officialPeriod.key > formatPeriodDate(new Date())) {
       return NextResponse.json({ error: "Não é possível registar notas num período semanal futuro." }, { status: 400 });
     }
 

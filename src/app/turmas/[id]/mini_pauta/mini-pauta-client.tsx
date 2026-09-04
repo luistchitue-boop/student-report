@@ -4,7 +4,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 type Turma = {
   id: string;
@@ -46,10 +46,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
   }
 
   function isFuturePeriod(periodKey: string) {
-    const period = weeklyPeriods.find((item) => item.key === periodKey);
-    if (!period) return false;
-    const today = new Date();
-    return period.start.getTime() > new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12).getTime();
+    return periodKey > formatPeriodDate(new Date());
   }
 
   useEffect(() => {
