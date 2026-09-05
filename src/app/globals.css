@@ -355,6 +355,45 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .student-record-shell { max-width:900px !important; }
 .student-record-topbar h1 { max-width:100%; overflow-wrap:anywhere; }
 .student-record-panel { border-radius:24px; box-shadow:0 18px 44px rgba(26,38,32,0.06); }
+.student-profile-banner { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:1rem; margin-bottom:1.5rem; padding:1rem 1.1rem; border:1px solid #dbe8dc; border-radius:18px; background:linear-gradient(135deg,#f2f8f2 0%,#fbfdf9 100%); }
+.student-profile-avatar { display:grid; place-items:center; width:76px; height:76px; overflow:hidden; border:3px solid #fff; border-radius:50%; background:linear-gradient(180deg,#dceee0 0%,#edf5ee 100%); color:var(--green); box-shadow:0 6px 16px rgba(34,73,49,0.12); font-size:2rem; }
+.student-profile-avatar img { width:100%; height:100%; object-fit:cover; }
+.student-profile-copy { min-width:0; }
+.student-profile-copy h2 { margin-top:0.3rem; color:var(--navy); font-size:1.35rem; letter-spacing:-0.04em; overflow-wrap:anywhere; }
+.student-profile-copy p:last-child { margin-top:0.25rem; color:#68756d; font-size:0.78rem; font-weight:700; }
+.student-profile-stat { display:grid; gap:0.25rem; justify-items:end; }
+.student-profile-stat span { color:#7a887f; font-size:0.65rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; }
+.student-profile-stat strong { padding:0.4rem 0.65rem; border-radius:999px; background:#dceee0; color:#286044; font-size:0.75rem; }
+.student-summary-view { display:grid; gap:1rem; }
+.student-summary-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0.75rem; }
+.student-summary-metric { display:grid; gap:0.25rem; padding:1rem; border:1px solid #e0e9e1; border-radius:15px; background:#f8fbf8; }
+.student-summary-metric.accent { border-color:#bed8c3; background:#eaf5ec; }
+.student-summary-metric span { color:#68756d; font-size:0.68rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; }
+.student-summary-metric strong { color:var(--navy); font-size:1.75rem; letter-spacing:-0.06em; }
+.student-summary-metric small { color:#7a887f; font-size:0.7rem; font-weight:700; }
+.student-summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0.85rem; }
+.student-chart-panel { display:grid; gap:1rem; min-width:0; padding:1rem; border:1px solid #e0e9e1; border-radius:16px; background:#fff; }
+.student-chart-panel-wide { grid-column:1 / -1; }
+.student-chart-heading { display:flex; justify-content:space-between; align-items:flex-end; gap:0.75rem; }
+.student-chart-heading h2 { margin-top:0.3rem; color:var(--navy); font-size:1rem; letter-spacing:-0.03em; }
+.student-chart-heading > span { color:#7a887f; font:0.65rem 'DM Mono',monospace; white-space:nowrap; }
+.student-bar-chart { display:grid; gap:0.8rem; }
+.student-bar-row { display:grid; gap:0.35rem; }
+.student-bar-label { display:flex; justify-content:space-between; gap:0.75rem; color:#53645b; font-size:0.74rem; font-weight:700; }
+.student-bar-label span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.student-bar-label strong { color:var(--navy); }
+.student-bar-track { height:0.55rem; overflow:hidden; border-radius:999px; background:#e8f0e9; }
+.student-bar-track span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#39755d,#76aa83); }
+.student-bar-track.warm { background:#f4ead7; }
+.student-bar-track.warm span { background:linear-gradient(90deg,#c28a4a,#d5b26c); }
+.student-chart-note { padding-top:0.75rem; border-top:1px solid #edf2ed; color:#68756d; font-size:0.74rem; }
+.student-chart-note strong { color:var(--green); }
+.student-column-chart { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-items:end; gap:1rem; min-height:150px; padding-top:0.5rem; border-bottom:1px solid #e0e9e1; }
+.student-column { display:grid; grid-template-rows:1.2rem 1fr 1.5rem; justify-items:center; gap:0.35rem; height:140px; }
+.student-column-value { color:var(--navy); font-size:0.72rem; font-weight:800; }
+.student-column-track { display:flex; align-items:flex-end; width:100%; height:100%; max-width:3rem; overflow:hidden; border-radius:8px 8px 0 0; background:#edf4ee; }
+.student-column-track span { display:block; width:100%; min-height:0.25rem; border-radius:8px 8px 0 0; background:linear-gradient(180deg,#76aa83,#39755d); }
+.student-column strong { color:#68756d; font-size:0.72rem; }
 .student-tabs { gap:0.45rem !important; padding:0.3rem !important; margin-bottom:1.35rem !important; border:1px solid #e5ece5 !important; border-radius:16px; background:#f7faf6; }
 .student-tab { border-radius:11px; transition:background .18s ease, color .18s ease, box-shadow .18s ease; }
 .student-tab:hover { background:#edf5ee !important; }
@@ -490,6 +529,12 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
   .student-record-topbar { align-items:flex-start; }
   .student-record-topbar h1 { font-size:1.7rem !important; line-height:1.12; }
   .student-record-panel { padding:0.8rem !important; border-radius:20px; }
+  .student-profile-banner { grid-template-columns:auto minmax(0,1fr); padding:0.85rem; }
+  .student-profile-avatar { width:62px; height:62px; }
+  .student-profile-stat { grid-column:1 / -1; justify-items:start; padding-top:0.65rem; border-top:1px solid #e1ebe2; }
+  .student-summary-metrics { grid-template-columns:1fr; }
+  .student-summary-grid { grid-template-columns:1fr; }
+  .student-chart-panel-wide { grid-column:auto; }
   .student-tabs { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .student-tab { width:100%; min-height:42px; padding:0.65rem 0.45rem !important; }
   .student-record-panel [style*="grid-template-columns"] { grid-template-columns:1fr !important; gap:0.65rem !important; padding:0.75rem !important; }

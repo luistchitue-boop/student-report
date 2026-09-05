@@ -12,11 +12,17 @@ type GradeRecord = { id: string; subject: string; value: number; term: string; c
 type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; hasAttachment?: boolean; attachmentName?: string | null; createdAt: string };
 const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 
-export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; parents: Array<{ id: string; name: string; phone: string; email: string }> }; canEdit: boolean }) {
+function getShortStudentName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return parts[0] ?? name;
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
+export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; avatarUrl?: string | null; parents: Array<{ id: string; name: string; phone: string; email: string }> }; canEdit: boolean }) {
   const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const [tab, setTab] = useState<"notas" | "faltas" | "justificativos" | "relatorio" | "contactos">("relatorio");
+  const [tab, setTab] = useState<"resumo" | "notas" | "faltas" | "justificativos" | "relatorio" | "contactos">("resumo");
   const [gradeStart, setGradeStart] = useState("");
   const [gradeEnd, setGradeEnd] = useState("");
   const [reportStart, setReportStart] = useState<string>("");
@@ -74,7 +80,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
   }
 
   useEffect(() => {
-    if (tab !== "notas" && tab !== "faltas" && tab !== "justificativos") return;
+    if (tab !== "resumo" && tab !== "notas" && tab !== "faltas" && tab !== "justificativos") return;
     if (tab === "notas" && (!gradeStart || !gradeEnd)) {
       setGrades([]);
       return;
@@ -99,8 +105,8 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     }
     let cancelled = false;
     setRecordsLoading(true);
-    const from = tab === "notas" ? gradeStart : tab === "faltas" ? absenceStart : justificationStart;
-    const to = tab === "notas" ? gradeEnd : tab === "faltas" ? absenceEnd : justificationEnd;
+    const from = tab === "resumo" ? "2000-01-01" : tab === "notas" ? gradeStart : tab === "faltas" ? absenceStart : justificationStart;
+    const to = tab === "resumo" ? todayKey : tab === "notas" ? gradeEnd : tab === "faltas" ? absenceEnd : justificationEnd;
     const term = tab === "notas" ? `Semanal:${from}:${to}` : "";
     const termQuery = term ? `&term=${encodeURIComponent(term)}` : "";
     fetch(`/api/student-record?studentId=${encodeURIComponent(student.id)}&from=${from}&to=${to}${termQuery}`)
@@ -121,7 +127,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
         if (!cancelled) setRecordsLoading(false);
       });
     return () => { cancelled = true; };
-  }, [absenceEnd, absenceStart, gradeEnd, gradeStart, justificationEnd, justificationStart, student.id, tab]);
+  }, [absenceEnd, absenceStart, gradeEnd, gradeStart, justificationEnd, justificationStart, student.id, tab, todayKey]);
 
   async function justifySelectedAbsences() {
     if (!selectedAbsenceIds.length || !justificationTitle.trim() || !justificationNotes.trim()) {
@@ -306,13 +312,37 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     }
   }
 
+  const averageGrade = grades.length ? grades.reduce((total, grade) => total + Number(grade.value), 0) / grades.length : 0;
+  const justifiedAbsences = absences.filter((absence) => absence.justified).length;
+  const subjectAverages = turma.subjects
+    .map((subject) => {
+      const subjectGrades = grades.filter((grade) => grade.subject === subject);
+      return { subject, average: subjectGrades.length ? subjectGrades.reduce((total, grade) => total + Number(grade.value), 0) / subjectGrades.length : 0, count: subjectGrades.length };
+    })
+    .filter((item) => item.count > 0)
+    .sort((left, right) => right.average - left.average);
+  const faultTypeCounts = [
+    { label: "Ausência na sala", count: absences.filter((absence) => absence.faultType === "AUSENCIA_NA_SALA").length },
+    { label: "Falta de material", count: absences.filter((absence) => absence.faultType === "FALTA_DE_MATERIAL").length },
+  ];
+  const gradeBands = [
+    { label: "0-9", count: grades.filter((grade) => Number(grade.value) < 10).length },
+    { label: "10-13", count: grades.filter((grade) => Number(grade.value) >= 10 && Number(grade.value) < 14).length },
+    { label: "14-17", count: grades.filter((grade) => Number(grade.value) >= 14 && Number(grade.value) < 18).length },
+    { label: "18-20", count: grades.filter((grade) => Number(grade.value) >= 18).length },
+  ];
+  const maxSubjectAverage = Math.max(20, ...subjectAverages.map((item) => item.average));
+  const maxFaultCount = Math.max(1, ...faultTypeCounts.map((item) => item.count));
+  const maxGradeBandCount = Math.max(1, ...gradeBands.map((item) => item.count));
+  const shortStudentName = getShortStudentName(student.name);
+
   return (
     <AppShell active="turmas">
       <main className="main-content student-record-shell" style={{ maxWidth: 900 }}>
         <header className="topbar student-record-topbar" style={{ marginBottom: "1.75rem" }}>
           <div>
             <p className="eyebrow">ALUNO</p>
-            <h1 style={{ fontSize: "2rem", letterSpacing: "-0.05em" }}>{student.name}</h1>
+            <h1 style={{ fontSize: "2rem", letterSpacing: "-0.05em" }}>{shortStudentName}</h1>
           </div>
           <Link href={`/turmas/${turma.id}`} style={{ textDecoration: "none", color: "#39755d", fontWeight: 800 }}>
             ← Voltar à turma
@@ -320,7 +350,20 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
         </header>
 
         <section className="student-record-panel" style={{ background: "#fff", border: "1px solid #dfe5df", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)" }}>
+          <div className="student-profile-banner">
+            <div className="student-profile-avatar">
+              {student.avatarUrl ? <img src={student.avatarUrl} alt={`Fotografia de ${shortStudentName}`} /> : <span aria-hidden="true">👤</span>}
+            </div>
+            <div className="student-profile-copy">
+              <p className="eyebrow">PERFIL DO ALUNO</p>
+              <h2>{shortStudentName}</h2>
+              <p>{turma.name}{student.age ? ` · ${student.age} anos` : ""}</p>
+            </div>
+          </div>
           <div className="student-tabs" style={{ display: "flex", gap: "0.5rem", marginBottom: "1.75rem", borderBottom: "2px solid #e5ece5", paddingBottom: "1rem", flexWrap: "wrap" }}>
+              <button className="student-tab" type="button" onClick={() => setTab("resumo")} style={{ border: "none", background: tab === "resumo" ? "var(--green-soft)" : "transparent", color: tab === "resumo" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
+                Resumo
+              </button>
               <button className="student-tab" type="button" onClick={() => setTab("notas")} style={{ border: "none", background: tab === "notas" ? "var(--green-soft)" : "transparent", color: tab === "notas" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
                 Notas
               </button>
@@ -337,6 +380,38 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                 Contactos
               </button>
             </div>
+
+            {tab === "resumo" && (
+              <div className="student-summary-view">
+                {recordsLoading ? <p className="student-record-empty">A carregar o resumo...</p> : (
+                  <>
+                    <div className="student-summary-metrics">
+                      <div className="student-summary-metric accent"><span>Média geral</span><strong>{averageGrade.toFixed(1)}</strong><small>em {grades.length} nota(s)</small></div>
+                      <div className="student-summary-metric"><span>Faltas registadas</span><strong>{absences.length}</strong><small>{justifiedAbsences} justificadas</small></div>
+                      <div className="student-summary-metric"><span>Disciplinas avaliadas</span><strong>{subjectAverages.length}</strong><small>de {turma.subjects.length} disciplinas</small></div>
+                    </div>
+
+                    <div className="student-summary-grid">
+                      <section className="student-chart-panel">
+                        <div className="student-chart-heading"><div><p className="eyebrow">DESEMPENHO</p><h2>Média por disciplina</h2></div><span>0-20</span></div>
+                        {subjectAverages.length ? <div className="student-bar-chart">{subjectAverages.map((item) => <div className="student-bar-row" key={item.subject}><div className="student-bar-label"><span>{item.subject}</span><strong>{item.average.toFixed(1)}</strong></div><div className="student-bar-track"><span style={{ width: `${Math.min(100, (item.average / maxSubjectAverage) * 100)}%` }} /></div></div>)}</div> : <p className="student-record-empty">Ainda não existem notas registadas.</p>}
+                      </section>
+
+                      <section className="student-chart-panel">
+                        <div className="student-chart-heading"><div><p className="eyebrow">ASSIDUIDADE</p><h2>Tipo de falta</h2></div><span>{absences.length} total</span></div>
+                        {absences.length ? <div className="student-bar-chart">{faultTypeCounts.map((item) => <div className="student-bar-row" key={item.label}><div className="student-bar-label"><span>{item.label}</span><strong>{item.count}</strong></div><div className="student-bar-track warm"><span style={{ width: `${(item.count / maxFaultCount) * 100}%` }} /></div></div>)}</div> : <p className="student-record-empty">Não existem faltas registadas.</p>}
+                        <div className="student-chart-note"><strong>{justifiedAbsences}</strong> de {absences.length} falta(s) justificadas</div>
+                      </section>
+
+                      <section className="student-chart-panel student-chart-panel-wide">
+                        <div className="student-chart-heading"><div><p className="eyebrow">DISTRIBUIÇÃO</p><h2>Faixas de notas</h2></div><span>escala 0-20</span></div>
+                        {grades.length ? <div className="student-column-chart">{gradeBands.map((band) => <div className="student-column" key={band.label}><div className="student-column-value">{band.count}</div><div className="student-column-track"><span style={{ height: `${(band.count / maxGradeBandCount) * 100}%` }} /></div><strong>{band.label}</strong></div>)}</div> : <p className="student-record-empty">A distribuição aparecerá quando houver notas.</p>}
+                      </section>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {tab === "notas" && (
               <div className="student-record-list-panel">
