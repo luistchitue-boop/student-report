@@ -7,7 +7,7 @@ type Turma = {
   id: string;
   name: string;
   subjects: string[];
-  roster: Array<{ id: string; name: string; age: number }>;
+  roster: Array<{ id: string; name: string; age: number; avatarUrl?: string | null }>;
 };
 
 const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
@@ -22,6 +22,8 @@ function displayName(name: string) {
 }
 
 export function AttendanceBookClient({ turma }: { turma: Turma }) {
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [date, setDate] = useState("");
   const [subject, setSubject] = useState(turma.subjects[0] ?? "");
   const [tempo, setTempo] = useState("1º tempo");
@@ -108,7 +110,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
 
       <section className="attendance-book-panel">
         <div className="attendance-book-toolbar">
-          <label>Data<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
+          <label>Data<input type="date" max={todayKey} value={date} onChange={(event) => setDate(event.target.value)} /></label>
           <label>Disciplina<select value={subject} onChange={(event) => setSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
           <label>Tempo<select value={tempo} onChange={(event) => setTempo(event.target.value)}>{tempos.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
           <fieldset className="attendance-fault-switch">
@@ -137,10 +139,14 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
         <div className="attendance-student-list">
           {turma.roster.map((student) => (
             <label key={student.id} className={`attendance-student-row ${selectedIds.includes(student.id) ? "selected" : ""}`}>
-              <input type="checkbox" checked={selectedIds.includes(student.id)} onChange={() => toggleStudent(student.id)} />
-              <span className="attendance-student-avatar">{displayName(student.name).charAt(0).toUpperCase()}</span>
-              <span><strong>{displayName(student.name)}</strong></span>
-              <span className="attendance-check">{selectedIds.includes(student.id) ? "Falta" : "Presente"}</span>
+              <span className="attendance-student-avatar">{student.avatarUrl ? <img src={student.avatarUrl} alt={`Fotografia de ${displayName(student.name)}`} /> : displayName(student.name).charAt(0).toUpperCase()}</span>
+              <span className="attendance-student-content">
+                <strong className="attendance-student-name">{displayName(student.name)}</strong>
+                <span className="attendance-student-selection">
+                  <input type="checkbox" checked={selectedIds.includes(student.id)} onChange={() => toggleStudent(student.id)} />
+                  <span className="attendance-check">{selectedIds.includes(student.id) ? "Falta" : "Presente"}</span>
+                </span>
+              </span>
             </label>
           ))}
         </div>

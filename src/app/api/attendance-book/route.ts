@@ -71,6 +71,9 @@ export async function POST(request: NextRequest) {
       : [];
 
     if (!turmaId || !date || !subject) return NextResponse.json({ error: "Turma, date, and subject are required" }, { status: 400 });
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    if (date > todayKey) return NextResponse.json({ error: "Não é possível registar faltas numa data futura." }, { status: 400 });
 
     const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
     if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
