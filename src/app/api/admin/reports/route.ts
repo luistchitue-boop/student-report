@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { Resend } from "resend";
 import { put } from "@vercel/blob";
@@ -39,6 +39,24 @@ function buildReportEmailHtml({ logoUrl, reportUrl, studentName, firstName, peri
 
 function getReportEmailOverride(options: { logoUrl: string; reportUrl: string; studentName: string; firstName: string; periodLabel: string }): Record<string, string> {
   return { html: buildReportEmailHtml(options) };
+}
+
+export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+
+  const { searchParams } = new URL(request.url);
+  const periodKey = searchParams.get("periodKey") ?? "";
+  const turmaId = searchParams.get("turmaId") ?? "";
+  const period = getWeeklyCoordinationPeriods(new Date().getFullYear()).find((item) => item.key === periodKey);
+  if (!period || !turmaId) return NextResponse.json({ error: "Período e turma são obrigatórios." }, { status: 400 });
+
+  const deliveries = await prisma.reportDelivery.findMany({
+    where: { turmaId, periodStart: period.start, status: "FAILED" },
+    orderBy: [{ student: { name: "asc" } }, { recipientEmail: "asc" }],
+    select: { id: true, student: { select: { name: true } }, recipientName: true, recipientEmail: true, error: true, attemptedAt: true },
+  });
+  return NextResponse.json({ deliveries: deliveries.map((delivery) => ({ ...delivery, studentName: delivery.student.name, attemptedAt: delivery.attemptedAt.toISOString() })) });
 }
 
 function generateStudentReportPdf({
@@ -139,6 +157,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const rawTurmaIds = Array.isArray(body.turmaIds) ? body.turmaIds : [];
     const turmaIds = rawTurmaIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
+    const rawStudentIds = Array.isArray(body.studentIds) ? body.studentIds : [];
+    const studentIds = rawStudentIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
     const periodKey = typeof body.periodKey === "string" ? body.periodKey : "";
     const period = getWeeklyCoordinationPeriods(new Date().getFullYear()).find((item) => item.key === periodKey);
 
@@ -150,8 +170,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Não é possível enviar relatórios de um período futuro." }, { status: 400 });
     }
 
-    if (!turmaIds.length) {
-      return NextResponse.json({ error: "Selecione pelo menos uma turma" }, { status: 400 });
+    if (!turmaIds.length || (body.studentIds && !studentIds.length)) {
+      return NextResponse.json({ error: "Selecione pelo menos uma turma ou um aluno" }, { status: 400 });
     }
 
     const { RESEND_API_KEY, RESEND_FROM_EMAIL, BLOB_READ_WRITE_TOKEN } = process.env;
@@ -175,19 +195,31 @@ export async function POST(request: Request) {
       },
     });
 
-    const recipients: Array<{ email: string; reportUrl: string; studentName: string; firstName: string }> = [];
+    const recipients: Array<{ email: string; reportUrl: string; studentName: string; firstName: string; studentId: string; turmaId: string; recipientName: string }> = [];
+    const saveDelivery = (data: { turmaId: string; studentId: string; recipientName?: string; recipientEmail: string; reportUrl?: string; status: "SENT" | "FAILED"; error?: string }) => prisma.reportDelivery.upsert({
+      where: { studentId_periodStart_recipientEmail: { studentId: data.studentId, periodStart: period.start, recipientEmail: data.recipientEmail } },
+      update: { turmaId: data.turmaId, periodEnd: period.end, recipientName: data.recipientName, reportUrl: data.reportUrl, status: data.status, error: data.error, attemptedAt: new Date() },
+      create: { ...data, periodStart: period.start, periodEnd: period.end },
+    });
 
     for (const turma of turmas) {
       for (const student of turma.students) {
-        if (!student.parents.length) continue;
+        if (studentIds.length && !studentIds.includes(student.id)) continue;
+        if (!student.parents.length) {
+          await saveDelivery({ turmaId: turma.id, studentId: student.id, recipientEmail: "(sem email)", status: "FAILED", error: "Aluno sem encarregado registado." });
+          continue;
+        }
 
         const approvedParents = new Map<string, string>();
-        student.parents.forEach((parent: { name: string; email?: string | null }) => {
+        for (const parent of student.parents) {
           const email = parent.email?.trim().toLowerCase();
-          if (!email || !email.includes("@")) return;
+          if (!email || !email.includes("@")) {
+            await saveDelivery({ turmaId: turma.id, studentId: student.id, recipientName: parent.name, recipientEmail: email || `(sem email ${parent.name})`, status: "FAILED", error: "O encarregado não tem um endereço de e-mail válido." });
+            continue;
+          }
           const firstName = parent.name.trim().split(/\s+/)[0] || "encarregado";
           approvedParents.set(email, firstName);
-        });
+        }
 
         if (!approvedParents.size) continue;
 
@@ -220,6 +252,9 @@ export async function POST(request: Request) {
             reportUrl: blob.url,
             studentName: student.name,
             firstName,
+            studentId: student.id,
+            turmaId: turma.id,
+            recipientName: firstName,
           });
         });
       }
@@ -234,9 +269,11 @@ export async function POST(request: Request) {
     const logoUrl = `${appUrl.replace(/\/$/, "")}/school-logo.png`;
     const periodLabel = `${formatPeriodDate(period.start)} a ${formatPeriodDate(period.end)}`;
     let sent = 0;
+    const results: Array<{ email: string; studentName: string; success: boolean; error?: string }> = [];
 
     for (const recipient of recipients) {
       const safeStudentName = escapeHtml(recipient.studentName);
+      try {
       const result = await resend.emails.send({
         from: RESEND_FROM_EMAIL,
         to: recipient.email,
@@ -248,10 +285,21 @@ export async function POST(request: Request) {
 
       if (!result.error) {
         sent += 1;
+        await saveDelivery({ turmaId: recipient.turmaId, studentId: recipient.studentId, recipientName: recipient.recipientName, recipientEmail: recipient.email, reportUrl: recipient.reportUrl, status: "SENT" });
+        results.push({ email: recipient.email, studentName: recipient.studentName, success: true });
+      } else {
+        await saveDelivery({ turmaId: recipient.turmaId, studentId: recipient.studentId, recipientName: recipient.recipientName, recipientEmail: recipient.email, reportUrl: recipient.reportUrl, status: "FAILED", error: result.error.message });
+        results.push({ email: recipient.email, studentName: recipient.studentName, success: false, error: result.error.message });
+      }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+        await saveDelivery({ turmaId: recipient.turmaId, studentId: recipient.studentId, recipientName: recipient.recipientName, recipientEmail: recipient.email, reportUrl: recipient.reportUrl, status: "FAILED", error: errorMessage });
+        results.push({ email: recipient.email, studentName: recipient.studentName, success: false, error: errorMessage });
       }
     }
 
-    return NextResponse.json({ success: true, sent, total: recipients.length });
+    const failed = results.length - sent;
+    return NextResponse.json({ success: failed === 0, sent, failed, total: recipients.length, successRate: recipients.length ? Math.round((sent / recipients.length) * 100) : 0, results });
   } catch (error) {
     console.error("Admin report dispatch error:", error);
     return NextResponse.json({ error: "Não foi possível enviar os relatórios." }, { status: 500 });

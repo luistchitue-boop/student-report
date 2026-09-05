@@ -59,6 +59,11 @@ enum FaultType {
   AUSENCIA_NA_SALA
 }
 
+enum ReportDeliveryStatus {
+  SENT
+  FAILED
+}
+
 model Teacher {
   id        String   @id @default(cuid())
   userId    String   @unique
@@ -82,6 +87,7 @@ model Turma {
 
   coordinator Teacher? @relation(fields: [coordinatorId], references: [id], onDelete: SetNull)
   students    Student[]
+  reportDeliveries ReportDelivery[]
   subjects    Subject[]
   weeklyReports WeeklyCoordinationReport[]
   direccaoAssignments DireccaoTurma[]
@@ -139,6 +145,7 @@ model Student {
   notes       StudentNote[]
   parents     Parent[]
   weeklyObservations StudentWeeklyObservation[]
+  reportDeliveries ReportDelivery[]
 }
 
 model Parent {
@@ -152,6 +159,28 @@ model Parent {
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId])
+}
+
+model ReportDelivery {
+  id             String               @id @default(cuid())
+  turmaId        String
+  studentId      String
+  periodStart    DateTime
+  periodEnd      DateTime
+  recipientName  String?
+  recipientEmail String
+  reportUrl      String?
+  status         ReportDeliveryStatus
+  error          String?              @db.Text
+  attemptedAt    DateTime             @default(now())
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  turma   Turma   @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, periodStart, recipientEmail])
+  @@index([turmaId, periodStart, status])
 }
 
 model Grade {
