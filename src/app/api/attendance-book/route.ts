@@ -93,12 +93,22 @@ export async function POST(request: NextRequest) {
     const existingAbsences = await prisma.absence.findMany({
       where: {
         studentId: { in: validStudentIds },
-        subject,
         dia,
         tempo,
       },
-      select: { studentId: true },
+      select: { studentId: true, subject: true },
     });
+
+    const conflictingAbsences = existingAbsences.filter((absence) => absence.subject !== subject);
+    if (conflictingAbsences.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Cada aluno só pode ter uma falta por data e tempo lectivo, independentemente da disciplina.",
+          conflictingStudentIds: [...new Set(conflictingAbsences.map((absence) => absence.studentId))],
+        },
+        { status: 409 }
+      );
+    }
 
     const duplicatedStudentIds = new Set(existingAbsences.map((absence) => absence.studentId));
     if (duplicatedStudentIds.size > 0) {

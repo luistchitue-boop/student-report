@@ -188,11 +188,18 @@ export async function POST(request: NextRequest) {
         const dia = normalizeDay(entry.dia);
         const faultType = entry.faultType === "AUSENCIA_NA_SALA" ? "AUSENCIA_NA_SALA" : "FALTA_DE_MATERIAL";
 
+        const existingSlot = await prisma.absence.findUnique({
+          where: { studentId_dia_tempo: { studentId: entry.studentId, dia, tempo: entry.tempo } },
+          select: { id: true, subject: true },
+        });
+        if (existingSlot && existingSlot.subject !== entry.subject) {
+          return NextResponse.json({ error: "Cada aluno só pode ter uma falta por data e tempo lectivo, independentemente da disciplina." }, { status: 409 });
+        }
+
         const savedAbsence = await prisma.absence.upsert({
           where: {
-            studentId_subject_dia_tempo: {
+            studentId_dia_tempo: {
               studentId: entry.studentId,
-              subject: entry.subject,
               dia,
               tempo: entry.tempo,
             },
@@ -288,8 +295,14 @@ export async function PATCH(request: NextRequest) {
     if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });
     const subject = typeof body.subject === "string" ? body.subject : absence.subject;
     const dia = typeof body.dia === "string" ? normalizeDay(body.dia) : absence.dia;
+    const tempo = typeof body.tempo === "string" ? body.tempo : absence.tempo;
+    const conflictingAbsence = await prisma.absence.findFirst({
+      where: { studentId: absence.studentId, dia, tempo, NOT: { id: absence.id } },
+      select: { id: true },
+    });
+    if (conflictingAbsence) return NextResponse.json({ error: "Cada aluno só pode ter uma falta por data e tempo lectivo, independentemente da disciplina." }, { status: 409 });
     const faultType = body.faultType === "AUSENCIA_NA_SALA" ? "AUSENCIA_NA_SALA" : body.faultType === "FALTA_DE_MATERIAL" ? "FALTA_DE_MATERIAL" : absence.faultType;
-    const updated = await prisma.absence.update({ where: { id }, data: { subject, dia, tempo: typeof body.tempo === "string" ? body.tempo : absence.tempo, faultType, notes: typeof body.notes === "string" ? body.notes : absence.notes } });
+    const updated = await prisma.absence.update({ where: { id }, data: { subject, dia, tempo, faultType, notes: typeof body.notes === "string" ? body.notes : absence.notes } });
     await createActivityLog({
       actorId: session.user.id,
       actorName: describeActorName(session.user),
@@ -300,7 +313,7 @@ export async function PATCH(request: NextRequest) {
         studentId: absence.studentId,
         subject,
         dia: dia.toISOString(),
-        tempo: typeof body.tempo === "string" ? body.tempo : absence.tempo,
+        tempo,
         faultType,
         notes: typeof body.notes === "string" ? body.notes : absence.notes,
       },
