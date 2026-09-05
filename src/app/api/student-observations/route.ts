@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
+import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 const prisma = new PrismaClient();
 
@@ -9,6 +10,12 @@ function parseDate(value: unknown) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isCurrentWeeklyPeriod(weekStart: Date) {
+  const today = new Date();
+  const currentPeriod = getWeeklyCoordinationPeriods(today.getFullYear()).find((period) => period.start <= today && period.end >= today);
+  return currentPeriod ? formatPeriodDate(currentPeriod.start) === weekStart.toISOString().slice(0, 10) : false;
 }
 
 async function getAuthorizedStudent(studentId: string, session: { user: { id: string; role?: string | null } }) {
@@ -56,6 +63,7 @@ export async function PUT(request: NextRequest) {
     const teacherObservation = typeof body.teacherObservation === "string" ? body.teacherObservation.trim().slice(0, 90) : "";
     const behavior = typeof body.behavior === "string" ? body.behavior.trim() : "";
     if (!studentId || !weekStart || !weekEnd) return NextResponse.json({ error: "Aluno e período semanal são obrigatórios" }, { status: 400 });
+    if (!isCurrentWeeklyPeriod(weekStart)) return NextResponse.json({ error: "Só é possível alterar a observação da semana atual." }, { status: 400 });
 
     const student = await getAuthorizedStudent(studentId, session);
     if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 });
