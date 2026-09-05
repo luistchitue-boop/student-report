@@ -27,7 +27,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
   const [date, setDate] = useState("");
   const [subject, setSubject] = useState(turma.subjects[0] ?? "");
   const [tempo, setTempo] = useState("1º tempo");
-  const [faultType, setFaultType] = useState<(typeof faultTypes)[number]["value"]>("FALTA_DE_MATERIAL");
+  const [faultType, setFaultType] = useState<(typeof faultTypes)[number]["value"]>("AUSENCIA_NA_SALA");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(false);
