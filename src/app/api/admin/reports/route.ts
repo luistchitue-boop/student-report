@@ -33,6 +33,16 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character);
 }
 
+function normalizeAngolaPhone(value: string) {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  if (!digits) return "";
+  if (trimmed.startsWith("+")) return `+${digits}`;
+  if (digits.startsWith("00")) return `+${digits.slice(2)}`;
+  if (digits.startsWith("244")) return `+${digits}`;
+  return `+244${digits.replace(/^0/, "")}`;
+}
+
 function buildReportEmailHtml({ logoUrl, reportUrl, studentName, firstName, periodLabel }: { logoUrl: string; reportUrl: string; studentName: string; firstName: string; periodLabel: string }) {
   const safeStudentName = escapeHtml(studentName);
   const safeFirstName = escapeHtml(firstName);
@@ -269,7 +279,7 @@ export async function POST(request: Request) {
         const approvedParents = new Map<string, { firstName: string; phone: string; email: string }>();
         for (const parent of student.parents) {
           const email = parent.email?.trim().toLowerCase();
-          const phone = parent.phone?.replace(/[^\d+]/g, "") ?? "";
+          const phone = parent.phone ? normalizeAngolaPhone(parent.phone) : "";
           const recipient = channel === "EMAIL" ? email : phone;
           if (!recipient || (channel === "EMAIL" ? !recipient.includes("@") : recipient.length < 8)) {
             await saveDelivery({ turmaId: turma.id, studentId: student.id, recipientName: parent.name, recipientEmail: recipient || `(sem ${channel === "EMAIL" ? "email" : "telefone"} ${parent.name})`, status: "FAILED", error: channel === "EMAIL" ? "O encarregado não tem um endereço de e-mail válido." : "O encarregado não tem um número de WhatsApp válido." });
