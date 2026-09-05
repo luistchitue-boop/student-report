@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { Resend } from "resend";
 import { put } from "@vercel/blob";
@@ -41,6 +43,21 @@ function getReportEmailOverride(options: { logoUrl: string; reportUrl: string; s
   return { html: buildReportEmailHtml(options) };
 }
 
+async function loadImageDataUrl(url?: string | null) {
+  try {
+    const response = url
+      ? await fetch(url)
+      : new Response(await readFile(path.join(process.cwd(), "public", "school-logo.png")), { headers: { "Content-Type": "image/png" } });
+    if (!response.ok) return null;
+    const contentType = response.headers.get("content-type")?.split(";")[0] ?? "image/png";
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const format = contentType === "image/jpeg" ? "JPEG" : contentType === "image/webp" ? "WEBP" : "PNG";
+    return { data: `data:${contentType};base64,${bytes.toString("base64")}`, format };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
@@ -59,89 +76,121 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ deliveries: deliveries.map((delivery) => ({ ...delivery, studentName: delivery.student.name, attemptedAt: delivery.attemptedAt.toISOString() })) });
 }
 
-function generateStudentReportPdf({
+async function generateStudentReportPdf({
   studentName,
   turmaName,
+  avatarUrl,
+  behavior,
+  teacherObservation,
   grades,
   absences,
 }: {
   studentName: string;
   turmaName: string;
+  avatarUrl?: string | null;
+  behavior?: string | null;
+  teacherObservation?: string | null;
   grades: Array<{ subject: string; value: number; term: string }>;
   absences: Array<{ subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }>;
 }) {
+  const [logoDataUrl, avatarDataUrl] = await Promise.all([loadImageDataUrl(), loadImageDataUrl(avatarUrl)]);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
 
   doc.setFillColor(27, 57, 52);
-  doc.rect(0, 0, pageWidth, 72, "F");
+  doc.rect(0, 0, pageWidth, 92, "F");
+  if (logoDataUrl) doc.addImage(logoDataUrl.data, logoDataUrl.format, margin, 16, 58, 58);
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.text("NEPH Relatórios", 40, 42);
+  doc.setFontSize(23);
+  doc.text("NEPH Relatórios", 112, 43);
   doc.setFontSize(11);
-  doc.text("Relatório escolar", 40, 58);
+  doc.text("Relatório escolar semanal", 112, 63);
 
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(14);
-  doc.text(`Aluno: ${studentName}`, 40, 110);
-  doc.text(`Turma: ${turmaName}`, 40, 132);
-
-  const average = grades.length
-    ? (grades.reduce((total, grade) => total + Number(grade.value), 0) / grades.length).toFixed(1)
-    : "0.0";
-  doc.text(`Média: ${average}`, 40, 154);
-
-  let y = 190;
+  if (avatarDataUrl) doc.addImage(avatarDataUrl.data, avatarDataUrl.format, pageWidth - 112, 108, 72, 72);
+  doc.setTextColor(27, 57, 52);
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.text(studentName, margin, 125);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(12);
+  doc.setTextColor(70, 85, 76);
+  doc.text(`Turma: ${turmaName}`, margin, 146);
+
+  const averageValue = grades.length ? grades.reduce((total, grade) => total + Number(grade.value), 0) / grades.length : 0;
+  const average = averageValue.toFixed(1);
+  const justified = absences.filter((absence) => absence.justified).length;
+  const unjustified = absences.length - justified;
+  const metrics = [["Média geral", average], ["Notas", String(grades.length)], ["Faltas", String(absences.length)], ["Comportamento", behavior || "N/I"]];
+  metrics.forEach(([label, value], index) => {
+    const x = margin + index * 130;
+    doc.setFillColor(index === 0 ? 27 : 239, index === 0 ? 57 : 247, index === 0 ? 52 : 242);
+    doc.roundedRect(x, 170, 118, 58, 7, 7, "F");
+    doc.setTextColor(index === 0 ? 255 : 91, index === 0 ? 255 : 109, index === 0 ? 255 : 104);
+    doc.setFontSize(8);
+    doc.text(label.toUpperCase(), x + 10, 188);
+    doc.setTextColor(index === 0 ? 255 : 27, index === 0 ? 255 : 57, index === 0 ? 255 : 52);
+    doc.setFontSize(index === 3 ? 12 : 20);
+    doc.setFont("helvetica", "bold");
+    doc.text(value, x + 10, 214);
+    doc.setFont("helvetica", "normal");
+  });
+
+  let y = 260;
+  doc.setTextColor(27, 57, 52);
+  doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
-  doc.text("Notas", 40, y);
+  doc.text("Desempenho por disciplina", margin, y);
   y += 18;
   doc.setFont("helvetica", "normal");
+  const subjectAverages = Array.from(new Set(grades.map((grade) => grade.subject))).map((subject) => ({ subject, value: grades.filter((grade) => grade.subject === subject).reduce((total, grade) => total + Number(grade.value), 0) / grades.filter((grade) => grade.subject === subject).length }));
+  const chartWidth = pageWidth - margin * 2;
+  subjectAverages.forEach((item) => {
+    const label = item.subject.length > 18 ? `${item.subject.slice(0, 17)}...` : item.subject;
+    doc.setFontSize(9);
+    doc.setTextColor(64, 85, 76);
+    doc.text(label, margin, y + 10);
+    doc.setFillColor(224, 235, 226);
+    doc.roundedRect(margin + 105, y, chartWidth - 145, 14, 4, 4, "F");
+    doc.setFillColor(57, 117, 93);
+    doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, item.value / 20), 14, 4, 4, "F");
+    doc.setTextColor(27, 57, 52);
+    doc.text(item.value.toFixed(1), pageWidth - margin - 28, y + 10);
+    y += 23;
+  });
+  if (!subjectAverages.length) { doc.setTextColor(96, 113, 104); doc.text("Sem notas registadas.", margin, y + 10); y += 28; }
 
-  if (grades.length === 0) {
-    doc.text("Sem notas registadas.", 40, y);
-    y += 18;
-  } else {
-    grades.forEach((grade) => {
-      const line = `${grade.subject} • ${grade.value} • ${grade.term}`;
-      doc.text(line, 40, y);
-      y += 16;
-      if (y > pageHeight - 60) {
-        doc.addPage();
-        y = 50;
-      }
-    });
-  }
-
-  y += 18;
-  if (y > pageHeight - 90) {
-    doc.addPage();
-    y = 50;
-  }
-
+  y += 14;
+  doc.setTextColor(27, 57, 52);
+  doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
-  doc.text("Faltas", 40, y);
-  y += 18;
+  doc.text("Assiduidade", margin, y);
+  y += 23;
   doc.setFont("helvetica", "normal");
+  const absenceTotal = Math.max(1, absences.length);
+  const absenceBars: Array<[string, number, [number, number, number]]> = [["Justificadas", justified, [57, 117, 93]], ["Injustificadas", unjustified, [185, 119, 45]]];
+  absenceBars.forEach(([label, value, color]) => {
+    doc.setFontSize(10);
+    doc.setTextColor(64, 85, 76);
+    doc.text(String(label), margin, y + 11);
+    doc.setFillColor(239, 240, 234);
+    doc.roundedRect(margin + 105, y, chartWidth - 145, 16, 5, 5, "F");
+    doc.setFillColor(Number(color[0]), Number(color[1]), Number(color[2]));
+    doc.roundedRect(margin + 105, y, (chartWidth - 145) * Number(value) / absenceTotal, 16, 5, 5, "F");
+    doc.text(String(value), pageWidth - margin - 28, y + 11);
+    y += 27;
+  });
 
-  if (absences.length === 0) {
-    doc.text("Sem faltas registadas.", 40, y);
-  } else {
-    absences.forEach((absence) => {
-      const dia = absence.dia.toISOString().slice(0, 10);
-      const line = `${dia} • ${absence.subject} • ${absence.tempo} • ${absence.faultType} • ${absence.justified ? "Justificada" : "Injustificada"}`;
-      const wrapped = doc.splitTextToSize(line, pageWidth - 90);
-      wrapped.forEach((part: string) => {
-        doc.text(part, 40, y);
-        y += 14;
-        if (y > pageHeight - 50) {
-          doc.addPage();
-          y = 50;
-        }
-      });
-    });
-  }
+  y += 18;
+  doc.setFontSize(15);
+  doc.setTextColor(27, 57, 52);
+  doc.setFont("helvetica", "bold");
+  doc.text("Observação do professor", margin, y);
+  y += 20;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(64, 85, 76);
+  doc.text(doc.splitTextToSize(teacherObservation?.trim() || "Sem observação do professor.", chartWidth), margin, y);
 
   return Buffer.from(doc.output("arraybuffer"));
 }
@@ -188,6 +237,7 @@ export async function POST(request: Request) {
         students: {
           include: {
             parents: { select: { id: true, name: true, email: true } },
+            weeklyObservations: { where: { weekStart: period.start }, select: { behavior: true, teacherObservation: true } },
             grades: { where: { term: `Semanal:${formatPeriodDate(period.start)}:${formatPeriodDate(period.end)}` } },
             absences: { where: { dia: { gte: new Date(`${formatPeriodDate(period.start)}T00:00:00Z`), lte: new Date(`${formatPeriodDate(period.end)}T23:59:59.999Z`) } } },
           },
@@ -223,9 +273,12 @@ export async function POST(request: Request) {
 
         if (!approvedParents.size) continue;
 
-        const pdf = generateStudentReportPdf({
+        const pdf = await generateStudentReportPdf({
           studentName: student.name,
           turmaName: turma.name,
+          avatarUrl: student.avatarUrl,
+          behavior: student.weeklyObservations[0]?.behavior,
+          teacherObservation: student.weeklyObservations[0]?.teacherObservation,
           grades: student.grades.map((grade: { subject: string; value: number | string; term: string }) => ({
             subject: grade.subject,
             value: Number(grade.value),
