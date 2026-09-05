@@ -329,6 +329,7 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .attendance-save-button { min-height:2.6rem; border:0; border-radius:11px; padding:0.65rem 1rem; background:var(--green); color:#fff; font-weight:800; }
 .attendance-save-button:disabled { cursor:not-allowed; opacity:0.55; }
 .attendance-book-status { margin-top:0.75rem; color:var(--green); font-size:0.8rem; font-weight:800; }
+.attendance-book-status-inline { margin:0.85rem 0 0; padding:0.7rem 0.8rem; border:1px solid #eadfc5; border-radius:10px; background:#fffaf0; color:#806b2c; }
 .student-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:1rem; }
 .student-card-link { color:inherit; text-decoration:none; }
 .student-card { background:linear-gradient(180deg, #ffffff 0%, #f7faf7 100%); border:1px solid #e2e9e2; border-radius:20px; padding:1rem 0.9rem; min-height:210px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; text-align:center; transition:border-color .18s ease, transform .18s ease, box-shadow .18s ease; }

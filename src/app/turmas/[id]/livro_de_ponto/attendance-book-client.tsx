@@ -21,6 +21,11 @@ function displayName(name: string) {
   return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1]}` : parts[0] ?? name;
 }
 
+function isWeekend(dateValue: string) {
+  const day = new Date(`${dateValue}T12:00:00Z`).getUTCDay();
+  return day === 0 || day === 6;
+}
+
 export function AttendanceBookClient({ turma }: { turma: Turma }) {
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -110,7 +115,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
 
       <section className="attendance-book-panel">
         <div className="attendance-book-toolbar">
-          <label>Data<input type="date" max={todayKey} value={date} onChange={(event) => setDate(event.target.value)} /></label>
+          <label>Data<input type="date" max={todayKey} value={date} onChange={(event) => { const nextDate = event.target.value; if (nextDate && isWeekend(nextDate)) { setDate(""); setSelectedIds([]); setStatus("A escola não oferece aulas aos fins de semana."); return; } setStatus(""); setDate(nextDate); }} /></label>
           <label>Disciplina<select value={subject} onChange={(event) => setSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
           <label>Tempo<select value={tempo} onChange={(event) => setTempo(event.target.value)}>{tempos.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
           <fieldset className="attendance-fault-switch">
@@ -130,6 +135,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
             </div>
           </fieldset>
         </div>
+        {status ? <p className="attendance-book-status attendance-book-status-inline">{status}</p> : null}
 
         <div className="attendance-book-heading">
           <div><p className="eyebrow">ALUNOS DA TURMA</p><h2>Marcar faltas</h2></div>
@@ -155,7 +161,6 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
           <span>{isLoading ? "A carregar registos..." : `${selectedIds.length} de ${turma.roster.length} alunos selecionados`}</span>
           <button type="button" className="attendance-save-button" onClick={saveAttendance} disabled={isSaving || isLoading}>{isSaving ? "A guardar..." : "Guardar faltas"}</button>
         </div>
-        {status ? <p className="attendance-book-status">{status}</p> : null}
       </section>
     </main>
   );
