@@ -25,6 +25,8 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
   const [tab, setTab] = useState<"resumo" | "notas" | "faltas" | "justificativos" | "relatorio" | "contactos">("resumo");
   const [gradeStart, setGradeStart] = useState("");
   const [gradeEnd, setGradeEnd] = useState("");
+  const [summaryStart, setSummaryStart] = useState("");
+  const [summaryEnd, setSummaryEnd] = useState("");
   const [reportStart, setReportStart] = useState<string>("");
   const [reportEnd, setReportEnd] = useState<string>("");
   const [behavior, setBehavior] = useState("");
@@ -79,8 +81,25 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     setReportEnd(period?.end.toISOString().slice(0, 10) ?? "");
   }
 
+  function selectSummaryPeriod(value: string) {
+    const period = weeklyPeriods.find((item) => item.key === value);
+    if (value === "all") {
+      setSummaryStart("all");
+      setSummaryEnd(todayKey);
+      return;
+    }
+    setSummaryStart(value);
+    setSummaryEnd(period ? formatPeriodDate(period.end) : "");
+  }
+
   useEffect(() => {
     if (tab !== "resumo" && tab !== "notas" && tab !== "faltas" && tab !== "justificativos") return;
+    if (tab === "resumo" && (!summaryStart || !summaryEnd)) {
+      setGrades([]);
+      setAbsences([]);
+      setRecordsLoading(false);
+      return;
+    }
     if (tab === "notas" && (!gradeStart || !gradeEnd)) {
       setGrades([]);
       return;
@@ -105,9 +124,9 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     }
     let cancelled = false;
     setRecordsLoading(true);
-    const from = tab === "resumo" ? "2000-01-01" : tab === "notas" ? gradeStart : tab === "faltas" ? absenceStart : justificationStart;
-    const to = tab === "resumo" ? todayKey : tab === "notas" ? gradeEnd : tab === "faltas" ? absenceEnd : justificationEnd;
-    const term = tab === "notas" ? `Semanal:${from}:${to}` : "";
+    const from = tab === "resumo" ? (summaryStart === "all" ? "2000-01-01" : summaryStart) : tab === "notas" ? gradeStart : tab === "faltas" ? absenceStart : justificationStart;
+    const to = tab === "resumo" ? summaryEnd : tab === "notas" ? gradeEnd : tab === "faltas" ? absenceEnd : justificationEnd;
+    const term = tab === "notas" || (tab === "resumo" && summaryStart !== "all") ? `Semanal:${from}:${to}` : "";
     const termQuery = term ? `&term=${encodeURIComponent(term)}` : "";
     fetch(`/api/student-record?studentId=${encodeURIComponent(student.id)}&from=${from}&to=${to}${termQuery}`)
       .then(async (response) => {
@@ -127,7 +146,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
         if (!cancelled) setRecordsLoading(false);
       });
     return () => { cancelled = true; };
-  }, [absenceEnd, absenceStart, gradeEnd, gradeStart, justificationEnd, justificationStart, student.id, tab, todayKey]);
+  }, [absenceEnd, absenceStart, gradeEnd, gradeStart, justificationEnd, justificationStart, student.id, summaryEnd, summaryStart, tab, todayKey]);
 
   async function justifySelectedAbsences() {
     if (!selectedAbsenceIds.length || !justificationTitle.trim() || !justificationNotes.trim()) {
@@ -383,7 +402,10 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
 
             {tab === "resumo" && (
               <div className="student-summary-view">
-                {recordsLoading ? <p className="student-record-empty">A carregar o resumo...</p> : (
+                <div className="weekly-period-selector">
+                  <label>Período semanal<select value={summaryStart} onChange={(event) => selectSummaryPeriod(event.target.value)}><option value="">Selecione um período</option><option value="all">Todos os períodos</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
+                </div>
+                {!summaryStart || !summaryEnd ? <p className="student-record-empty">Selecione um período semanal para ver o resumo.</p> : recordsLoading ? <p className="student-record-empty">A carregar o resumo...</p> : (
                   <>
                     <div className="student-summary-metrics">
                       <div className="student-summary-metric accent"><span>Média geral</span><strong>{averageGrade.toFixed(1)}</strong><small>em {grades.length} nota(s)</small></div>
