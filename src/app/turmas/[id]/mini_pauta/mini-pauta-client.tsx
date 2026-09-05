@@ -10,7 +10,7 @@ type Turma = {
   id: string;
   name: string;
   subjects: string[];
-  roster: Array<{ id: string; name: string; age: number }>;
+  roster: Array<{ id: string; name: string; age: number; avatarUrl?: string | null }>;
 };
 
 function displayName(name: string) {
@@ -233,9 +233,11 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
         <div className="mini-pauta-list">
           {turma.roster.map((student) => (
             <label key={student.id} className="mini-pauta-row">
-              <span className="mini-pauta-avatar">{displayName(student.name).charAt(0).toUpperCase()}</span>
-              <span className="mini-pauta-student"><strong>{displayName(student.name)}</strong></span>
-              <span className="mini-pauta-input-wrap"><span>Nota</span><input type="number" min="0" max="20" step="0.1" value={grades[student.id] ?? ""} onChange={(event) => setGrades((current) => ({ ...current, [student.id]: event.target.value }))} placeholder="-" disabled={!weekStart || !weekEnd} /></span>
+              <span className="mini-pauta-avatar">{student.avatarUrl ? <img src={student.avatarUrl} alt={`Fotografia de ${displayName(student.name)}`} /> : displayName(student.name).charAt(0).toUpperCase()}</span>
+              <span className="mini-pauta-content">
+                <span className="mini-pauta-student"><strong>{displayName(student.name)}</strong></span>
+                <span className="mini-pauta-input-wrap"><span>Nota</span><input type="number" min="0" max="20" step="0.1" value={grades[student.id] ?? ""} onChange={(event) => setGrades((current) => ({ ...current, [student.id]: event.target.value }))} placeholder="-" disabled={!weekStart || !weekEnd} /></span>
+              </span>
             </label>
           ))}
         </div>
