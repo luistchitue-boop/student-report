@@ -46,20 +46,30 @@ export async function PATCH(request: Request) {
     const requestedRole = body.role === "ADMIN" || body.role === "DIRECCAO" || body.role === "COORDENADOR" ? body.role : "";
     const requestedTurmaIds: unknown[] = Array.isArray(body.turmaIds) ? body.turmaIds : [];
     const turmaIds = [...new Set(requestedTurmaIds.filter((id): id is string => typeof id === "string"))];
-    const requestedMainTurmaId = typeof body.mainTurmaId === "string" ? body.mainTurmaId : null;
+    const requestedMainTurmaIds: string[] | null = Array.isArray(body.mainTurmaIds)
+      ? Array.from(new Set<string>(body.mainTurmaIds.filter((id: unknown): id is string => typeof id === "string")))
+      : null;
     const teacher = await prisma.teacher.findFirst({ where: { id: teacherId, role: { not: "ADMIN" } }, include: { turmaAssignments: { select: { turmaId: true, isMain: true } } } });
     if (!teacher) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
     if (!requestedRole) return NextResponse.json({ error: "Perfil inválido" }, { status: 400 });
 
     const validTurmas = await prisma.turma.findMany({ where: { id: { in: turmaIds } }, select: { id: true } });
     if (validTurmas.length !== turmaIds.length) return NextResponse.json({ error: "Uma ou mais turmas não foram encontradas" }, { status: 400 });
-    if (requestedMainTurmaId && (!turmaIds.includes(requestedMainTurmaId) || requestedRole !== "COORDENADOR")) return NextResponse.json({ error: "O coordenador principal deve estar atribuído à turma" }, { status: 400 });
+    if (requestedMainTurmaIds?.some((turmaId) => !turmaIds.includes(turmaId)) || (requestedMainTurmaIds?.length && requestedRole !== "COORDENADOR")) return NextResponse.json({ error: "Os coordenadores principais devem estar atribuídos às turmas" }, { status: 400 });
+
+    const existingMainTurmaIds = teacher.turmaAssignments.filter((assignment) => assignment.isMain).map((assignment) => assignment.turmaId);
+    const mainTurmaIds = requestedMainTurmaIds ?? existingMainTurmaIds.filter((turmaId) => turmaIds.includes(turmaId));
 
     await prisma.$transaction(async (transaction) => {
       await transaction.teacher.update({ where: { id: teacher.id }, data: { role: requestedRole } });
-      await transaction.teacherTurma.deleteMany({ where: { teacherId: teacher.id } });
-      if (requestedMainTurmaId) await transaction.teacherTurma.updateMany({ where: { turmaId: requestedMainTurmaId }, data: { isMain: false } });
-      if (turmaIds.length) await transaction.teacherTurma.createMany({ data: turmaIds.map((turmaId) => ({ teacherId: teacher.id, turmaId, isMain: requestedRole === "COORDENADOR" && turmaId === requestedMainTurmaId })) });
+      await transaction.teacherTurma.deleteMany({ where: { teacherId: teacher.id, turmaId: { notIn: turmaIds } } });
+      await transaction.teacherTurma.updateMany({ where: { teacherId: teacher.id, turmaId: { in: turmaIds } }, data: { isMain: false } });
+      const existingTurmaIds = new Set(teacher.turmaAssignments.map((assignment) => assignment.turmaId));
+      const newTurmaIds = turmaIds.filter((turmaId) => !existingTurmaIds.has(turmaId));
+      if (newTurmaIds.length) await transaction.teacherTurma.createMany({ data: newTurmaIds.map((turmaId) => ({ teacherId: teacher.id, turmaId, isMain: false })) });
+      if (requestedRole === "COORDENADOR" && mainTurmaIds.length) {
+        await transaction.teacherTurma.updateMany({ where: { teacherId: teacher.id, turmaId: { in: mainTurmaIds } }, data: { isMain: true } });
+      }
     });
 
     await createActivityLog({
@@ -68,7 +78,7 @@ export async function PATCH(request: Request) {
       action: "Atualizou o perfil e as atribuições",
       entity: "Teacher",
       entityId: teacher.id,
-      details: { role: requestedRole, mainTurmaId: requestedMainTurmaId, previousRole: teacher.role, turmaIds, previousTurmaIds: teacher.turmaAssignments.map((assignment) => assignment.turmaId) },
+      details: { role: requestedRole, mainTurmaIds, previousRole: teacher.role, turmaIds, previousTurmaIds: teacher.turmaAssignments.map((assignment) => assignment.turmaId) },
     });
 
     return NextResponse.json({ success: true, role: requestedRole, turmaIds });

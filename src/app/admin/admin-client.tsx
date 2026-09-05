@@ -39,7 +39,7 @@ export function AdminClient({
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
   const [selectedRole, setSelectedRole] = useState<"COORDENADOR" | "DIRECCAO" | "ADMIN">("COORDENADOR");
   const [turmaToAdd, setTurmaToAdd] = useState("");
-  const [mainTurmaId, setMainTurmaId] = useState<string | null>(null);
+  const [mainTurmaIds, setMainTurmaIds] = useState<string[]>([]);
 
   async function loadAssignments() {
     const response = await fetch("/api/admin/teachers");
@@ -52,7 +52,7 @@ export function AdminClient({
     setSelectedTeacherId(nextTeacherId);
     const currentTeacher = data.teachers.find((teacher: ExistingTeacher) => teacher.id === nextTeacherId) ?? data.teachers[0];
     if (currentTeacher) setSelectedRole(currentTeacher.role as "COORDENADOR" | "DIRECCAO" | "ADMIN");
-    if (currentTeacher) setMainTurmaId(currentTeacher.turmaAssignments.find((assignment: { turmaId: string; isMain: boolean }) => assignment.isMain)?.turmaId ?? null);
+    if (currentTeacher) setMainTurmaIds(currentTeacher.turmaAssignments.filter((assignment: { turmaId: string; isMain: boolean }) => assignment.isMain).map((assignment: { turmaId: string }) => assignment.turmaId));
   }
 
   useEffect(() => { loadAssignments(); }, []);
@@ -106,7 +106,7 @@ export function AdminClient({
     const response = await fetch("/api/admin/teachers", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teacherId, role: teacherId === selectedTeacherId ? selectedRole : existingTeachers.find((teacher) => teacher.id === teacherId)?.role, turmaIds: assignmentState[teacherId] ?? [], mainTurmaId: teacherId === selectedTeacherId ? mainTurmaId : null }),
+      body: JSON.stringify({ teacherId, role: teacherId === selectedTeacherId ? selectedRole : existingTeachers.find((teacher) => teacher.id === teacherId)?.role, turmaIds: assignmentState[teacherId] ?? [], mainTurmaIds: teacherId === selectedTeacherId ? mainTurmaIds : [] }),
     });
     const data = await response.json();
     setAssignmentMessage(response.ok ? "Atribuições atualizadas." : data.error ?? "Não foi possível atualizar as atribuições.");
@@ -221,13 +221,13 @@ export function AdminClient({
         </div>
         {existingTeachers.length > 0 && selectedTeacher && (
           <article className="admin-assignment-card">
-            <label className="admin-field"><span>Conta</span><select value={selectedTeacherId} onChange={(event) => { const teacherId = event.target.value; const teacher = existingTeachers.find((item) => item.id === teacherId); setSelectedTeacherId(teacherId); setSelectedRole((teacher?.role as "COORDENADOR" | "DIRECCAO" | "ADMIN") ?? "COORDENADOR"); setMainTurmaId(teacher?.turmaAssignments.find((assignment) => assignment.isMain)?.turmaId ?? null); setTurmaToAdd(""); }}>
+            <label className="admin-field"><span>Conta</span><select value={selectedTeacherId} onChange={(event) => { const teacherId = event.target.value; const teacher = existingTeachers.find((item) => item.id === teacherId); setSelectedTeacherId(teacherId); setSelectedRole((teacher?.role as "COORDENADOR" | "DIRECCAO" | "ADMIN") ?? "COORDENADOR"); setMainTurmaIds(teacher?.turmaAssignments.filter((assignment: { isMain: boolean }) => assignment.isMain).map((assignment: { turmaId: string }) => assignment.turmaId) ?? []); setTurmaToAdd(""); }}>
               {existingTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name} · {teacher.user.email}</option>)}
             </select></label>
             <div className="admin-assignment-header"><div><strong>{selectedTeacher.name}</strong><small>{selectedRole} · {selectedTeacherTurmas.length} turma(s) atribuída(s)</small></div><div className="admin-assignment-actions"><button type="button" className="admin-submit" onClick={() => saveAssignments(selectedTeacher.id)}>Guardar alterações</button><button type="button" className="admin-remove-button" onClick={() => removeUser(selectedTeacher.id)}>Remover conta</button></div></div>
             <label className="admin-field"><span>Perfil</span><select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value as "COORDENADOR" | "DIRECCAO" | "ADMIN")}><option value="COORDENADOR">Coordenador</option><option value="DIRECCAO">Direção</option><option value="ADMIN">Administrador</option></select></label>
             <div className="admin-assignment-chips">
-              {selectedTeacherTurmas.length ? selectedTeacherTurmas.map((turmaId) => <span key={turmaId} className={`admin-assignment-chip ${mainTurmaId === turmaId ? "main" : ""}`}><button type="button" className="admin-main-toggle" onClick={() => selectedRole === "COORDENADOR" && setMainTurmaId(turmaId)} disabled={selectedRole !== "COORDENADOR"} aria-label="Definir como coordenador principal">{mainTurmaId === turmaId ? "★" : "☆"}</button>{existingTurmas.find((turma) => turma.id === turmaId)?.name ?? "Turma"}<button type="button" onClick={() => { removeAssignment(turmaId); if (mainTurmaId === turmaId) setMainTurmaId(null); }} aria-label="Remover turma">×</button></span>) : <span className="admin-assignment-empty">Nenhuma turma atribuída</span>}
+              {selectedTeacherTurmas.length ? selectedTeacherTurmas.map((turmaId) => <span key={turmaId} className={`admin-assignment-chip ${mainTurmaIds.includes(turmaId) ? "main" : ""}`}><button type="button" className="admin-main-toggle" onClick={() => { if (selectedRole !== "COORDENADOR") return; setMainTurmaIds((current) => current.includes(turmaId) ? current.filter((id) => id !== turmaId) : [...current, turmaId]); }} disabled={selectedRole !== "COORDENADOR"} aria-label="Alternar coordenador principal">{mainTurmaIds.includes(turmaId) ? "★" : "☆"}</button>{existingTurmas.find((turma) => turma.id === turmaId)?.name ?? "Turma"}<button type="button" onClick={() => { removeAssignment(turmaId); setMainTurmaIds((current) => current.filter((id) => id !== turmaId)); }} aria-label="Remover turma">×</button></span>) : <span className="admin-assignment-empty">Nenhuma turma atribuída</span>}
             </div>
             <div className="admin-assignment-add"><select value={turmaToAdd} onChange={(event) => setTurmaToAdd(event.target.value)}><option value="">Adicionar uma turma...</option>{availableTurmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}</select><button type="button" className="admin-assignment-add-button" onClick={addAssignment} disabled={!turmaToAdd}>Adicionar</button></div>
           </article>
