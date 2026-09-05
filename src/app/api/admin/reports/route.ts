@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { Resend } from "resend";
+import twilio from "twilio";
 import { put } from "@vercel/blob";
 import { jsPDF } from "jspdf";
 import { auth } from "@/auth";
@@ -65,11 +66,12 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const periodKey = searchParams.get("periodKey") ?? "";
   const turmaId = searchParams.get("turmaId") ?? "";
+  const channel = searchParams.get("channel") === "WHATSAPP" ? "WHATSAPP" : "EMAIL";
   const period = getWeeklyCoordinationPeriods(new Date().getFullYear()).find((item) => item.key === periodKey);
   if (!period || !turmaId) return NextResponse.json({ error: "Período e turma são obrigatórios." }, { status: 400 });
 
   const deliveries = await prisma.reportDelivery.findMany({
-    where: { turmaId, periodStart: period.start, status: "FAILED" },
+    where: { turmaId, periodStart: period.start, channel, status: "FAILED" },
     orderBy: [{ student: { name: "asc" } }, { recipientEmail: "asc" }],
     select: { id: true, student: { select: { name: true } }, recipientName: true, recipientEmail: true, error: true, attemptedAt: true },
   });
@@ -204,6 +206,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+    const channel = body.channel === "WHATSAPP" ? "WHATSAPP" : "EMAIL";
     const rawTurmaIds = Array.isArray(body.turmaIds) ? body.turmaIds : [];
     const turmaIds = rawTurmaIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
     const rawStudentIds = Array.isArray(body.studentIds) ? body.studentIds : [];
@@ -223,9 +226,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Selecione pelo menos uma turma ou um aluno" }, { status: 400 });
     }
 
-    const { RESEND_API_KEY, RESEND_FROM_EMAIL, BLOB_READ_WRITE_TOKEN } = process.env;
-    if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
+    const { RESEND_API_KEY, RESEND_FROM_EMAIL, BLOB_READ_WRITE_TOKEN, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM } = process.env;
+    if (channel === "EMAIL" && (!RESEND_API_KEY || !RESEND_FROM_EMAIL)) {
       return NextResponse.json({ error: "Resend não está configurado. Adicione RESEND_API_KEY e RESEND_FROM_EMAIL." }, { status: 500 });
+    }
+    if (channel === "WHATSAPP" && (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WHATSAPP_FROM)) {
+      return NextResponse.json({ error: "Twilio WhatsApp não está configurado. Adicione TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_WHATSAPP_FROM." }, { status: 500 });
     }
     if (!BLOB_READ_WRITE_TOKEN) {
       return NextResponse.json({ error: "O armazenamento de relatórios não está configurado. Adicione BLOB_READ_WRITE_TOKEN." }, { status: 500 });
@@ -236,7 +242,7 @@ export async function POST(request: Request) {
       include: {
         students: {
           include: {
-            parents: { select: { id: true, name: true, email: true } },
+            parents: { select: { id: true, name: true, email: true, phone: true } },
             weeklyObservations: { where: { weekStart: period.start }, select: { behavior: true, teacherObservation: true } },
             grades: { where: { term: `Semanal:${formatPeriodDate(period.start)}:${formatPeriodDate(period.end)}` } },
             absences: { where: { dia: { gte: new Date(`${formatPeriodDate(period.start)}T00:00:00Z`), lte: new Date(`${formatPeriodDate(period.end)}T23:59:59.999Z`) } } },
@@ -245,11 +251,11 @@ export async function POST(request: Request) {
       },
     });
 
-    const recipients: Array<{ email: string; reportUrl: string; studentName: string; firstName: string; studentId: string; turmaId: string; recipientName: string }> = [];
+    const recipients: Array<{ email: string; phone: string; reportUrl: string; studentName: string; firstName: string; studentId: string; turmaId: string; recipientName: string }> = [];
     const saveDelivery = (data: { turmaId: string; studentId: string; recipientName?: string; recipientEmail: string; reportUrl?: string; status: "SENT" | "FAILED"; error?: string }) => prisma.reportDelivery.upsert({
-      where: { studentId_periodStart_recipientEmail: { studentId: data.studentId, periodStart: period.start, recipientEmail: data.recipientEmail } },
+      where: { studentId_periodStart_recipientEmail_channel: { studentId: data.studentId, periodStart: period.start, recipientEmail: data.recipientEmail, channel } },
       update: { turmaId: data.turmaId, periodEnd: period.end, recipientName: data.recipientName, reportUrl: data.reportUrl, status: data.status, error: data.error, attemptedAt: new Date() },
-      create: { ...data, periodStart: period.start, periodEnd: period.end },
+      create: { ...data, channel, periodStart: period.start, periodEnd: period.end },
     });
 
     for (const turma of turmas) {
@@ -260,15 +266,17 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const approvedParents = new Map<string, string>();
+        const approvedParents = new Map<string, { firstName: string; phone: string; email: string }>();
         for (const parent of student.parents) {
           const email = parent.email?.trim().toLowerCase();
-          if (!email || !email.includes("@")) {
-            await saveDelivery({ turmaId: turma.id, studentId: student.id, recipientName: parent.name, recipientEmail: email || `(sem email ${parent.name})`, status: "FAILED", error: "O encarregado não tem um endereço de e-mail válido." });
+          const phone = parent.phone?.replace(/[^\d+]/g, "") ?? "";
+          const recipient = channel === "EMAIL" ? email : phone;
+          if (!recipient || (channel === "EMAIL" ? !recipient.includes("@") : recipient.length < 8)) {
+            await saveDelivery({ turmaId: turma.id, studentId: student.id, recipientName: parent.name, recipientEmail: recipient || `(sem ${channel === "EMAIL" ? "email" : "telefone"} ${parent.name})`, status: "FAILED", error: channel === "EMAIL" ? "O encarregado não tem um endereço de e-mail válido." : "O encarregado não tem um número de WhatsApp válido." });
             continue;
           }
           const firstName = parent.name.trim().split(/\s+/)[0] || "encarregado";
-          approvedParents.set(email, firstName);
+          approvedParents.set(recipient, { firstName, phone, email: email ?? "" });
         }
 
         if (!approvedParents.size) continue;
@@ -299,9 +307,10 @@ export async function POST(request: Request) {
           token: BLOB_READ_WRITE_TOKEN,
         });
 
-        approvedParents.forEach((firstName, email) => {
+        approvedParents.forEach(({ firstName, phone }, recipient) => {
           recipients.push({
-            email,
+            email: recipient,
+            phone: channel === "WHATSAPP" ? recipient : phone,
             reportUrl: blob.url,
             studentName: student.name,
             firstName,
@@ -314,10 +323,10 @@ export async function POST(request: Request) {
     }
 
     if (!recipients.length) {
-      return NextResponse.json({ success: true, sent: 0, message: "Nenhum encarregado com email encontrado nas turmas selecionadas." });
+      return NextResponse.json({ success: true, sent: 0, message: `Nenhum encarregado com ${channel === "EMAIL" ? "email" : "número de WhatsApp"} válido encontrado nas turmas selecionadas.` });
     }
 
-    const resend = new Resend(RESEND_API_KEY);
+    const resend = channel === "EMAIL" ? new Resend(RESEND_API_KEY) : null;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
     const logoUrl = `${appUrl.replace(/\/$/, "")}/school-logo.png`;
     const periodLabel = `${formatPeriodDate(period.start)} a ${formatPeriodDate(period.end)}`;
@@ -325,10 +334,27 @@ export async function POST(request: Request) {
     const results: Array<{ email: string; studentName: string; success: boolean; error?: string }> = [];
 
     for (const recipient of recipients) {
+      if (channel === "WHATSAPP") {
+        try {
+          await twilio(TWILIO_ACCOUNT_SID!, TWILIO_AUTH_TOKEN!).messages.create({
+            from: TWILIO_WHATSAPP_FROM!.startsWith("whatsapp:") ? TWILIO_WHATSAPP_FROM! : `whatsapp:${TWILIO_WHATSAPP_FROM}`,
+            to: `whatsapp:${recipient.phone}`,
+            body: `Saudações, Sr.(a) ${recipient.firstName}.\n\nO relatório escolar de ${recipient.studentName}, referente ao período ${periodLabel}, está disponível neste link:\n${recipient.reportUrl}\n\nCom os melhores cumprimentos,\nNova Escola Politécnica do Huambo`,
+          });
+          sent += 1;
+          await saveDelivery({ turmaId: recipient.turmaId, studentId: recipient.studentId, recipientName: recipient.recipientName, recipientEmail: recipient.email, reportUrl: recipient.reportUrl, status: "SENT" });
+          results.push({ email: recipient.email, studentName: recipient.studentName, success: true });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+          await saveDelivery({ turmaId: recipient.turmaId, studentId: recipient.studentId, recipientName: recipient.recipientName, recipientEmail: recipient.email, reportUrl: recipient.reportUrl, status: "FAILED", error: errorMessage });
+          results.push({ email: recipient.email, studentName: recipient.studentName, success: false, error: errorMessage });
+        }
+        continue;
+      }
       const safeStudentName = escapeHtml(recipient.studentName);
       try {
-      const result = await resend.emails.send({
-        from: RESEND_FROM_EMAIL,
+      const result = await resend!.emails.send({
+        from: RESEND_FROM_EMAIL!,
         to: recipient.email,
         subject: `O seu relatório escolar está pronto | ${recipient.studentName}`,
         text: `Saudações, Sr.(a) ${recipient.firstName}.\n\nO relatório escolar de ${recipient.studentName}, referente ao período ${periodLabel}, está disponível neste endereço:\n${recipient.reportUrl}\n\nCom os melhores cumprimentos,\nNova Escola Politécnica do Huambo`,

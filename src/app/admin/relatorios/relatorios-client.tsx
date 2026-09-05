@@ -8,7 +8,7 @@ type Turma = {
   name: string;
   students: number;
   subjects: string[];
-  roster: Array<{ id: string; name: string; parents: Array<{ name: string; email: string }> }>;
+  roster: Array<{ id: string; name: string; parents: Array<{ name: string; email: string; phone: string }> }>;
 };
 
 type DeliveryResult = { email: string; studentName: string; success: boolean; error?: string };
@@ -17,6 +17,7 @@ type FailedDelivery = { id: string; studentName: string; recipientName?: string 
 export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
   const [selectedPeriod, setSelectedPeriod] = useState("");
+  const [channel, setChannel] = useState<"EMAIL" | "WHATSAPP">("EMAIL");
   const [selectedTurmas, setSelectedTurmas] = useState<string[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
@@ -40,7 +41,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
     if (!selectedPeriod || !auditTurmaId) return;
     setAuditStatus("loading");
     try {
-      const response = await fetch(`/api/admin/reports?periodKey=${encodeURIComponent(selectedPeriod)}&turmaId=${encodeURIComponent(auditTurmaId)}`);
+      const response = await fetch(`/api/admin/reports?periodKey=${encodeURIComponent(selectedPeriod)}&turmaId=${encodeURIComponent(auditTurmaId)}&channel=${channel}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível consultar os envios.");
       setFailedDeliveries(data.deliveries ?? []);
@@ -80,13 +81,13 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
       const response = await fetch("/api/admin/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turmaIds, periodKey: selectedPeriod, ...(studentId ? { studentIds: [studentId] } : {}) }),
+        body: JSON.stringify({ turmaIds, periodKey: selectedPeriod, channel, ...(studentId ? { studentIds: [studentId] } : {}) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível enviar os relatórios.");
 
       setStatus(data.failed ? "error" : "success");
-      setMessage(`${data.sent ?? 0} de ${data.total ?? 0} e-mail(s) enviado(s). Taxa de sucesso: ${data.successRate ?? 0}%.`);
+      setMessage(`${data.sent ?? 0} de ${data.total ?? 0} envio(s) concluído(s) por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}. Taxa de sucesso: ${data.successRate ?? 0}%.`);
       setDeliveryResults(data.results ?? []);
       if (!studentId) setSelectedTurmas([]);
     } catch (error) {
@@ -100,8 +101,13 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
       <div className="section-heading admin-heading">
         <div>
           <p className="eyebrow">SELECIONE AS TURMAS</p>
-          <h3>Gerar e enviar relatórios por e-mail</h3>
+          <h3>Gerar e enviar relatórios por {channel === "EMAIL" ? "e-mail" : "WhatsApp"}</h3>
         </div>
+      </div>
+
+      <div className="admin-channel-tabs" role="tablist" aria-label="Canal de envio">
+        <button type="button" className={channel === "EMAIL" ? "active" : ""} onClick={() => { setChannel("EMAIL"); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>E-mail</button>
+        <button type="button" className={channel === "WHATSAPP" ? "active" : ""} onClick={() => { setChannel("WHATSAPP"); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>WhatsApp</button>
       </div>
 
       <div className="weekly-period-selector admin-report-period">
@@ -123,7 +129,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
       </div>
 
       <div className="admin-actions">
-        <button className="admin-submit" type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>{status === "sending" ? "A enviar..." : "Enviar relatórios"}</button>
+        <button className="admin-submit" type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>{status === "sending" ? "A enviar..." : `Enviar por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
       </div>
 
       <div className="admin-individual-panel">
@@ -133,7 +139,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
             {turmas.flatMap((turma) => turma.roster.map((student) => <option key={student.id} value={student.id}>{student.name} · {turma.name}</option>))}
           </select>
         </label>
-        <button type="button" onClick={() => handleSendReports(selectedStudentId)} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>{status === "sending" ? "A enviar..." : "Enviar caso individual"}</button>
+        <button type="button" onClick={() => handleSendReports(selectedStudentId)} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>{status === "sending" ? "A enviar..." : `Enviar caso individual por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
       </div>
 
       {message && <p className={`admin-status ${status}`}>{message}</p>}
@@ -144,7 +150,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
       </div>}
 
       <div className="admin-audit-panel">
-        <strong>Consultar relatórios não enviados</strong>
+        <strong>Consultar relatórios não enviados por {channel === "EMAIL" ? "e-mail" : "WhatsApp"}</strong>
         <div className="admin-audit-controls">
           <select value={auditTurmaId} disabled={!selectedPeriod || auditStatus === "loading"} onChange={(event) => { setAuditTurmaId(event.target.value); setFailedDeliveries([]); setAuditStatus("idle"); }}>
             <option value="">Selecione uma turma</option>
@@ -158,6 +164,9 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
 
       <style>{`
         .admin-shell { display:flex; flex-direction:column; gap:1.5rem; }
+        .admin-channel-tabs { display:flex; gap:.5rem; border-bottom:1px solid #dbe3ec; }
+        .admin-channel-tabs button { background:transparent; border:0; border-bottom:3px solid transparent; padding:.75rem 1rem; color:#64748b; font-weight:800; cursor:pointer; }
+        .admin-channel-tabs button.active { color:#1d4ed8; border-bottom-color:#1d4ed8; }
         .admin-heading { margin-bottom:0; }
         .admin-turma-panel, .admin-individual-panel, .admin-delivery-results { background:#f8fafc; border:1px solid #e2e8f0; border-radius:18px; padding:1.2rem; }
         .admin-report-period { max-width:520px; }

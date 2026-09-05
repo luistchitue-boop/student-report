@@ -64,6 +64,11 @@ enum ReportDeliveryStatus {
   FAILED
 }
 
+enum ReportDeliveryChannel {
+  EMAIL
+  WHATSAPP
+}
+
 model Teacher {
   id        String   @id @default(cuid())
   userId    String   @unique
@@ -169,6 +174,7 @@ model ReportDelivery {
   periodEnd      DateTime
   recipientName  String?
   recipientEmail String
+  channel        ReportDeliveryChannel
   reportUrl      String?
   status         ReportDeliveryStatus
   error          String?              @db.Text
@@ -179,8 +185,8 @@ model ReportDelivery {
   turma   Turma   @relation(fields: [turmaId], references: [id], onDelete: Cascade)
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  @@unique([studentId, periodStart, recipientEmail])
-  @@index([turmaId, periodStart, status])
+  @@unique([studentId, periodStart, recipientEmail, channel])
+  @@index([turmaId, periodStart, channel, status])
 }
 
 model Grade {
