@@ -33,6 +33,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
   const [absenceStart, setAbsenceStart] = useState("");
   const [absenceEnd, setAbsenceEnd] = useState("");
   const [reportNote, setReportNote] = useState<string>("");
+  const [observationLoading, setObservationLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [grades, setGrades] = useState<GradeRecord[]>([]);
   const [absences, setAbsences] = useState<AbsenceRecord[]>([]);
@@ -79,6 +80,11 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     const period = weeklyPeriods.find((item) => item.key === value);
     setReportStart(value);
     setReportEnd(period?.end.toISOString().slice(0, 10) ?? "");
+    setObservationLoading(Boolean(value));
+    if (!value) {
+      setReportNote("");
+      setBehavior("");
+    }
   }
 
   function selectSummaryPeriod(value: string) {
@@ -148,6 +154,31 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     return () => { cancelled = true; };
   }, [absenceEnd, absenceStart, gradeEnd, gradeStart, justificationEnd, justificationStart, student.id, summaryEnd, summaryStart, tab, todayKey]);
 
+  useEffect(() => {
+    if (tab !== "relatorio" || !reportStart || !reportEnd) {
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/student-observations?studentId=${encodeURIComponent(student.id)}&weekStart=${encodeURIComponent(reportStart)}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Não foi possível carregar a observação.");
+        return response.json() as Promise<{ observation?: { teacherObservation?: string; behavior?: string } | null }>;
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setReportNote(data.observation?.teacherObservation ?? "");
+          setBehavior(data.observation?.behavior ?? "");
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setStatusMessage(error instanceof Error ? error.message : "Não foi possível carregar a observação.");
+      })
+      .finally(() => {
+        if (!cancelled) setObservationLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [reportEnd, reportStart, student.id, tab]);
+
   async function justifySelectedAbsences() {
     if (!selectedAbsenceIds.length || !justificationTitle.trim() || !justificationNotes.trim()) {
       throw new Error("Selecione faltas e preencha os dois campos.");
@@ -196,6 +227,21 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     const response = await fetch("/api/student-record", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Não foi possível atualizar o registo.");
+  }
+
+  async function saveWeeklyObservation() {
+    if (!reportStart || !reportEnd) {
+      setStatusMessage("Escolha um período semanal antes de guardar.");
+      return;
+    }
+    const response = await fetch("/api/student-observations", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: student.id, weekStart: reportStart, weekEnd: reportEnd, teacherObservation: reportNote, behavior }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error ?? "Não foi possível guardar a observação.");
+    setStatusMessage(result.saved ? "Observação semanal guardada." : "Observação semanal removida.");
   }
 
   async function deleteRecord(type: "grade" | "absence", id: string) {
@@ -507,6 +553,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                     <textarea
                       rows={4}
                       maxLength={90}
+                      disabled={!canEdit || observationLoading}
                       value={reportNote}
                       onChange={(event) => setReportNote(event.target.value.slice(0, 90))}
                       placeholder="Escreva uma observação de até 90 caracteres"
@@ -520,7 +567,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
 
                 <label className="report-behavior-field">
                   Comportamento
-                  <select value={behavior} onChange={(event) => setBehavior(event.target.value)}>
+                  <select disabled={!canEdit || observationLoading} value={behavior} onChange={(event) => setBehavior(event.target.value)}>
                     <option value="">Selecione uma opção</option>
                     <option value="Muito bom">Muito bom</option>
                     <option value="Bom">Bom</option>
@@ -530,8 +577,8 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                 </label>
 
                 <div style={{ display: "grid", gap: "0.75rem" }}>
-                  <button type="button" onClick={generatePdfReport} disabled={!reportStart || !reportEnd} style={{ padding: "0.9rem 1.2rem", background: !reportStart || !reportEnd ? "#a7b7af" : "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: !reportStart || !reportEnd ? "not-allowed" : "pointer" }}>
-                    Gerar relatório em PDF
+                  <button type="button" onClick={async () => { try { await saveWeeklyObservation(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível guardar a observação."); } }} disabled={!canEdit || !reportStart || !reportEnd || observationLoading} style={{ padding: "0.9rem 1.2rem", background: !canEdit || !reportStart || !reportEnd || observationLoading ? "#a7b7af" : "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: !canEdit || !reportStart || !reportEnd || observationLoading ? "not-allowed" : "pointer" }}>
+                    {observationLoading ? "A carregar..." : "Guardar observação semanal"}
                   </button>
                   {statusMessage ? (
                     <div style={{ color: "#244d3d", fontWeight: 700 }}>{statusMessage}</div>
