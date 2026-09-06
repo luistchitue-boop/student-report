@@ -241,7 +241,7 @@ async function generateStudentReportPdf({
   doc.text(`Notas: ${lowGrades} abaixo de 10 · ${middleGrades} entre 10-13 · ${highGrades} entre 14-20`, margin + 180, y + 7);
   y += 22;
 
-  y += 14;
+  y += 30;
   doc.setTextColor(27, 57, 52);
   doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
