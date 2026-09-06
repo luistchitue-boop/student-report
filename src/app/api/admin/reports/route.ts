@@ -293,6 +293,16 @@ async function generateStudentReportPdf({
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text(`${studentName} · ${turmaName}`, margin, 130);
+  const detailPhotoX = pageWidth - margin - 28;
+  const detailPhotoY = 122;
+  doc.setFillColor(190, 185, 178);
+  doc.circle(detailPhotoX, detailPhotoY + 2, 29, "F");
+  doc.setFillColor(220, 238, 224);
+  doc.circle(detailPhotoX, detailPhotoY, 28, "F");
+  if (avatarDataUrl) doc.addImage(avatarDataUrl.data, avatarDataUrl.format, detailPhotoX - 27, detailPhotoY - 27, 54, 54);
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(2);
+  doc.circle(detailPhotoX, detailPhotoY, 28, "S");
 
   let detailY = 168;
   const tableWidth = pageWidth - margin * 2;
