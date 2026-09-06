@@ -135,6 +135,22 @@ async function generateStudentReportPdf({
   const paper = [246, 229, 219] as const;
   const terracotta = [181, 132, 112] as const;
   const ink = [102, 68, 55] as const;
+  const drawDotPattern = () => {
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const bottomStart = pageHeight - 125;
+    for (let row = 0; row < 13; row += 1) {
+      const progress = row / 12;
+      const radius = 0.45 + progress * 1.5;
+      doc.setFillColor(250 - Math.round(progress * 18), 224 - Math.round(progress * 34), 208 - Math.round(progress * 42));
+      for (let x = 14; x <= pageWidth - 14; x += 15) doc.circle(x, bottomStart + row * 10, radius, "F");
+    }
+    for (let row = 0; row < 16; row += 1) {
+      const progress = row / 15;
+      const radius = 0.4 + progress * 1.25;
+      doc.setFillColor(249 - Math.round(progress * 16), 222 - Math.round(progress * 28), 205 - Math.round(progress * 34));
+      for (let x = pageWidth - 78; x <= pageWidth - 12; x += 14) doc.circle(x, 104 + row * 14, radius, "F");
+    }
+  };
   const drawSchoolHeader = () => {
     if (logoDataUrl) doc.addImage(logoDataUrl.data, logoDataUrl.format, margin, 20, 50, 50);
     doc.setTextColor(...ink);
@@ -149,6 +165,7 @@ async function generateStudentReportPdf({
 
   doc.setFillColor(...paper);
   doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), "F");
+  drawDotPattern();
   doc.setDrawColor(225, 172, 149);
   doc.setLineWidth(2);
   doc.line(0, 90, 40, 80);
@@ -269,6 +286,7 @@ async function generateStudentReportPdf({
   doc.addPage();
   doc.setFillColor(...paper);
   doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), "F");
+  drawDotPattern();
   drawSchoolHeader();
   doc.setTextColor(...ink);
   doc.setFont("helvetica", "bold");
@@ -297,6 +315,7 @@ async function generateStudentReportPdf({
     doc.addPage();
     doc.setFillColor(...paper);
     doc.rect(0, 0, pageWidth, pageHeight, "F");
+    drawDotPattern();
     drawSchoolHeader();
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
