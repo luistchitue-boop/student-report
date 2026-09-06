@@ -203,7 +203,8 @@ async function generateStudentReportPdf({
   const average = averageValue.toFixed(1);
   const justified = absences.filter((absence) => absence.justified).length;
   const unjustified = absences.length - justified;
-  const metrics = [["Média geral", average], ["Notas", String(grades.length)], ["Faltas", String(absences.length)], ["Comportamento", behavior || "N/I"]];
+  const metrics: Array<[string, string]> = [["Média geral", average], ["Notas", String(grades.length)], ["Faltas", String(absences.length)]];
+  if (behavior?.trim()) metrics.push(["Comportamento", behavior.trim()]);
   metrics.forEach(([label, value], index) => {
     const x = margin + index * 130;
     doc.setFillColor(index === 0 ? terracotta[0] : 255, index === 0 ? terracotta[1] : 248, index === 0 ? terracotta[2] : 242);
@@ -464,13 +465,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "O armazenamento de relatórios não está configurado. Adicione BLOB_READ_WRITE_TOKEN." }, { status: 500 });
     }
 
+    const periodStartDate = new Date(`${formatPeriodDate(period.start)}T00:00:00.000Z`);
+    const periodStartNextDate = new Date(periodStartDate.getTime() + 24 * 60 * 60 * 1000);
+
     const turmas = await prisma.turma.findMany({
       where: { id: { in: turmaIds } },
       include: {
         students: {
           include: {
             parents: { select: { id: true, name: true, email: true, phone: true } },
-            weeklyObservations: { where: { weekStart: period.start }, select: { behavior: true, teacherObservation: true } },
+            weeklyObservations: { where: { weekStart: { gte: periodStartDate, lt: periodStartNextDate } }, select: { behavior: true, teacherObservation: true } },
             grades: { where: { term: `Semanal:${formatPeriodDate(period.start)}:${formatPeriodDate(period.end)}` } },
             absences: { where: { dia: { gte: new Date(`${formatPeriodDate(period.start)}T00:00:00Z`), lte: new Date(`${formatPeriodDate(period.end)}T23:59:59.999Z`) } } },
           },
