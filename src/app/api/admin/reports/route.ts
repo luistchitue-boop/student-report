@@ -395,17 +395,19 @@ async function generateStudentReportPdf({
     detailY += rowHeight;
   }
 
-  detailY += 30;
-  ensureDetailSpace(54);
-  doc.setTextColor(...ink);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("Observação do professor", margin, detailY);
-  doc.setFont("helvetica", "normal");
+  const observationText = teacherObservation?.trim() ?? "";
+  if (observationText) {
+    detailY += 30;
+    ensureDetailSpace(54);
+    doc.setTextColor(...ink);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Observação do professor", margin, detailY);
+    doc.setFont("helvetica", "normal");
+  }
   const observationFontSize = 14;
   const observationLineHeight = 17;
-  doc.setFontSize(observationFontSize);
-  const observationLines = doc.splitTextToSize(teacherObservation?.trim() || "Sem observação do professor.", tableWidth);
+  const observationLines = doc.splitTextToSize(observationText, tableWidth);
   const drawObservationQuote = (quoteY: number) => {
     doc.setTextColor(226, 202, 193);
     doc.setFont("helvetica", "bold");
@@ -416,7 +418,7 @@ async function generateStudentReportPdf({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
   };
-  if (detailY + 20 + observationLines.length * observationLineHeight > detailBottom) {
+  if (observationText && detailY + 20 + observationLines.length * observationLineHeight > detailBottom) {
     startDetailContinuation();
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
@@ -426,7 +428,7 @@ async function generateStudentReportPdf({
     doc.setFont("helvetica", "bold");
     doc.setFontSize(observationFontSize);
     doc.text(observationLines, margin, detailY + 20, { lineHeightFactor: observationLineHeight / observationFontSize });
-  } else {
+  } else if (observationText) {
     drawObservationQuote(detailY + 4);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(observationFontSize);
