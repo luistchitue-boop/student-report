@@ -135,9 +135,22 @@ async function generateStudentReportPdf({
   doc.setFontSize(10);
   doc.text("APRENDIZAGEM, ASSIDUIDADE E COMPORTAMENTO", pageWidth / 2, 128, { align: "center" });
 
+  const photoCenterX = 85;
+  const photoCenterY = 185;
+  const photoRadius = 38;
   doc.setFillColor(236, 211, 198);
-  doc.circle(85, 185, 38, "F");
-  if (avatarDataUrl) doc.addImage(avatarDataUrl.data, avatarDataUrl.format, 49, 149, 72, 72);
+  doc.circle(photoCenterX, photoCenterY, photoRadius, "F");
+  if (avatarDataUrl) {
+    doc.addImage(avatarDataUrl.data, avatarDataUrl.format, photoCenterX - 34, photoCenterY - 34, 68, 68);
+    doc.setFillColor(...paper);
+    doc.triangle(photoCenterX - 34, photoCenterY - 34, photoCenterX - 4, photoCenterY - 34, photoCenterX - 34, photoCenterY - 4, "F");
+    doc.triangle(photoCenterX + 34, photoCenterY - 34, photoCenterX + 4, photoCenterY - 34, photoCenterX + 34, photoCenterY - 4, "F");
+    doc.triangle(photoCenterX - 34, photoCenterY + 34, photoCenterX - 4, photoCenterY + 34, photoCenterX - 34, photoCenterY + 4, "F");
+    doc.triangle(photoCenterX + 34, photoCenterY + 34, photoCenterX + 4, photoCenterY + 34, photoCenterX + 34, photoCenterY + 4, "F");
+  }
+  doc.setDrawColor(...terracotta);
+  doc.setLineWidth(3);
+  doc.circle(photoCenterX, photoCenterY, photoRadius, "S");
   doc.setTextColor(...ink);
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
@@ -156,18 +169,18 @@ async function generateStudentReportPdf({
   metrics.forEach(([label, value], index) => {
     const x = margin + index * 130;
     doc.setFillColor(index === 0 ? terracotta[0] : 255, index === 0 ? terracotta[1] : 248, index === 0 ? terracotta[2] : 242);
-    doc.roundedRect(x, 170, 118, 58, 7, 7, "F");
+    doc.roundedRect(x, 250, 118, 58, 7, 7, "F");
     doc.setTextColor(index === 0 ? 255 : ink[0], index === 0 ? 255 : ink[1], index === 0 ? 255 : ink[2]);
     doc.setFontSize(8);
-    doc.text(label.toUpperCase(), x + 10, 188);
+    doc.text(label.toUpperCase(), x + 10, 268);
     doc.setTextColor(index === 0 ? 255 : ink[0], index === 0 ? 255 : ink[1], index === 0 ? 255 : ink[2]);
     doc.setFontSize(index === 3 ? 12 : 20);
     doc.setFont("helvetica", "bold");
-    doc.text(value, x + 10, 214);
+    doc.text(value, x + 10, 294);
     doc.setFont("helvetica", "normal");
   });
 
-  let y = 270;
+  let y = 345;
   doc.setTextColor(...ink);
   doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
