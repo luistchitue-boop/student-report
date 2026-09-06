@@ -131,6 +131,17 @@ async function generateStudentReportPdf({
   const paper = [246, 229, 219] as const;
   const terracotta = [181, 132, 112] as const;
   const ink = [102, 68, 55] as const;
+  const drawSchoolHeader = () => {
+    if (logoDataUrl) doc.addImage(logoDataUrl.data, logoDataUrl.format, margin, 18, 58, 58);
+    doc.setTextColor(...ink);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("NOVA ESCOLA POLITÉCNICA DO HUAMBO", 108, 34);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Rua Vicente Ferreira nº 64, Cidade Baixa - Huambo", 108, 48);
+    doc.text("https://www.neph.ao", 108, 60);
+  };
 
   doc.setFillColor(...paper);
   doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), "F");
@@ -138,15 +149,7 @@ async function generateStudentReportPdf({
   doc.setLineWidth(2);
   doc.line(0, 90, 40, 80);
   doc.line(pageWidth - 42, 0, pageWidth, 24);
-  if (logoDataUrl) doc.addImage(logoDataUrl.data, logoDataUrl.format, margin, 18, 58, 58);
-  doc.setTextColor(...ink);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("NOVA ESCOLA POLITÉCNICA DO HUAMBO", 108, 32);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text("Rua Vicente Ferreira nº 64, Cidade Baixa - Huambo", 108, 45);
-  doc.text("https://www.neph.ao", 108, 57);
+  drawSchoolHeader();
   doc.setFont("helvetica", "bold");
   doc.setFontSize(23);
   doc.text("RELATÓRIO SEMANAL", pageWidth / 2, 112, { align: "center" });
@@ -282,15 +285,16 @@ async function generateStudentReportPdf({
   doc.addPage();
   doc.setFillColor(...paper);
   doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), "F");
+  drawSchoolHeader();
   doc.setTextColor(...ink);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("Detalhe do relatório", margin, 52);
+  doc.text("Detalhe do relatório", margin, 112);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(`${studentName} · ${turmaName}`, margin, 70);
+  doc.text(`${studentName} · ${turmaName}`, margin, 130);
 
-  let detailY = 108;
+  let detailY = 168;
   const tableWidth = pageWidth - margin * 2;
   const rowHeight = 23;
   const drawTableHeader = (columns: Array<{ label: string; width: number }>) => {
