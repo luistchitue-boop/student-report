@@ -193,20 +193,29 @@ async function generateStudentReportPdf({
     doc.setFontSize(9);
     doc.setTextColor(64, 85, 76);
     doc.text(label, margin, y + 10);
-    doc.setFillColor(224, 235, 226);
-      doc.setFillColor(236, 211, 198);
+    doc.setFillColor(236, 211, 198);
     doc.roundedRect(margin + 105, y, chartWidth - 145, 14, 4, 4, "F");
-    doc.setFillColor(57, 117, 93);
-      doc.setFillColor(...terracotta);
-      doc.setTextColor(...ink);
-      doc.setTextColor(...ink);
-      doc.setTextColor(...ink);
+    const gradeColor: [number, number, number] = item.value >= 14 ? [57, 117, 93] : item.value >= 10 ? [215, 139, 48] : [194, 74, 67];
+    doc.setFillColor(...gradeColor);
     doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, item.value / 20), 14, 4, 4, "F");
-    doc.setTextColor(27, 57, 52);
+    doc.setTextColor(...ink);
     doc.text(item.value.toFixed(1), pageWidth - margin - 28, y + 10);
     y += 23;
   });
   if (!subjectAverages.length) { doc.setTextColor(96, 113, 104); doc.text("Sem notas registadas.", margin, y + 10); y += 28; }
+
+  doc.setFontSize(8);
+  doc.setTextColor(...ink);
+  doc.setFillColor(194, 74, 67);
+  doc.circle(margin + 4, y + 4, 4, "F");
+  doc.text("0-9", margin + 12, y + 7);
+  doc.setFillColor(215, 139, 48);
+  doc.circle(margin + 48, y + 4, 4, "F");
+  doc.text("10-13", margin + 56, y + 7);
+  doc.setFillColor(57, 117, 93);
+  doc.circle(margin + 105, y + 4, 4, "F");
+  doc.text("14-20", margin + 113, y + 7);
+  y += 22;
 
   y += 14;
   doc.setTextColor(27, 57, 52);
@@ -229,9 +238,29 @@ async function generateStudentReportPdf({
     y += 27;
   });
 
+  const unjustifiedBySubject = Array.from(new Set(absences.filter((absence) => !absence.justified).map((absence) => absence.subject)))
+    .map((subject) => ({ subject, count: absences.filter((absence) => !absence.justified && absence.subject === subject).length }));
+  y += 8;
+  doc.setFontSize(10);
+  doc.setTextColor(...ink);
+  doc.setFont("helvetica", "bold");
+  doc.text("Faltas injustificadas por disciplina", margin, y);
+  y += 16;
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(64, 85, 76);
+  if (unjustifiedBySubject.length) {
+    unjustifiedBySubject.forEach(({ subject, count }) => {
+      doc.text(`${subject}: ${count}`, margin, y);
+      y += 14;
+    });
+  } else {
+    doc.text("Nenhuma falta injustificada registada.", margin, y);
+    y += 14;
+  }
+
   y += 18;
   doc.setFontSize(15);
-  doc.setTextColor(27, 57, 52);
+  doc.setTextColor(...ink);
   doc.setFont("helvetica", "bold");
   doc.text("Observação do professor", margin, y);
   y += 20;
