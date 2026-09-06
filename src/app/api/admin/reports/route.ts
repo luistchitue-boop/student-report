@@ -197,7 +197,6 @@ async function generateStudentReportPdf({
   doc.setFontSize(11);
   doc.text(`Turma: ${turmaName}`, 135, 190);
   doc.text("Período semanal", 135, 207);
-  doc.text("Relatório escolar", 135, 223);
 
   const averageValue = grades.length ? grades.reduce((total, grade) => total + Number(grade.value), 0) / grades.length : 0;
   const average = averageValue.toFixed(1);
@@ -403,19 +402,35 @@ async function generateStudentReportPdf({
   doc.setFontSize(12);
   doc.text("Observação do professor", margin, detailY);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  const observationFontSize = 14;
+  const observationLineHeight = 17;
+  doc.setFontSize(observationFontSize);
   const observationLines = doc.splitTextToSize(teacherObservation?.trim() || "Sem observação do professor.", tableWidth);
-  if (detailY + 20 + observationLines.length * 12 > detailBottom) {
+  const drawObservationQuote = (quoteY: number) => {
+    doc.setTextColor(226, 202, 193);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(82);
+    doc.text('"', margin + 3, quoteY + 62);
+    doc.text('"', pageWidth - margin - 48, quoteY + 62);
+    doc.setTextColor(...ink);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+  };
+  if (detailY + 20 + observationLines.length * observationLineHeight > detailBottom) {
     startDetailContinuation();
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Observação do professor (continuação)", margin, detailY);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(observationLines, margin, detailY + 20);
+    drawObservationQuote(detailY + 4);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(observationFontSize);
+    doc.text(observationLines, margin, detailY + 20, { lineHeightFactor: observationLineHeight / observationFontSize });
   } else {
-    doc.text(observationLines, margin, detailY + 20);
+    drawObservationQuote(detailY + 4);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(observationFontSize);
+    doc.text(observationLines, margin, detailY + 20, { lineHeightFactor: observationLineHeight / observationFontSize });
   }
 
   return Buffer.from(doc.output("arraybuffer"));
