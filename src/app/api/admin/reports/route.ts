@@ -306,7 +306,7 @@ async function generateStudentReportPdf({
     doc.setFillColor(Number(color[0]), Number(color[1]), Number(color[2]));
     const barScale = label === "Injustificadas" ? unjustifiedScale : absenceTotal;
     doc.roundedRect(margin + 105, y, (chartWidth - 145) * Number(value) / barScale, 16, 5, 5, "F");
-    if (hasPreviousPeriod) {
+    if (label === "Injustificadas" && hasPreviousPeriod) {
       const previousX = margin + 105 + (chartWidth - 145) * previousUnjustifiedAbsences / barScale;
       doc.setFillColor(52, 112, 181);
       doc.setDrawColor(255, 255, 255);
@@ -412,6 +412,11 @@ async function generateStudentReportPdf({
 
   detailY += 30;
   ensureDetailSpace(rowHeight * 2);
+  doc.setTextColor(...ink);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text(`Resumo de faltas: Justificadas: ${justified} · Injustificadas: ${unjustified}`, margin, detailY - 12);
+  detailY += 18;
   doc.setTextColor(...ink);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
