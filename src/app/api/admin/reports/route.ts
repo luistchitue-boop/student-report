@@ -110,6 +110,8 @@ export async function GET(request: NextRequest) {
 async function generateStudentReportPdf({
   studentName,
   turmaName,
+  periodStart,
+  periodEnd,
   avatarUrl,
   behavior,
   teacherObservation,
@@ -118,6 +120,8 @@ async function generateStudentReportPdf({
 }: {
   studentName: string;
   turmaName: string;
+  periodStart: Date;
+  periodEnd: Date;
   avatarUrl?: string | null;
   behavior?: string | null;
   teacherObservation?: string | null;
@@ -136,11 +140,11 @@ async function generateStudentReportPdf({
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("NOVA ESCOLA POLITÉCNICA DO HUAMBO", 100, 38);
+    doc.text("NOVA ESCOLA POLITÉCNICA DO HUAMBO", 100, 42);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("Rua Vicente Ferreira nº 64, Cidade Baixa - Huambo", 100, 51);
-    doc.text("https://www.neph.ao", 100, 63);
+    doc.text("Rua Vicente Ferreira nº 64, Cidade Baixa - Huambo", 100, 55);
+    doc.text("https://www.neph.ao", 100, 67);
   };
 
   doc.setFillColor(...paper);
@@ -155,7 +159,7 @@ async function generateStudentReportPdf({
   doc.text("RELATÓRIO SEMANAL", pageWidth / 2, 112, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text("APRENDIZAGEM, ASSIDUIDADE E COMPORTAMENTO", pageWidth / 2, 128, { align: "center" });
+  doc.text(`${formatPeriodDate(periodStart)} a ${formatPeriodDate(periodEnd)}`, pageWidth / 2, 128, { align: "center" });
 
   const photoCenterX = 85;
   const photoCenterY = 185;
@@ -428,6 +432,8 @@ export async function POST(request: Request) {
           const pdf = await generateStudentReportPdf({
             studentName: student.name,
             turmaName: turma.name,
+            periodStart: period.start,
+            periodEnd: period.end,
             avatarUrl: student.avatarUrl,
             behavior: student.weeklyObservations[0]?.behavior,
             teacherObservation: student.weeklyObservations[0]?.teacherObservation,
@@ -459,6 +465,8 @@ export async function POST(request: Request) {
         const pdf = await generateStudentReportPdf({
           studentName: student.name,
           turmaName: turma.name,
+          periodStart: period.start,
+          periodEnd: period.end,
           avatarUrl: student.avatarUrl,
           behavior: student.weeklyObservations[0]?.behavior,
           teacherObservation: student.weeklyObservations[0]?.teacherObservation,
