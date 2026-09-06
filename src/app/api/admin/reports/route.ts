@@ -141,12 +141,11 @@ async function generateStudentReportPdf({
   doc.setFillColor(236, 211, 198);
   doc.circle(photoCenterX, photoCenterY, photoRadius, "F");
   if (avatarDataUrl) {
+    doc.saveGraphicsState();
+    doc.circle(photoCenterX, photoCenterY, photoRadius - 2);
+    doc.clip();
     doc.addImage(avatarDataUrl.data, avatarDataUrl.format, photoCenterX - 34, photoCenterY - 34, 68, 68);
-    doc.setFillColor(...paper);
-    doc.triangle(photoCenterX - 34, photoCenterY - 34, photoCenterX - 4, photoCenterY - 34, photoCenterX - 34, photoCenterY - 4, "F");
-    doc.triangle(photoCenterX + 34, photoCenterY - 34, photoCenterX + 4, photoCenterY - 34, photoCenterX + 34, photoCenterY - 4, "F");
-    doc.triangle(photoCenterX - 34, photoCenterY + 34, photoCenterX - 4, photoCenterY + 34, photoCenterX - 34, photoCenterY + 4, "F");
-    doc.triangle(photoCenterX + 34, photoCenterY + 34, photoCenterX + 4, photoCenterY + 34, photoCenterX + 34, photoCenterY + 4, "F");
+    doc.restoreGraphicsState();
   }
   doc.setDrawColor(...terracotta);
   doc.setLineWidth(3);
