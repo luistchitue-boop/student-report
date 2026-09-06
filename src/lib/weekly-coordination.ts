@@ -7,7 +7,7 @@ export type WeeklyPeriod = {
 
 export function getWeeklyCoordinationPeriods(year: number): WeeklyPeriod[] {
   const periods: WeeklyPeriod[] = [];
-  const start = new Date(year, 8, 3, 12);
+  const start = new Date(year, 8, -4, 12);
   const finalDate = new Date(year, 11, 31, 12);
 
   for (let current = start; current <= finalDate; current = new Date(current.getTime() + 7 * 24 * 60 * 60 * 1000)) {

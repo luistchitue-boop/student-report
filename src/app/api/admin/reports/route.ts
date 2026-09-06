@@ -112,21 +112,27 @@ async function generateStudentReportPdf({
   turmaName,
   periodStart,
   periodEnd,
+  hasPreviousPeriod,
   avatarUrl,
   behavior,
   teacherObservation,
   grades,
+  previousGrades,
   absences,
+  previousUnjustifiedAbsences,
 }: {
   studentName: string;
   turmaName: string;
   periodStart: Date;
   periodEnd: Date;
+  hasPreviousPeriod: boolean;
   avatarUrl?: string | null;
   behavior?: string | null;
   teacherObservation?: string | null;
   grades: Array<{ subject: string; value: number; term: string }>;
+  previousGrades: Array<{ subject: string; value: number; term: string }>;
   absences: Array<{ subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }>;
+  previousUnjustifiedAbsences: number;
 }) {
   const [logoDataUrl, avatarDataUrl] = await Promise.all([loadImageDataUrl(), loadCircularAvatarDataUrl(avatarUrl)]);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -226,6 +232,7 @@ async function generateStudentReportPdf({
   y += 18;
   doc.setFont("helvetica", "normal");
   const subjectAverages = Array.from(new Set(grades.map((grade) => grade.subject))).map((subject) => ({ subject, value: grades.filter((grade) => grade.subject === subject).reduce((total, grade) => total + Number(grade.value), 0) / grades.filter((grade) => grade.subject === subject).length }));
+  const previousSubjectAverages = new Map(Array.from(new Set(previousGrades.map((grade) => grade.subject))).map((subject) => [subject, previousGrades.filter((grade) => grade.subject === subject).reduce((total, grade) => total + Number(grade.value), 0) / previousGrades.filter((grade) => grade.subject === subject).length]));
   const chartWidth = pageWidth - margin * 2;
   subjectAverages.forEach((item) => {
     const label = item.subject.length > 18 ? `${item.subject.slice(0, 17)}...` : item.subject;
@@ -237,6 +244,18 @@ async function generateStudentReportPdf({
     const gradeColor: [number, number, number] = item.value >= 14 ? [57, 117, 93] : item.value >= 10 ? [215, 139, 48] : [194, 74, 67];
     doc.setFillColor(...gradeColor);
     doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, item.value / 20), 14, 4, 4, "F");
+    const previousValue = previousSubjectAverages.get(item.subject);
+    if (hasPreviousPeriod && previousValue !== undefined) {
+      const previousX = margin + 105 + (chartWidth - 145) * Math.min(1, previousValue / 20);
+      doc.setFillColor(52, 112, 181);
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(1);
+      doc.circle(previousX, y + 7, 7, "FD");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.5);
+      doc.text(previousValue.toFixed(1), previousX, y + 9, { align: "center" });
+    }
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
     doc.text(item.value.toFixed(1), pageWidth - margin - 28, y + 10);
@@ -260,6 +279,12 @@ async function generateStudentReportPdf({
   const middleGrades = grades.filter((grade) => Number(grade.value) >= 10 && Number(grade.value) < 14).length;
   const highGrades = grades.filter((grade) => Number(grade.value) >= 14).length;
   doc.text(`Notas: ${lowGrades} abaixo de 10 · ${middleGrades} entre 10-13 · ${highGrades} entre 14-20`, margin + 180, y + 7);
+  if (hasPreviousPeriod) {
+    doc.setFillColor(52, 112, 181);
+    doc.circle(margin + 4, y + 21, 4, "F");
+    doc.text("círculo azul = período anterior", margin + 12, y + 24);
+    y += 17;
+  }
   y += 22;
 
   y += 30;
@@ -270,6 +295,7 @@ async function generateStudentReportPdf({
   y += 23;
   doc.setFont("helvetica", "normal");
   const absenceTotal = Math.max(1, absences.length);
+  const unjustifiedScale = Math.max(1, unjustified, previousUnjustifiedAbsences);
   const absenceBars: Array<[string, number, [number, number, number]]> = [["Justificadas", justified, [57, 117, 93]], ["Injustificadas", unjustified, [185, 119, 45]]];
   absenceBars.forEach(([label, value, color]) => {
     doc.setFontSize(10);
@@ -278,7 +304,22 @@ async function generateStudentReportPdf({
     doc.setFillColor(239, 240, 234);
     doc.roundedRect(margin + 105, y, chartWidth - 145, 16, 5, 5, "F");
     doc.setFillColor(Number(color[0]), Number(color[1]), Number(color[2]));
-    doc.roundedRect(margin + 105, y, (chartWidth - 145) * Number(value) / absenceTotal, 16, 5, 5, "F");
+    const barScale = label === "Injustificadas" ? unjustifiedScale : absenceTotal;
+    doc.roundedRect(margin + 105, y, (chartWidth - 145) * Number(value) / barScale, 16, 5, 5, "F");
+    if (hasPreviousPeriod) {
+      const previousX = margin + 105 + (chartWidth - 145) * previousUnjustifiedAbsences / barScale;
+      doc.setFillColor(52, 112, 181);
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(1);
+      doc.circle(previousX, y + 8, 7, "FD");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.5);
+      doc.text(String(previousUnjustifiedAbsences), previousX, y + 10, { align: "center" });
+    }
+    doc.setTextColor(64, 85, 76);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
     doc.text(String(value), pageWidth - margin - 28, y + 11);
     y += 27;
   });
@@ -454,7 +495,10 @@ export async function POST(request: Request) {
     const rawStudentIds = Array.isArray(body.studentIds) ? body.studentIds : [];
     const studentIds = rawStudentIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
     const periodKey = typeof body.periodKey === "string" ? body.periodKey : "";
-    const period = getWeeklyCoordinationPeriods(new Date().getFullYear()).find((item) => item.key === periodKey);
+    const periods = getWeeklyCoordinationPeriods(new Date().getFullYear());
+    const periodIndex = periods.findIndex((item) => item.key === periodKey);
+    const period = periodIndex >= 0 ? periods[periodIndex] : undefined;
+    const previousPeriod = periodIndex > 0 ? periods[periodIndex - 1] : undefined;
 
     if (!period) {
       return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
@@ -484,6 +528,13 @@ export async function POST(request: Request) {
 
     const periodStartDate = new Date(`${formatPeriodDate(period.start)}T00:00:00.000Z`);
     const periodStartNextDate = new Date(periodStartDate.getTime() + 24 * 60 * 60 * 1000);
+    const currentPeriodStart = formatPeriodDate(period.start);
+    const currentPeriodEnd = formatPeriodDate(period.end);
+    const previousPeriodStart = previousPeriod ? formatPeriodDate(previousPeriod.start) : null;
+    const previousPeriodEnd = previousPeriod ? formatPeriodDate(previousPeriod.end) : null;
+    const gradeTerms = [`Semanal:${currentPeriodStart}:${currentPeriodEnd}`];
+    if (previousPeriodStart && previousPeriodEnd) gradeTerms.push(`Semanal:${previousPeriodStart}:${previousPeriodEnd}`);
+    const absenceStart = previousPeriodStart ?? currentPeriodStart;
 
     const turmas = await prisma.turma.findMany({
       where: { id: { in: turmaIds } },
@@ -492,8 +543,8 @@ export async function POST(request: Request) {
           include: {
             parents: { select: { id: true, name: true, email: true, phone: true } },
             weeklyObservations: { where: { weekStart: { gte: periodStartDate, lt: periodStartNextDate } }, select: { behavior: true, teacherObservation: true } },
-            grades: { where: { term: `Semanal:${formatPeriodDate(period.start)}:${formatPeriodDate(period.end)}` } },
-            absences: { where: { dia: { gte: new Date(`${formatPeriodDate(period.start)}T00:00:00Z`), lte: new Date(`${formatPeriodDate(period.end)}T23:59:59.999Z`) } } },
+            grades: { where: { term: { in: gradeTerms } } },
+            absences: { where: { dia: { gte: new Date(`${absenceStart}T00:00:00Z`), lte: new Date(`${currentPeriodEnd}T23:59:59.999Z`) } } },
           },
         },
       },
@@ -509,17 +560,29 @@ export async function POST(request: Request) {
     for (const turma of turmas) {
       for (const student of turma.students) {
         if (studentIds.length && !studentIds.includes(student.id)) continue;
+        const currentTerm = `Semanal:${currentPeriodStart}:${currentPeriodEnd}`;
+        const previousTerm = previousPeriodStart && previousPeriodEnd ? `Semanal:${previousPeriodStart}:${previousPeriodEnd}` : "";
+        const currentStartTime = new Date(`${formatPeriodDate(period.start)}T00:00:00Z`).getTime();
+        const currentEndTime = new Date(`${formatPeriodDate(period.end)}T23:59:59.999Z`).getTime();
+        const previousStartTime = previousPeriod ? new Date(`${previousPeriodStart}T00:00:00Z`).getTime() : 0;
+        const currentGrades = student.grades.filter((grade) => grade.term === currentTerm);
+        const previousGrades = student.grades.filter((grade) => grade.term === previousTerm);
+        const currentAbsences = student.absences.filter((absence) => absence.dia.getTime() >= currentStartTime && absence.dia.getTime() <= currentEndTime);
+        const previousUnjustifiedAbsences = student.absences.filter((absence) => previousPeriod && absence.dia.getTime() >= previousStartTime && absence.dia.getTime() < currentStartTime && !absence.justified).length;
         if (preview) {
           const pdf = await generateStudentReportPdf({
             studentName: student.name,
             turmaName: turma.name,
             periodStart: period.start,
             periodEnd: period.end,
+            hasPreviousPeriod: Boolean(previousPeriod),
             avatarUrl: student.avatarUrl,
             behavior: student.weeklyObservations[0]?.behavior,
             teacherObservation: student.weeklyObservations[0]?.teacherObservation,
-            grades: student.grades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
-            absences: student.absences.map((absence: { subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }) => ({ subject: absence.subject, dia: absence.dia, tempo: absence.tempo, faultType: absence.faultType, justified: absence.justified })),
+            grades: currentGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
+            previousGrades: previousGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
+            absences: currentAbsences.map((absence: { subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }) => ({ subject: absence.subject, dia: absence.dia, tempo: absence.tempo, faultType: absence.faultType, justified: absence.justified })),
+            previousUnjustifiedAbsences,
           });
           return new NextResponse(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${safeFileName(student.name)}-preview.pdf"` } });
         }
@@ -548,21 +611,24 @@ export async function POST(request: Request) {
           turmaName: turma.name,
           periodStart: period.start,
           periodEnd: period.end,
+          hasPreviousPeriod: Boolean(previousPeriod),
           avatarUrl: student.avatarUrl,
           behavior: student.weeklyObservations[0]?.behavior,
           teacherObservation: student.weeklyObservations[0]?.teacherObservation,
-          grades: student.grades.map((grade: { subject: string; value: number | string; term: string }) => ({
+          grades: currentGrades.map((grade: { subject: string; value: number | string; term: string }) => ({
             subject: grade.subject,
             value: Number(grade.value),
             term: grade.term,
           })),
-          absences: student.absences.map((absence: { subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }) => ({
+          previousGrades: previousGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
+          absences: currentAbsences.map((absence: { subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }) => ({
             subject: absence.subject,
             dia: absence.dia,
             tempo: absence.tempo,
             faultType: absence.faultType,
             justified: absence.justified,
           })),
+          previousUnjustifiedAbsences,
         });
         const blob = await put(`reports/${period.key}/${crypto.randomUUID()}-${safeFileName(student.name)}-${safeFileName(turma.name)}.pdf`, pdf, {
           access: "public",
