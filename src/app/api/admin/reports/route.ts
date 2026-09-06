@@ -262,26 +262,6 @@ async function generateStudentReportPdf({
     y += 27;
   });
 
-  const unjustifiedBySubject = Array.from(new Set(absences.filter((absence) => !absence.justified).map((absence) => absence.subject)))
-    .map((subject) => ({ subject, count: absences.filter((absence) => !absence.justified && absence.subject === subject).length }));
-  y += 8;
-  doc.setFontSize(10);
-  doc.setTextColor(...ink);
-  doc.setFont("helvetica", "bold");
-  doc.text("Faltas injustificadas por disciplina", margin, y);
-  y += 16;
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(64, 85, 76);
-  if (unjustifiedBySubject.length) {
-    unjustifiedBySubject.forEach(({ subject, count }) => {
-      doc.text(`${subject}: ${count}`, margin, y);
-      y += 14;
-    });
-  } else {
-    doc.text("Nenhuma falta injustificada registada.", margin, y);
-    y += 14;
-  }
-
   doc.addPage();
   doc.setFillColor(...paper);
   doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), "F");
