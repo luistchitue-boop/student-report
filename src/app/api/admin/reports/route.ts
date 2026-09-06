@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { Resend } from "resend";
+import sharp from "sharp";
 import twilio from "twilio";
 import { put } from "@vercel/blob";
 import { jsPDF } from "jspdf";
@@ -69,6 +70,24 @@ async function loadImageDataUrl(url?: string | null) {
   }
 }
 
+async function loadCircularAvatarDataUrl(url?: string | null) {
+  if (!url) return null;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const source = Buffer.from(await response.arrayBuffer());
+    const mask = Buffer.from(`<svg width="160" height="160"><circle cx="80" cy="80" r="80" fill="white"/></svg>`);
+    const circularPng = await sharp(source)
+      .resize(160, 160, { fit: "cover", position: "centre" })
+      .composite([{ input: mask, blend: "dest-in" }])
+      .png()
+      .toBuffer();
+    return { data: `data:image/png;base64,${circularPng.toString("base64")}`, format: "PNG" as const };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
@@ -105,7 +124,7 @@ async function generateStudentReportPdf({
   grades: Array<{ subject: string; value: number; term: string }>;
   absences: Array<{ subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }>;
 }) {
-  const [logoDataUrl, avatarDataUrl] = await Promise.all([loadImageDataUrl(), loadImageDataUrl(avatarUrl)]);
+  const [logoDataUrl, avatarDataUrl] = await Promise.all([loadImageDataUrl(), loadCircularAvatarDataUrl(avatarUrl)]);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 40;
@@ -138,17 +157,13 @@ async function generateStudentReportPdf({
   const photoCenterX = 85;
   const photoCenterY = 185;
   const photoRadius = 38;
-  doc.setFillColor(236, 211, 198);
+  doc.setFillColor(190, 185, 178);
+  doc.circle(photoCenterX, photoCenterY + 2, photoRadius + 1, "F");
+  doc.setFillColor(220, 238, 224);
   doc.circle(photoCenterX, photoCenterY, photoRadius, "F");
-  if (avatarDataUrl) {
-    doc.saveGraphicsState();
-    doc.circle(photoCenterX, photoCenterY, photoRadius - 2);
-    doc.clip();
-    doc.addImage(avatarDataUrl.data, avatarDataUrl.format, photoCenterX - 34, photoCenterY - 34, 68, 68);
-    doc.restoreGraphicsState();
-  }
-  doc.setDrawColor(...terracotta);
-  doc.setLineWidth(3);
+  if (avatarDataUrl) doc.addImage(avatarDataUrl.data, avatarDataUrl.format, photoCenterX - 37, photoCenterY - 37, 74, 74);
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(2.5);
   doc.circle(photoCenterX, photoCenterY, photoRadius, "S");
   doc.setTextColor(...ink);
   doc.setFontSize(18);
@@ -199,7 +214,9 @@ async function generateStudentReportPdf({
     doc.setFillColor(...gradeColor);
     doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, item.value / 20), 14, 4, 4, "F");
     doc.setTextColor(...ink);
+    doc.setFont("helvetica", "bold");
     doc.text(item.value.toFixed(1), pageWidth - margin - 28, y + 10);
+    doc.setFont("helvetica", "normal");
     y += 23;
   });
   if (!subjectAverages.length) { doc.setTextColor(96, 113, 104); doc.text("Sem notas registadas.", margin, y + 10); y += 28; }
@@ -215,6 +232,10 @@ async function generateStudentReportPdf({
   doc.setFillColor(57, 117, 93);
   doc.circle(margin + 105, y + 4, 4, "F");
   doc.text("14-20", margin + 113, y + 7);
+  const lowGrades = grades.filter((grade) => Number(grade.value) < 10).length;
+  const middleGrades = grades.filter((grade) => Number(grade.value) >= 10 && Number(grade.value) < 14).length;
+  const highGrades = grades.filter((grade) => Number(grade.value) >= 14).length;
+  doc.text(`Notas: ${lowGrades} abaixo de 10 · ${middleGrades} entre 10-13 · ${highGrades} entre 14-20`, margin + 180, y + 7);
   y += 22;
 
   y += 14;
@@ -258,16 +279,85 @@ async function generateStudentReportPdf({
     y += 14;
   }
 
-  y += 18;
-  doc.setFontSize(15);
+  doc.addPage();
+  doc.setFillColor(...paper);
+  doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), "F");
   doc.setTextColor(...ink);
   doc.setFont("helvetica", "bold");
-  doc.text("Observação do professor", margin, y);
-  y += 20;
+  doc.setFontSize(18);
+  doc.text("Detalhe do relatório", margin, 52);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.setTextColor(64, 85, 76);
-  doc.text(doc.splitTextToSize(teacherObservation?.trim() || "Sem observação do professor.", chartWidth), margin, y);
+  doc.text(`${studentName} · ${turmaName}`, margin, 70);
+
+  let detailY = 108;
+  const tableWidth = pageWidth - margin * 2;
+  const rowHeight = 23;
+  const drawTableHeader = (columns: Array<{ label: string; width: number }>) => {
+    let x = margin;
+    doc.setFillColor(...terracotta);
+    doc.rect(margin, detailY, tableWidth, rowHeight, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    columns.forEach((column) => {
+      doc.text(column.label, x + 7, detailY + 15);
+      x += column.width;
+    });
+    detailY += rowHeight;
+  };
+
+  doc.text("Notas registadas", margin, detailY - 14);
+  drawTableHeader([{ label: "Disciplina", width: 250 }, { label: "Nota", width: 70 }, { label: "Período", width: tableWidth - 320 }]);
+  doc.setFont("helvetica", "normal");
+  grades.forEach((grade, index) => {
+    doc.setFillColor(index % 2 ? 255 : 252, index % 2 ? 248 : 241, index % 2 ? 244 : 235);
+    doc.rect(margin, detailY, tableWidth, rowHeight, "F");
+    doc.setTextColor(...ink);
+    doc.setFontSize(9);
+    doc.text(grade.subject, margin + 7, detailY + 15);
+    doc.text(Number(grade.value).toFixed(1), margin + 257, detailY + 15);
+    doc.text(grade.term, margin + 327, detailY + 15);
+    detailY += rowHeight;
+  });
+  if (!grades.length) {
+    doc.setTextColor(96, 113, 104);
+    doc.text("Sem notas registadas.", margin + 7, detailY + 15);
+    detailY += rowHeight;
+  }
+
+  detailY += 30;
+  doc.setTextColor(...ink);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Faltas registadas", margin, detailY - 12);
+  drawTableHeader([{ label: "Disciplina", width: 170 }, { label: "Data", width: 85 }, { label: "Tempo", width: 75 }, { label: "Tipo / estado", width: tableWidth - 330 }]);
+  doc.setFont("helvetica", "normal");
+  absences.forEach((absence, index) => {
+    doc.setFillColor(index % 2 ? 255 : 252, index % 2 ? 248 : 241, index % 2 ? 244 : 235);
+    doc.rect(margin, detailY, tableWidth, rowHeight, "F");
+    doc.setTextColor(...ink);
+    doc.setFontSize(8);
+    doc.text(absence.subject, margin + 7, detailY + 15);
+    doc.text(absence.dia.toISOString().slice(0, 10), margin + 177, detailY + 15);
+    doc.text(absence.tempo, margin + 262, detailY + 15);
+    doc.text(`${absence.faultType === "AUSENCIA_NA_SALA" ? "Ausência na sala" : "Falta de material"} · ${absence.justified ? "Justificada" : "Injustificada"}`, margin + 337, detailY + 15);
+    detailY += rowHeight;
+  });
+  if (!absences.length) {
+    doc.setTextColor(96, 113, 104);
+    doc.text("Sem faltas registadas.", margin + 7, detailY + 15);
+    detailY += rowHeight;
+  }
+
+  detailY += 30;
+  doc.setTextColor(...ink);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Observação do professor", margin, detailY);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(doc.splitTextToSize(teacherObservation?.trim() || "Sem observação do professor.", tableWidth), margin, detailY + 20);
 
   return Buffer.from(doc.output("arraybuffer"));
 }
@@ -281,6 +371,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+    const preview = body.preview === true;
     const channel = body.channel === "WHATSAPP" ? "WHATSAPP" : "EMAIL";
     const rawTurmaIds = Array.isArray(body.turmaIds) ? body.turmaIds : [];
     const turmaIds = rawTurmaIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
@@ -300,15 +391,18 @@ export async function POST(request: Request) {
     if (!turmaIds.length || (body.studentIds && !studentIds.length)) {
       return NextResponse.json({ error: "Selecione pelo menos uma turma ou um aluno" }, { status: 400 });
     }
+    if (preview && studentIds.length !== 1) {
+      return NextResponse.json({ error: "Selecione exatamente um aluno para pré-visualizar o relatório." }, { status: 400 });
+    }
 
     const { RESEND_API_KEY, RESEND_FROM_EMAIL, BLOB_READ_WRITE_TOKEN, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM } = process.env;
-    if (channel === "EMAIL" && (!RESEND_API_KEY || !RESEND_FROM_EMAIL)) {
+    if (!preview && channel === "EMAIL" && (!RESEND_API_KEY || !RESEND_FROM_EMAIL)) {
       return NextResponse.json({ error: "Resend não está configurado. Adicione RESEND_API_KEY e RESEND_FROM_EMAIL." }, { status: 500 });
     }
-    if (channel === "WHATSAPP" && (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WHATSAPP_FROM)) {
+    if (!preview && channel === "WHATSAPP" && (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WHATSAPP_FROM)) {
       return NextResponse.json({ error: "Twilio WhatsApp não está configurado. Adicione TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_WHATSAPP_FROM." }, { status: 500 });
     }
-    if (!BLOB_READ_WRITE_TOKEN) {
+    if (!preview && !BLOB_READ_WRITE_TOKEN) {
       return NextResponse.json({ error: "O armazenamento de relatórios não está configurado. Adicione BLOB_READ_WRITE_TOKEN." }, { status: 500 });
     }
 
@@ -336,6 +430,18 @@ export async function POST(request: Request) {
     for (const turma of turmas) {
       for (const student of turma.students) {
         if (studentIds.length && !studentIds.includes(student.id)) continue;
+        if (preview) {
+          const pdf = await generateStudentReportPdf({
+            studentName: student.name,
+            turmaName: turma.name,
+            avatarUrl: student.avatarUrl,
+            behavior: student.weeklyObservations[0]?.behavior,
+            teacherObservation: student.weeklyObservations[0]?.teacherObservation,
+            grades: student.grades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
+            absences: student.absences.map((absence: { subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }) => ({ subject: absence.subject, dia: absence.dia, tempo: absence.tempo, faultType: absence.faultType, justified: absence.justified })),
+          });
+          return new NextResponse(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${safeFileName(student.name)}-preview.pdf"` } });
+        }
         if (!student.parents.length) {
           await saveDelivery({ turmaId: turma.id, studentId: student.id, recipientEmail: "(sem email)", status: "FAILED", error: "Aluno sem encarregado registado." });
           continue;

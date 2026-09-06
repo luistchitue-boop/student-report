@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 type Turma = {
@@ -23,6 +23,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [deliveryResults, setDeliveryResults] = useState<DeliveryResult[]>([]);
+  const [previewUrl, setPreviewUrl] = useState("");
   const [auditTurmaId, setAuditTurmaId] = useState("");
   const [failedDeliveries, setFailedDeliveries] = useState<FailedDelivery[]>([]);
   const [auditStatus, setAuditStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
@@ -35,6 +36,32 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
     setMessage("");
     setStatus("idle");
     setDeliveryResults([]);
+  }
+
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  async function handlePreview() {
+    if (!selectedPeriod || !selectedStudentId) return;
+    setStatus("sending");
+    setMessage("");
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    try {
+      const selectedStudentTurma = turmas.find((turma) => turma.roster.some((student) => student.id === selectedStudentId));
+      if (!selectedStudentTurma) throw new Error("Não foi possível localizar a turma do aluno.");
+      const response = await fetch("/api/admin/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ preview: true, turmaIds: [selectedStudentTurma.id], studentIds: [selectedStudentId], periodKey: selectedPeriod }) });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Não foi possível gerar a pré-visualização.");
+      }
+      setPreviewUrl(URL.createObjectURL(await response.blob()));
+      setStatus("success");
+      setMessage("Pré-visualização gerada. Nenhuma mensagem foi enviada.");
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Não foi possível gerar a pré-visualização.");
+    }
   }
 
   async function loadFailedDeliveries() {
@@ -139,8 +166,14 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
             {turmas.flatMap((turma) => turma.roster.map((student) => <option key={student.id} value={student.id}>{student.name} · {turma.name}</option>))}
           </select>
         </label>
+        <button type="button" onClick={handlePreview} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>Pré-visualizar PDF</button>
         <button type="button" onClick={() => handleSendReports(selectedStudentId)} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>{status === "sending" ? "A enviar..." : `Enviar caso individual por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
       </div>
+
+      {previewUrl && <div className="admin-preview-panel">
+        <strong>Pré-visualização do relatório</strong>
+        <iframe title="Pré-visualização do relatório PDF" src={previewUrl} />
+      </div>}
 
       {message && <p className={`admin-status ${status}`}>{message}</p>}
 
@@ -183,6 +216,8 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
         .admin-individual-panel { display:flex; align-items:end; gap:1rem; flex-wrap:wrap; }
         .admin-individual-panel label { display:grid; gap:.45rem; flex:1; min-width:260px; font-weight:700; }
         .admin-individual-panel select { padding:.7rem; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
+        .admin-preview-panel { display:grid; gap:.8rem; background:#fff; border:1px solid #dbe3ec; border-radius:18px; padding:1.2rem; }
+        .admin-preview-panel iframe { width:100%; min-height:760px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; }
         .admin-status { margin:0; padding:.85rem 1rem; border-radius:10px; font-size:.92rem; }
         .admin-status.success { background:#dcfce7; color:#166534; }
         .admin-status.error { background:#fee2e2; color:#991b1b; }
