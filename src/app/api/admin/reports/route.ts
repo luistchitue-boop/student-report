@@ -132,15 +132,15 @@ async function generateStudentReportPdf({
   const terracotta = [181, 132, 112] as const;
   const ink = [102, 68, 55] as const;
   const drawSchoolHeader = () => {
-    if (logoDataUrl) doc.addImage(logoDataUrl.data, logoDataUrl.format, margin, 18, 58, 58);
+    if (logoDataUrl) doc.addImage(logoDataUrl.data, logoDataUrl.format, margin, 20, 50, 50);
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("NOVA ESCOLA POLITÉCNICA DO HUAMBO", 108, 34);
+    doc.text("NOVA ESCOLA POLITÉCNICA DO HUAMBO", 100, 38);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("Rua Vicente Ferreira nº 64, Cidade Baixa - Huambo", 108, 48);
-    doc.text("https://www.neph.ao", 108, 60);
+    doc.text("Rua Vicente Ferreira nº 64, Cidade Baixa - Huambo", 100, 51);
+    doc.text("https://www.neph.ao", 100, 63);
   };
 
   doc.setFillColor(...paper);
