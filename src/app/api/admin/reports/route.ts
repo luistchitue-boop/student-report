@@ -288,10 +288,33 @@ async function generateStudentReportPdf({
   doc.setLineWidth(2);
   doc.circle(detailPhotoX, detailPhotoY, 28, "S");
 
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const detailBottom = pageHeight - 48;
   let detailY = 168;
   const tableWidth = pageWidth - margin * 2;
   const rowHeight = 23;
+  const startDetailContinuation = () => {
+    doc.addPage();
+    doc.setFillColor(...paper);
+    doc.rect(0, 0, pageWidth, pageHeight, "F");
+    drawSchoolHeader();
+    doc.setTextColor(...ink);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Detalhe do relatório (continuação)", margin, 112);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`${studentName} · ${turmaName}`, margin, 130);
+    detailY = 168;
+  };
+  const ensureDetailSpace = (height: number, continuationColumns?: Array<{ label: string; width: number }>) => {
+    if (detailY + height > detailBottom) {
+      startDetailContinuation();
+      if (continuationColumns) drawTableHeader(continuationColumns);
+    }
+  };
   const drawTableHeader = (columns: Array<{ label: string; width: number }>) => {
+    ensureDetailSpace(rowHeight);
     let x = margin;
     doc.setFillColor(...terracotta);
     doc.rect(margin, detailY, tableWidth, rowHeight, "F");
@@ -305,10 +328,13 @@ async function generateStudentReportPdf({
     detailY += rowHeight;
   };
 
+  const gradeColumns = [{ label: "Disciplina", width: 250 }, { label: "Nota", width: 70 }, { label: "Período", width: tableWidth - 320 }];
+  const absenceColumns = [{ label: "Disciplina", width: 170 }, { label: "Data", width: 85 }, { label: "Tempo", width: 75 }, { label: "Tipo / estado", width: tableWidth - 330 }];
   doc.text("Notas registadas", margin, detailY - 14);
-  drawTableHeader([{ label: "Disciplina", width: 250 }, { label: "Nota", width: 70 }, { label: "Período", width: tableWidth - 320 }]);
+  drawTableHeader(gradeColumns);
   doc.setFont("helvetica", "normal");
   grades.forEach((grade, index) => {
+    ensureDetailSpace(rowHeight, gradeColumns);
     doc.setFillColor(index % 2 ? 255 : 252, index % 2 ? 248 : 241, index % 2 ? 244 : 235);
     doc.rect(margin, detailY, tableWidth, rowHeight, "F");
     doc.setTextColor(...ink);
@@ -325,13 +351,15 @@ async function generateStudentReportPdf({
   }
 
   detailY += 30;
+  ensureDetailSpace(rowHeight * 2);
   doc.setTextColor(...ink);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.text("Faltas registadas", margin, detailY - 12);
-  drawTableHeader([{ label: "Disciplina", width: 170 }, { label: "Data", width: 85 }, { label: "Tempo", width: 75 }, { label: "Tipo / estado", width: tableWidth - 330 }]);
+  drawTableHeader(absenceColumns);
   doc.setFont("helvetica", "normal");
   absences.forEach((absence, index) => {
+    ensureDetailSpace(rowHeight, absenceColumns);
     doc.setFillColor(index % 2 ? 255 : 252, index % 2 ? 248 : 241, index % 2 ? 244 : 235);
     doc.rect(margin, detailY, tableWidth, rowHeight, "F");
     doc.setTextColor(...ink);
@@ -349,13 +377,26 @@ async function generateStudentReportPdf({
   }
 
   detailY += 30;
+  ensureDetailSpace(54);
   doc.setTextColor(...ink);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.text("Observação do professor", margin, detailY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(doc.splitTextToSize(teacherObservation?.trim() || "Sem observação do professor.", tableWidth), margin, detailY + 20);
+  const observationLines = doc.splitTextToSize(teacherObservation?.trim() || "Sem observação do professor.", tableWidth);
+  if (detailY + 20 + observationLines.length * 12 > detailBottom) {
+    startDetailContinuation();
+    doc.setTextColor(...ink);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Observação do professor (continuação)", margin, detailY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(observationLines, margin, detailY + 20);
+  } else {
+    doc.text(observationLines, margin, detailY + 20);
+  }
 
   return Buffer.from(doc.output("arraybuffer"));
 }
