@@ -24,6 +24,7 @@ export function StudentCardClient({
   const [error, setError] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState(student.avatarUrl ?? "");
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleOpenModal = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -110,6 +111,22 @@ export function StudentCardClient({
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm(`Tem a certeza que deseja eliminar o aluno "${student.name}" e todos os seus dados?`)) return;
+
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/turmas/${turmaId}/students/${student.id}`, { method: "DELETE" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível eliminar o aluno.");
+      window.location.reload();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Não foi possível eliminar o aluno.");
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <>
       <Link
@@ -185,6 +202,9 @@ export function StudentCardClient({
             </div>
 
             <div className="modal-footer">
+              {isAdmin && <button type="button" className="modal-button danger" onClick={handleDelete} disabled={isDeleting || isLoading}>
+                {isDeleting ? "A eliminar..." : "Eliminar aluno"}
+              </button>}
               <button
                 type="button"
                 className="modal-button cancel"
