@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { getCoordinatorTurmaById } from "@/lib/teacher-data";
 import { StudentCardClient } from "./student-card-client";
+import { StudentImportClient } from "./student-import-client";
 import { TurmaDisciplinasClient } from "./disciplinas-client";
 
 const PAGE_SIZE = 10;
@@ -113,6 +114,7 @@ export default async function TurmaDetailPage({
                 </>
               )}
               <TurmaDisciplinasClient turmaId={turma.id} initialSubjects={turma.subjects} isAdmin={session.user.role === "ADMIN"} />
+              {session.user.role === "ADMIN" && <StudentImportClient turmaId={turma.id} />}
               <Link href={`/turmas/${turma.id}/novo_aluno`} className="new-student-button">
                 Novo aluno
               </Link>

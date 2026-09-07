@@ -223,6 +223,11 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .disciplinas-empty { color:#68756d; font-size:0.82rem; font-weight:700; }
 .new-student-button { display:inline-flex; align-items:center; justify-content:center; min-height:2.2rem; padding:0.45rem 0.8rem; border:1px solid #b9cdbd; border-radius:9px; background:#edf5ee; color:var(--green); font-size:0.76rem; font-weight:600; text-decoration:none; }
 .new-student-button:hover { background:#e1efe3; }
+.student-import-button { display:inline-flex; align-items:center; justify-content:center; min-height:2.2rem; padding:0.45rem 0.8rem; border:1px solid #cbbf93; border-radius:9px; background:#fbf7e8; color:#806a24; font-size:0.76rem; font-weight:600; cursor:pointer; }
+.student-import-button:hover:not(:disabled) { background:#f5edcf; }
+.student-import-button:disabled { opacity:0.55; cursor:not-allowed; }
+.student-import-input { display:none; }
+.student-import-status { flex-basis:100%; margin:0; color:var(--muted); font-size:0.75rem; font-weight:600; }
 .new-student-shell { max-width:760px !important; }
 .new-student-panel { background:#fff; border:1px solid #dfe5df; border-radius:24px; padding:1.35rem; box-shadow:0 18px 44px rgba(26,38,32,0.06); }
 .new-student-section { display:grid; gap:0.8rem; padding:1rem; border:1px solid #e1ebe2; border-radius:16px; background:#f8fbf8; }
