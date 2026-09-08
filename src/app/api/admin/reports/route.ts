@@ -70,6 +70,15 @@ async function loadImageDataUrl(url?: string | null) {
   }
 }
 
+async function loadPublicImageDataUrl(fileName: string) {
+  try {
+    const bytes = await readFile(path.join(process.cwd(), "public", fileName));
+    return { data: `data:image/png;base64,${bytes.toString("base64")}`, format: "PNG" as const };
+  } catch {
+    return null;
+  }
+}
+
 async function loadCircularAvatarDataUrl(url?: string | null) {
   if (!url) return null;
   try {
@@ -146,7 +155,11 @@ async function generateStudentReportPdf({
   absences: Array<{ subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }>;
   previousUnjustifiedAbsences: number;
 }) {
-  const [logoDataUrl, avatarDataUrl] = await Promise.all([loadImageDataUrl(), loadCircularAvatarDataUrl(avatarUrl)]);
+  const [logoDataUrl, avatarDataUrl, qrCodeDataUrl] = await Promise.all([
+    loadImageDataUrl(),
+    loadCircularAvatarDataUrl(avatarUrl),
+    loadPublicImageDataUrl("qr-code.png"),
+  ]);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 40;
@@ -171,6 +184,7 @@ async function generateStudentReportPdf({
   };
   const drawSchoolHeader = () => {
     if (logoDataUrl) doc.addImage(logoDataUrl.data, logoDataUrl.format, margin, 20, 50, 50);
+    if (qrCodeDataUrl) doc.addImage(qrCodeDataUrl.data, qrCodeDataUrl.format, pageWidth - margin - 50, 20, 50, 50);
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
@@ -268,7 +282,7 @@ async function generateStudentReportPdf({
     doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, item.value / gradeScale), 14, 4, 4, "F");
     if (hasPreviousPeriod && previousValue !== undefined) {
       const previousX = margin + 105 + (chartWidth - 145) * Math.min(1, previousValue / gradeScale);
-      doc.setTextColor(...getGradeColor(previousValue));
+      doc.setTextColor(...ink);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(6.5);
       doc.text(previousValue.toFixed(1), Math.min(previousX + 3, pageWidth - margin - 45), y + 10);
@@ -491,12 +505,12 @@ async function generateStudentReportPdf({
     doc.roundedRect(margin + 105, detailY, (chartWidth - 145) * Number(value) / barScale, 16, 5, 5, "F");
     if (label === "Injustificadas" && hasPreviousPeriod) {
       const previousX = margin + 105 + (chartWidth - 145) * previousUnjustifiedAbsences / barScale;
-      doc.setTextColor(...color);
+      doc.setTextColor(...ink);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(6.5);
       doc.text(String(previousUnjustifiedAbsences), Math.min(previousX + 3, pageWidth - margin - 45), detailY + 10);
     }
-    doc.setTextColor(64, 85, 76);
+    doc.setTextColor(...ink);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.text(String(value), pageWidth - margin - 28, detailY + 11);
