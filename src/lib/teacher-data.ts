@@ -19,15 +19,37 @@ export function buildStudentSlug(name: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function mapTurmaForCoordinator(turma: any) {
+type TurmaStudent = {
+  id: string;
+  name: string;
+  age: number | null;
+  attendance: string | null;
+  active: boolean;
+  avatarUrl: string | null;
+  parents: Array<{ id: string; name: string; phone: string; email: string }>;
+};
+
+type CoordinatorTurmaRecord = {
+  id: string;
+  name: string;
+  schedule: string | null;
+  gradeScale: number;
+  _count: { students: number };
+  subjects: Array<{ name: string }>;
+  students: TurmaStudent[];
+};
+
+function mapTurmaForCoordinator(turma: CoordinatorTurmaRecord) {
+  const studentsWithAvatars = turma.students.filter((student) => typeof student.avatarUrl === "string" && student.avatarUrl.trim()).length;
   return {
     id: turma.id,
     name: turma.name,
     schedule: turma.schedule ?? "Sem horário definido",
     gradeScale: turma.gradeScale === 10 ? 10 : 20,
     students: turma._count.students,
+    avatarCoverage: turma._count.students ? Math.round((studentsWithAvatars / turma._count.students) * 100) : 0,
     subjects: turma.subjects.map((subject: { name: string }) => subject.name),
-    roster: turma.students.map((student: any) => ({
+    roster: turma.students.map((student) => ({
       id: student.id,
       name: student.name,
       age: student.age ?? 0,

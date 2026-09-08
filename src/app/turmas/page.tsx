@@ -147,6 +147,10 @@ export default async function TurmasPage({
                         <span className="metric-label">Alunos</span>
                         <span className="metric-value">{turma.students}</span>
                       </div>
+                      {session.user.role === "ADMIN" && <div className="metric-row">
+                        <span className="metric-label">Avatares</span>
+                        <span className="metric-value">{turma.avatarCoverage}%</span>
+                      </div>}
                     </div>
 
                     <div className="subject-list" aria-label={`Disciplinas da turma ${turma.name}`}>
