@@ -7,12 +7,26 @@ export type WeeklyPeriod = {
 
 export function getWeeklyCoordinationPeriods(year: number): WeeklyPeriod[] {
   const periods: WeeklyPeriod[] = [];
-  const start = new Date(year, 8, 7, 12);
+  const startDate = new Date(year, 8, 7, 12); // Sept 7
   const finalDate = new Date(year, 11, 31, 12);
 
-  for (let current = start; current <= finalDate; current = new Date(current.getTime() + 7 * 24 * 60 * 60 * 1000)) {
-    const end = new Date(Math.min(current.getTime() + 6 * 24 * 60 * 60 * 1000, finalDate.getTime()));
+  // Find the first Monday on or after Sept 7
+  let current = new Date(startDate);
+  const dayOfWeek = current.getDay();
+  
+  if (dayOfWeek !== 1) { // 1 = Monday
+    const daysUntilMonday = (1 - dayOfWeek + 7) % 7;
+    current = new Date(current.getTime() + daysUntilMonday * 24 * 60 * 60 * 1000);
+  }
+
+  while (current <= finalDate) {
+    // End date is Friday of that week (4 days after Monday)
+    const end = new Date(current.getTime() + 4 * 24 * 60 * 60 * 1000);
+    
     periods.push({ start: current, end, key: formatPeriodDate(current) });
+    
+    // Move to next Monday (7 days after current Monday)
+    current = new Date(current.getTime() + 7 * 24 * 60 * 60 * 1000);
   }
 
   return periods;
