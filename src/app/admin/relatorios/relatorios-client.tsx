@@ -214,8 +214,8 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
         .admin-submit, .admin-individual-panel button { background:#1d4ed8; color:#fff; border:0; border-radius:10px; padding:.8rem 1.2rem; font-size:.95rem; font-weight:700; cursor:pointer; }
         .admin-submit:disabled, .admin-individual-panel button:disabled { opacity:.6; cursor:not-allowed; }
         .admin-individual-panel { display:flex; align-items:end; gap:1rem; flex-wrap:wrap; }
-        .admin-individual-panel label { display:grid; gap:.45rem; flex:1; min-width:260px; font-weight:700; }
-        .admin-individual-panel select { padding:.7rem; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
+        .admin-individual-panel label { display:grid; gap:.45rem; flex:0 1 360px; min-width:220px; font-weight:700; }
+        .admin-individual-panel select { width:100%; padding:.7rem; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
         .admin-preview-panel { display:grid; gap:.8rem; background:#fff; border:1px solid #dbe3ec; border-radius:18px; padding:1.2rem; }
         .admin-preview-panel iframe { width:100%; min-height:760px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; }
         .admin-status { margin:0; padding:.85rem 1rem; border-radius:10px; font-size:.92rem; }
