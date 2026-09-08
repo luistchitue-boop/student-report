@@ -29,8 +29,29 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   const [auditTurmaId, setAuditTurmaId] = useState("");
   const [failedDeliveries, setFailedDeliveries] = useState<FailedDelivery[]>([]);
   const [auditStatus, setAuditStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [closedPeriods, setClosedPeriods] = useState<Map<string, boolean>>(new Map());
   const studentsForSelection = turmas.flatMap((turma) => turma.roster.filter((student) => student.active).map((student) => ({ ...student, turmaName: turma.name })));
   const filteredStudents = studentsForSelection.filter((student) => student.name.toLocaleLowerCase().includes(studentSearch.trim().toLocaleLowerCase()));
+
+  useEffect(() => {
+    async function loadClosedPeriods() {
+      try {
+        const response = await fetch("/api/admin/closed-periods");
+        if (!response.ok) return;
+        const data = await response.json();
+        
+        const closed = new Map<string, boolean>();
+        data.closedPeriods.forEach((p: any) => {
+          const start = new Date(p.weekStart).toISOString().slice(0, 10);
+          closed.set(start, true);
+        });
+        setClosedPeriods(closed);
+      } catch (error) {
+        console.error("Failed to load closed periods:", error);
+      }
+    }
+    loadClosedPeriods();
+  }, []);
 
   function selectStudent(student: (typeof studentsForSelection)[number]) {
     setSelectedStudentId(student.id);
@@ -152,7 +173,13 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
         <label>Período semanal
           <select value={selectedPeriod} onChange={(event) => { setSelectedPeriod(event.target.value); setSelectedTurmas([]); setSelectedStudentId(""); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>
             <option value="">Selecione um período</option>
-            {weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}
+            {weeklyPeriods.map((period) => {
+              const isClosed = closedPeriods.has(period.key);
+              const isFuture = isFuturePeriod(period.key);
+              const isDisabled = isFuture || isClosed;
+              const label = `${period.start.toLocaleDateString("pt-AO")} - ${period.end.toLocaleDateString("pt-AO")}${isFuture ? " (futuro)" : ""}${isClosed ? " (fechado)" : ""}`;
+              return <option key={period.key} value={period.key} disabled={isDisabled}>{label}</option>;
+            })}
           </select>
         </label>
       </div>

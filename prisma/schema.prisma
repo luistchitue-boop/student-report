@@ -52,6 +52,7 @@ model User {
   teacher       Teacher?
   activityLogs  ActivityLog[]
   weeklyReports WeeklyCoordinationReport[]
+  closedPeriods ClosedWeeklyPeriod[]
 }
 
 enum FaultType {
@@ -282,6 +283,20 @@ model WeeklyCoordinationReport {
 
   @@unique([userId, turmaId, weekStart])
   @@index([turmaId])
+  @@index([weekStart])
+}
+
+model ClosedWeeklyPeriod {
+  id             String   @id @default(cuid())
+  weekStart      DateTime
+  weekEnd        DateTime
+  closedAt       DateTime @default(now())
+  closedByUserId String
+  reason         String?
+
+  closedBy User @relation(fields: [closedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([weekStart, weekEnd])
   @@index([weekStart])
 }
 

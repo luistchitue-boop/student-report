@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
+import { getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
 
 const prisma = new PrismaClient();
 
@@ -151,6 +153,19 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
+        // Check if the term corresponds to a closed period
+        if (entry.term && entry.term.startsWith("Semanal:")) {
+          const termParts = entry.term.split(":");
+          if (termParts.length === 3) {
+            const weekStart = new Date(`${termParts[1]}T00:00:00Z`);
+            const weekEnd = new Date(`${termParts[2]}T23:59:59.999Z`);
+            const periodClosed = await isWeeklyPeriodClosed(weekStart, weekEnd, prisma);
+            if (periodClosed) {
+              return NextResponse.json({ error: `O período semanal de ${termParts[1]} está fechado. Não é possível registar notas.` }, { status: 403 });
+            }
+          }
+        }
+
         const createdGrade = await prisma.grade.create({
           data: {
             studentId,
@@ -187,6 +202,15 @@ export async function POST(request: NextRequest) {
         }
 
         const dia = normalizeDay(entry.dia);
+        const weeklyPeriods = getWeeklyCoordinationPeriods(dia.getFullYear());
+        const currentWeekly = weeklyPeriods.find((period) => dia >= period.start && dia <= period.end);
+        if (currentWeekly) {
+          const periodClosed = await isWeeklyPeriodClosed(currentWeekly.start, currentWeekly.end, prisma);
+          if (periodClosed) {
+            return NextResponse.json({ error: "O período semanal desta data está fechado. Não é possível registar faltas." }, { status: 403 });
+          }
+        }
+
         const faultType = entry.faultType === "AUSENCIA_NA_SALA" ? "AUSENCIA_NA_SALA" : "FALTA_DE_MATERIAL";
 
         const existingSlot = await prisma.absence.findUnique({

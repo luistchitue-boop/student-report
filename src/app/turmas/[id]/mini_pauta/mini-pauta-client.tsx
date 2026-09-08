@@ -35,6 +35,27 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
   const [exportSubject, setExportSubject] = useState(turma.subjects[0] ?? "");
   const [isExporting, setIsExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState("");
+  const [closedPeriods, setClosedPeriods] = useState<Map<string, boolean>>(new Map());
+
+  useEffect(() => {
+    async function loadClosedPeriods() {
+      try {
+        const response = await fetch("/api/admin/closed-periods");
+        if (!response.ok) return;
+        const data = await response.json();
+        
+        const closed = new Map<string, boolean>();
+        data.closedPeriods.forEach((p: any) => {
+          const start = new Date(p.weekStart).toISOString().slice(0, 10);
+          closed.set(start, true);
+        });
+        setClosedPeriods(closed);
+      } catch (error) {
+        console.error("Failed to load closed periods:", error);
+      }
+    }
+    loadClosedPeriods();
+  }, []);
 
   function changeWeekStart(value: string) {
     setWeekStart(value);
@@ -223,7 +244,13 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       <section className="mini-pauta-panel">
         <div className="mini-pauta-toolbar">
           <label>Disciplina<select value={subject} onChange={(event) => setSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
-          <label>Período semanal<select value={weekStart} onChange={(event) => changeWeekStart(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
+          <label>Período semanal<select value={weekStart} onChange={(event) => changeWeekStart(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => {
+            const isClosed = closedPeriods.has(period.key);
+            const isFuture = isFuturePeriod(period.key);
+            const isDisabled = isFuture || isClosed;
+            const label = `${period.start.toLocaleDateString("pt-AO")} - ${period.end.toLocaleDateString("pt-AO")}${isFuture ? " (futuro)" : ""}${isClosed ? " (fechado)" : ""}`;
+            return <option key={period.key} value={period.key} disabled={isDisabled}>{label}</option>;
+          })}</select></label>
         </div>
 
         <div className="mini-pauta-heading">
@@ -249,7 +276,10 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
         </div>
         {status ? <p className="mini-pauta-status">{status}</p> : null}
       </section>
-      {showExportModal ? <div className="mini-pauta-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowExportModal(false); }}><form className="mini-pauta-export-modal" onSubmit={(event) => { event.preventDefault(); void exportGrades(); }}><div className="mini-pauta-modal-heading"><div><p className="eyebrow">EXPORTAR MINI PAUTA</p><h2>Gerar relatório</h2></div><button type="button" className="mini-pauta-modal-close" onClick={() => setShowExportModal(false)} aria-label="Fechar">×</button></div><label>Disciplina<select value={exportSubject} onChange={(event) => setExportSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label><label>Período semanal<select required value={exportStart} onChange={(event) => changeExportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}</option>)}</select></label><p className="mini-pauta-export-help">A média será calculada com todas as notas registadas para a disciplina e período selecionado.</p>{exportStatus ? <p className="mini-pauta-status">{exportStatus}</p> : null}<button type="submit" className="mini-pauta-save-button" disabled={isExporting || !exportStart}>{isExporting ? "A gerar..." : "Exportar PDF"}</button></form></div> : null}
+      {showExportModal ? <div className="mini-pauta-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowExportModal(false); }}><form className="mini-pauta-export-modal" onSubmit={(event) => { event.preventDefault(); void exportGrades(); }}><div className="mini-pauta-modal-heading"><div><p className="eyebrow">EXPORTAR MINI PAUTA</p><h2>Gerar relatório</h2></div><button type="button" className="mini-pauta-modal-close" onClick={() => setShowExportModal(false)} aria-label="Fechar">×</button></div><label>Disciplina<select value={exportSubject} onChange={(event) => setExportSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label><label>Período semanal<select required value={exportStart} onChange={(event) => changeExportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => {
+            const isClosed = closedPeriods.has(period.key);
+            return <option key={period.key} value={period.key} disabled={isClosed}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isClosed ? " (fechado)" : ""}</option>;
+          })}</select></label><p className="mini-pauta-export-help">A média será calculada com todas as notas registadas para a disciplina e período selecionado.</p>{exportStatus ? <p className="mini-pauta-status">{exportStatus}</p> : null}<button type="submit" className="mini-pauta-save-button" disabled={isExporting || !exportStart}>{isExporting ? "A gerar..." : "Exportar PDF"}</button></form></div> : null}
     </main>
   );
 }

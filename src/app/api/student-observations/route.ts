@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
 
 const prisma = new PrismaClient();
 
@@ -64,6 +65,11 @@ export async function PUT(request: NextRequest) {
     const behavior = typeof body.behavior === "string" ? body.behavior.trim() : "";
     if (!studentId || !weekStart || !weekEnd) return NextResponse.json({ error: "Aluno e período semanal são obrigatórios" }, { status: 400 });
     if (!isCurrentWeeklyPeriod(weekStart)) return NextResponse.json({ error: "Só é possível alterar a observação da semana atual." }, { status: 400 });
+
+    const periodClosed = await isWeeklyPeriodClosed(weekStart, weekEnd, prisma);
+    if (periodClosed) {
+      return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar observações." }, { status: 403 });
+    }
 
     const student = await getAuthorizedStudent(studentId, session);
     if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 });

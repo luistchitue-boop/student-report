@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
 
 const prisma = new PrismaClient();
 
@@ -81,6 +82,11 @@ export async function POST(request: NextRequest) {
     if (!officialPeriod) return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
     if (officialPeriod.key > formatPeriodDate(new Date())) {
       return NextResponse.json({ error: "Não é possível registar notas num período semanal futuro." }, { status: 400 });
+    }
+
+    const periodClosed = await isWeeklyPeriodClosed(officialPeriod.start, officialPeriod.end, prisma);
+    if (periodClosed) {
+      return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar notas." }, { status: 403 });
     }
 
     const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
