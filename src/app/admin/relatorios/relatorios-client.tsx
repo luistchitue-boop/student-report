@@ -8,7 +8,7 @@ type Turma = {
   name: string;
   students: number;
   subjects: string[];
-  roster: Array<{ id: string; name: string; parents: Array<{ name: string; email: string; phone: string }> }>;
+  roster: Array<{ id: string; name: string; active: boolean; parents: Array<{ name: string; email: string; phone: string }> }>;
 };
 
 type DeliveryResult = { email: string; studentName: string; success: boolean; error?: string };
@@ -29,7 +29,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   const [auditTurmaId, setAuditTurmaId] = useState("");
   const [failedDeliveries, setFailedDeliveries] = useState<FailedDelivery[]>([]);
   const [auditStatus, setAuditStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
-  const studentsForSelection = turmas.flatMap((turma) => turma.roster.map((student) => ({ ...student, turmaName: turma.name })));
+  const studentsForSelection = turmas.flatMap((turma) => turma.roster.filter((student) => student.active).map((student) => ({ ...student, turmaName: turma.name })));
   const filteredStudents = studentsForSelection.filter((student) => student.name.toLocaleLowerCase().includes(studentSearch.trim().toLocaleLowerCase()));
 
   function selectStudent(student: (typeof studentsForSelection)[number]) {

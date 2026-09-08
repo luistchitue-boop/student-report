@@ -654,6 +654,7 @@ export async function POST(request: Request) {
           take: 1,
         },
         students: {
+          where: { active: true },
           include: {
             parents: { select: { id: true, name: true, email: true, phone: true } },
             weeklyObservations: { where: { weekStart: { gte: periodStartDate, lt: periodStartNextDate } }, select: { behavior: true, teacherObservation: true } },
@@ -673,6 +674,7 @@ export async function POST(request: Request) {
 
     for (const turma of turmas) {
       for (const student of turma.students) {
+        if (!student.active) continue;
         if (studentIds.length && !studentIds.includes(student.id)) continue;
         const currentTerm = `Semanal:${currentPeriodStart}:${currentPeriodEnd}`;
         const previousTerm = previousPeriodStart && previousPeriodEnd ? `Semanal:${previousPeriodStart}:${previousPeriodEnd}` : "";
