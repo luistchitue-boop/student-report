@@ -264,7 +264,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
               <span className="mini-pauta-avatar">{student.avatarUrl ? <img src={student.avatarUrl} alt={`Fotografia de ${displayName(student.name)}`} /> : displayName(student.name).charAt(0).toUpperCase()}</span>
               <span className="mini-pauta-content">
                 <span className="mini-pauta-student"><strong>{displayName(student.name)}</strong></span>
-                <span className="mini-pauta-input-wrap"><span>Nota (0-{turma.gradeScale})</span><input type="number" min="0" max={turma.gradeScale} step="0.1" value={grades[student.id] ?? ""} onChange={(event) => setGrades((current) => ({ ...current, [student.id]: event.target.value }))} placeholder="-" disabled={!weekStart || !weekEnd} /></span>
+                <span className="mini-pauta-input-wrap"><input type="number" min="0" max={turma.gradeScale} step="0.1" value={grades[student.id] ?? ""} onChange={(event) => setGrades((current) => ({ ...current, [student.id]: event.target.value }))} placeholder="-" disabled={!weekStart || !weekEnd} /></span>
               </span>
             </label>
           ))}
