@@ -134,7 +134,6 @@ async function generateStudentReportPdf({
   weeklyPeriodTerms,
   previousGrades,
   absences,
-  previousUnjustifiedAbsences,
 }: {
   studentName: string;
   turmaName: string;
@@ -153,7 +152,6 @@ async function generateStudentReportPdf({
   weeklyPeriodTerms: string[];
   previousGrades: Array<{ subject: string; value: number; term: string }>;
   absences: Array<{ subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }>;
-  previousUnjustifiedAbsences: number;
 }) {
   const [logoDataUrl, avatarDataUrl, qrCodeDataUrl] = await Promise.all([
     loadImageDataUrl(),
@@ -477,45 +475,35 @@ async function generateStudentReportPdf({
     detailY += rowHeight;
   }
 
-  detailY += 30;
-  ensureDetailSpace(23 + 54);
-  doc.setTextColor(27, 57, 52);
-  doc.setFontSize(15);
-  doc.setFont("helvetica", "bold");
-  doc.text("Assiduidade", margin, detailY);
-  detailY += 23;
-  doc.setFont("helvetica", "normal");
-  const absenceTotal = Math.max(1, absences.length);
-  const unjustifiedScale = Math.max(1, unjustified, previousUnjustifiedAbsences);
-  const absenceBars: Array<[string, number, [number, number, number]]> = [["Justificadas", justified, [57, 117, 93]], ["Injustificadas", unjustified, [185, 119, 45]]];
-  absenceBars.forEach(([label, value, color]) => {
-    ensureDetailSpace(27);
-    doc.setFontSize(10);
-    doc.setTextColor(64, 85, 76);
-    doc.text(String(label), margin, detailY + 11);
-    doc.setFillColor(239, 240, 234);
-    doc.roundedRect(margin + 105, detailY, chartWidth - 145, 16, 5, 5, "F");
-    const barScale = label === "Injustificadas" ? unjustifiedScale : absenceTotal;
-    if (label === "Injustificadas" && hasPreviousPeriod) {
-      const previousColor = lightenColor(color);
-      doc.setFillColor(...previousColor);
-      doc.roundedRect(margin + 105, detailY, (chartWidth - 145) * previousUnjustifiedAbsences / barScale, 16, 5, 5, "F");
-    }
-    doc.setFillColor(Number(color[0]), Number(color[1]), Number(color[2]));
-    doc.roundedRect(margin + 105, detailY, (chartWidth - 145) * Number(value) / barScale, 16, 5, 5, "F");
-    if (label === "Injustificadas" && hasPreviousPeriod) {
-      const previousX = margin + 105 + (chartWidth - 145) * previousUnjustifiedAbsences / barScale;
+  const absencesBySubject = Array.from(absences.reduce((counts, absence) => {
+    counts.set(absence.subject, (counts.get(absence.subject) ?? 0) + 1);
+    return counts;
+  }, new Map<string, number>()).entries())
+    .sort(([, firstCount], [, secondCount]) => secondCount - firstCount)
+    .slice(0, 3);
+  if (absencesBySubject.length) {
+    detailY += 20;
+    ensureDetailSpace(23 + absencesBySubject.length * 27);
+    detailY += 21;
+    const topAbsenceCount = Math.max(1, absencesBySubject[0][1]);
+    absencesBySubject.forEach(([subject, count]) => {
+      ensureDetailSpace(27);
+      const label = subject.length > 20 ? `${subject.slice(0, 19)}...` : subject;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(...ink);
+      doc.text(label, margin, detailY + 11);
+      doc.setFillColor(239, 240, 234);
+      doc.roundedRect(margin + 125, detailY, chartWidth - 165, 16, 5, 5, "F");
+      doc.setFillColor(181, 132, 112);
+      doc.roundedRect(margin + 125, detailY, (chartWidth - 165) * count / topAbsenceCount, 16, 5, 5, "F");
       doc.setTextColor(...ink);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
-      doc.text(String(previousUnjustifiedAbsences), Math.min(previousX + 3, pageWidth - margin - 45), detailY + 10);
-    }
-    doc.setTextColor(...ink);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(String(value), pageWidth - margin - 28, detailY + 11);
-    detailY += 27;
-  });
+      doc.setFontSize(9);
+      doc.text(String(count), pageWidth - margin - 28, detailY + 11);
+      detailY += 27;
+    });
+  }
 
   const observationText = teacherObservation?.trim() ?? "";
   const observationWidth = tableWidth - 70;
@@ -656,13 +644,11 @@ export async function POST(request: Request) {
         const previousTerm = previousPeriodStart && previousPeriodEnd ? `Semanal:${previousPeriodStart}:${previousPeriodEnd}` : "";
         const currentStartTime = new Date(`${formatPeriodDate(period.start)}T00:00:00Z`).getTime();
         const currentEndTime = new Date(`${formatPeriodDate(period.end)}T23:59:59.999Z`).getTime();
-        const previousStartTime = previousPeriod ? new Date(`${previousPeriodStart}T00:00:00Z`).getTime() : 0;
         const currentGrades = student.grades.filter((grade) => grade.term === currentTerm);
         const previousGrades = student.grades.filter((grade) => grade.term === previousTerm);
         const weeklyGrades = student.grades.filter((grade) => weeklyPeriodTerms.includes(grade.term));
         const globalGrades = student.grades;
         const currentAbsences = student.absences.filter((absence) => absence.dia.getTime() >= currentStartTime && absence.dia.getTime() <= currentEndTime);
-        const previousUnjustifiedAbsences = student.absences.filter((absence) => previousPeriod && absence.dia.getTime() >= previousStartTime && absence.dia.getTime() < currentStartTime && !absence.justified).length;
         const reportTeacherName = turma.teacherAssignments[0]?.teacher.name ?? turma.coordinator?.name ?? "";
         if (preview) {
           const pdf = await generateStudentReportPdf({
@@ -683,7 +669,6 @@ export async function POST(request: Request) {
             weeklyPeriodTerms,
             previousGrades: previousGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
             absences: currentAbsences.map((absence: { subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }) => ({ subject: absence.subject, dia: absence.dia, tempo: absence.tempo, faultType: absence.faultType, justified: absence.justified })),
-            previousUnjustifiedAbsences,
           });
           return new NextResponse(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${safeFileName(student.name)}-preview.pdf"` } });
         }
@@ -735,7 +720,6 @@ export async function POST(request: Request) {
             faultType: absence.faultType,
             justified: absence.justified,
           })),
-          previousUnjustifiedAbsences,
         });
         const blob = await put(`reports/${period.key}/${crypto.randomUUID()}-${safeFileName(student.name)}-${safeFileName(turma.name)}.pdf`, pdf, {
           access: "public",
