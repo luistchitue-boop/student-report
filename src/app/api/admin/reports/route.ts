@@ -73,7 +73,29 @@ async function loadImageDataUrl(url?: string | null) {
 async function loadPublicImageDataUrl(fileName: string) {
   try {
     const bytes = await readFile(path.join(process.cwd(), "public", fileName));
-    return { data: `data:image/png;base64,${bytes.toString("base64")}`, format: "PNG" as const };
+    const isJpeg = /\.jpe?g$/i.test(fileName);
+    return { data: `data:image/${isJpeg ? "jpeg" : "png"};base64,${bytes.toString("base64")}`, format: isJpeg ? "JPEG" as const : "PNG" as const };
+  } catch {
+    return null;
+  }
+}
+
+async function loadMetricCardImage(fileName: string) {
+  try {
+    const source = await readFile(path.join(process.cwd(), "public", fileName));
+    const width = 236;
+    const height = 116;
+    const roundedMask = Buffer.from(`<svg width="${width}" height="${height}"><rect width="${width}" height="${height}" rx="24" ry="24" fill="white"/></svg>`);
+    const readabilityGradient = Buffer.from(`<svg width="${width}" height="${height}"><defs><linearGradient id="mask" x1="0" x2="1"><stop offset="0%" stop-color="#f7f0eb" stop-opacity="0.96"/><stop offset="42%" stop-color="#e8d7cd" stop-opacity="0.82"/><stop offset="100%" stop-color="#b58470" stop-opacity="0.24"/></linearGradient></defs><rect width="${width}" height="${height}" rx="24" ry="24" fill="url(#mask)"/></svg>`);
+    const cardImage = await sharp(source)
+      .resize(width, height, { fit: "cover", position: "centre" })
+      .composite([
+        { input: roundedMask, blend: "dest-in" },
+        { input: readabilityGradient, blend: "over" },
+      ])
+      .png()
+      .toBuffer();
+    return { data: `data:image/png;base64,${cardImage.toString("base64")}`, format: "PNG" as const };
   } catch {
     return null;
   }
@@ -153,10 +175,13 @@ async function generateStudentReportPdf({
   previousGrades: Array<{ subject: string; value: number; term: string }>;
   absences: Array<{ subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }>;
 }) {
-  const [logoDataUrl, avatarDataUrl, qrCodeDataUrl] = await Promise.all([
+  const [logoDataUrl, avatarDataUrl, qrCodeDataUrl, behaviorImage, absenceImage, gradesImage] = await Promise.all([
     loadImageDataUrl(),
     loadCircularAvatarDataUrl(avatarUrl),
     loadPublicImageDataUrl("qr-code.png"),
+    loadMetricCardImage("comportamento.jpeg"),
+    loadMetricCardImage("faltas.jpeg"),
+    loadMetricCardImage("notas.jpeg"),
   ]);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -232,17 +257,24 @@ async function generateStudentReportPdf({
   const average = averageValue.toFixed(1);
   const justified = absences.filter((absence) => absence.justified).length;
   const unjustified = absences.length - justified;
-  const metrics: Array<[string, string]> = [["Média geral", average], ["Notas", String(grades.length)], ["Faltas", String(absences.length)]];
-  if (behavior?.trim()) metrics.push(["Comportamento", behavior.trim()]);
-  metrics.forEach(([label, value], index) => {
+  const metrics: Array<[string, string, { data: string; format: "PNG" | "JPEG" } | null]> = [["Média geral", average, null], ["Notas", String(grades.length), gradesImage], ["Faltas", String(absences.length), absenceImage]];
+  if (behavior?.trim()) metrics.push(["Comportamento", behavior.trim(), behaviorImage]);
+  metrics.forEach(([label, value, backgroundImage], index) => {
     const x = margin + index * 130;
     doc.setFillColor(index === 0 ? terracotta[0] : 255, index === 0 ? terracotta[1] : 248, index === 0 ? terracotta[2] : 242);
-    doc.roundedRect(x, 250, 118, 58, 7, 7, "F");
+    doc.roundedRect(x, 250, 118, 58, 12, 12, "F");
+    if (backgroundImage) {
+      doc.addImage(backgroundImage.data, backgroundImage.format, x, 250, 118, 58);
+      doc.setDrawColor(...terracotta);
+      doc.setLineWidth(1.1);
+      doc.roundedRect(x, 250, 118, 58, 12, 12, "S");
+    }
     doc.setTextColor(index === 0 ? 255 : ink[0], index === 0 ? 255 : ink[1], index === 0 ? 255 : ink[2]);
-    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
     doc.text(label.toUpperCase(), x + 10, 268);
     doc.setTextColor(index === 0 ? 255 : ink[0], index === 0 ? 255 : ink[1], index === 0 ? 255 : ink[2]);
-    doc.setFontSize(index === 3 ? 12 : 20);
+    doc.setFontSize(index === 3 ? 13 : 21);
     doc.setFont("helvetica", "bold");
     doc.text(value, x + 10, 294);
     doc.setFont("helvetica", "normal");
