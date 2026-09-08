@@ -301,43 +301,6 @@ async function generateStudentReportPdf({
   }
   y += 22;
 
-  y += 30;
-  doc.setTextColor(27, 57, 52);
-  doc.setFontSize(15);
-  doc.setFont("helvetica", "bold");
-  doc.text("Assiduidade", margin, y);
-  y += 23;
-  doc.setFont("helvetica", "normal");
-  const absenceTotal = Math.max(1, absences.length);
-  const unjustifiedScale = Math.max(1, unjustified, previousUnjustifiedAbsences);
-  const absenceBars: Array<[string, number, [number, number, number]]> = [["Justificadas", justified, [57, 117, 93]], ["Injustificadas", unjustified, [185, 119, 45]]];
-  absenceBars.forEach(([label, value, color]) => {
-    doc.setFontSize(10);
-    doc.setTextColor(64, 85, 76);
-    doc.text(String(label), margin, y + 11);
-    doc.setFillColor(239, 240, 234);
-    doc.roundedRect(margin + 105, y, chartWidth - 145, 16, 5, 5, "F");
-    doc.setFillColor(Number(color[0]), Number(color[1]), Number(color[2]));
-    const barScale = label === "Injustificadas" ? unjustifiedScale : absenceTotal;
-    doc.roundedRect(margin + 105, y, (chartWidth - 145) * Number(value) / barScale, 16, 5, 5, "F");
-    if (label === "Injustificadas" && hasPreviousPeriod) {
-      const previousX = margin + 105 + (chartWidth - 145) * previousUnjustifiedAbsences / barScale;
-      doc.setFillColor(52, 112, 181);
-      doc.setDrawColor(255, 255, 255);
-      doc.setLineWidth(1);
-      doc.circle(previousX, y + 8, 7, "FD");
-      doc.setTextColor(255, 255, 255);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
-      doc.text(String(previousUnjustifiedAbsences), previousX, y + 10, { align: "center" });
-    }
-    doc.setTextColor(64, 85, 76);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(String(value), pageWidth - margin - 28, y + 11);
-    y += 27;
-  });
-
   doc.addPage();
   doc.setFillColor(...paper);
   doc.rect(0, 0, pageWidth, doc.internal.pageSize.getHeight(), "F");
@@ -364,7 +327,7 @@ async function generateStudentReportPdf({
 
   const pageHeight = doc.internal.pageSize.getHeight();
   const detailBottom = pageHeight - 48;
-  let detailY = 168;
+  let detailY = 184;
   const tableWidth = pageWidth - margin * 2;
   const rowHeight = 23;
   const startDetailContinuation = () => {
@@ -391,7 +354,7 @@ async function generateStudentReportPdf({
     doc.setDrawColor(255, 255, 255);
     doc.setLineWidth(2);
     doc.circle(continuationPhotoX, continuationPhotoY, 28, "S");
-    detailY = 168;
+    detailY = 184;
   };
   const ensureDetailSpace = (height: number, continuationColumns?: Array<{ label: string; width: number }>) => {
     if (detailY + height > detailBottom) {
@@ -496,6 +459,45 @@ async function generateStudentReportPdf({
     doc.text("Sem faltas registadas.", margin + 7, detailY + 15);
     detailY += rowHeight;
   }
+
+  detailY += 30;
+  ensureDetailSpace(23 + 54);
+  doc.setTextColor(27, 57, 52);
+  doc.setFontSize(15);
+  doc.setFont("helvetica", "bold");
+  doc.text("Assiduidade", margin, detailY);
+  detailY += 23;
+  doc.setFont("helvetica", "normal");
+  const absenceTotal = Math.max(1, absences.length);
+  const unjustifiedScale = Math.max(1, unjustified, previousUnjustifiedAbsences);
+  const absenceBars: Array<[string, number, [number, number, number]]> = [["Justificadas", justified, [57, 117, 93]], ["Injustificadas", unjustified, [185, 119, 45]]];
+  absenceBars.forEach(([label, value, color]) => {
+    ensureDetailSpace(27);
+    doc.setFontSize(10);
+    doc.setTextColor(64, 85, 76);
+    doc.text(String(label), margin, detailY + 11);
+    doc.setFillColor(239, 240, 234);
+    doc.roundedRect(margin + 105, detailY, chartWidth - 145, 16, 5, 5, "F");
+    doc.setFillColor(Number(color[0]), Number(color[1]), Number(color[2]));
+    const barScale = label === "Injustificadas" ? unjustifiedScale : absenceTotal;
+    doc.roundedRect(margin + 105, detailY, (chartWidth - 145) * Number(value) / barScale, 16, 5, 5, "F");
+    if (label === "Injustificadas" && hasPreviousPeriod) {
+      const previousX = margin + 105 + (chartWidth - 145) * previousUnjustifiedAbsences / barScale;
+      doc.setFillColor(52, 112, 181);
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(1);
+      doc.circle(previousX, detailY + 8, 7, "FD");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.5);
+      doc.text(String(previousUnjustifiedAbsences), previousX, detailY + 10, { align: "center" });
+    }
+    doc.setTextColor(64, 85, 76);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(String(value), pageWidth - margin - 28, detailY + 11);
+    detailY += 27;
+  });
 
   const observationText = teacherObservation?.trim() ?? "";
   const observationWidth = tableWidth - 70;
