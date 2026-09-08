@@ -20,6 +20,8 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   const [channel, setChannel] = useState<"EMAIL" | "WHATSAPP">("EMAIL");
   const [selectedTurmas, setSelectedTurmas] = useState<string[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
+  const [showStudentSuggestions, setShowStudentSuggestions] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [deliveryResults, setDeliveryResults] = useState<DeliveryResult[]>([]);
@@ -27,6 +29,15 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   const [auditTurmaId, setAuditTurmaId] = useState("");
   const [failedDeliveries, setFailedDeliveries] = useState<FailedDelivery[]>([]);
   const [auditStatus, setAuditStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const studentsForSelection = turmas.flatMap((turma) => turma.roster.map((student) => ({ ...student, turmaName: turma.name })));
+  const filteredStudents = studentsForSelection.filter((student) => student.name.toLocaleLowerCase().includes(studentSearch.trim().toLocaleLowerCase()));
+
+  function selectStudent(student: (typeof studentsForSelection)[number]) {
+    setSelectedStudentId(student.id);
+    setStudentSearch(`${student.name} · ${student.turmaName}`);
+    setShowStudentSuggestions(false);
+    resetFeedback();
+  }
 
   function isFuturePeriod(periodKey: string) {
     return periodKey > formatPeriodDate(new Date());
@@ -161,10 +172,25 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
 
       <div className="admin-individual-panel">
         <label>Testar um caso individual
-          <select value={selectedStudentId} disabled={!selectedPeriod || status === "sending"} onChange={(event) => { setSelectedStudentId(event.target.value); resetFeedback(); }}>
-            <option value="">Selecione um aluno</option>
-            {turmas.flatMap((turma) => turma.roster.map((student) => <option key={student.id} value={student.id}>{student.name} · {turma.name}</option>))}
-          </select>
+          <div className="admin-student-combobox">
+            <input
+              className="admin-student-search"
+              type="search"
+              role="combobox"
+              aria-expanded={showStudentSuggestions}
+              aria-controls="admin-student-suggestions"
+              value={studentSearch}
+              placeholder="Pesquisar aluno..."
+              disabled={!selectedPeriod || status === "sending"}
+              onFocus={() => setShowStudentSuggestions(true)}
+              onChange={(event) => { setStudentSearch(event.target.value); setSelectedStudentId(""); setShowStudentSuggestions(true); resetFeedback(); }}
+            />
+            {showStudentSuggestions && selectedPeriod && status !== "sending" && <div id="admin-student-suggestions" className="admin-student-suggestions" role="listbox">
+              {filteredStudents.length ? filteredStudents.slice(0, 12).map((student) => <button key={student.id} type="button" role="option" aria-selected={selectedStudentId === student.id} onMouseDown={(event) => event.preventDefault()} onClick={() => selectStudent(student)}>
+                <strong>{student.name}</strong><small>{student.turmaName}</small>
+              </button>) : <span className="admin-student-empty">Nenhum aluno encontrado.</span>}
+            </div>}
+          </div>
         </label>
         <button type="button" onClick={handlePreview} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>Pré-visualizar PDF</button>
         <button type="button" onClick={() => handleSendReports(selectedStudentId)} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>{status === "sending" ? "A enviar..." : `Enviar caso individual por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
@@ -215,6 +241,14 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
         .admin-submit:disabled, .admin-individual-panel button:disabled { opacity:.6; cursor:not-allowed; }
         .admin-individual-panel { display:flex; align-items:end; gap:1rem; flex-wrap:wrap; }
         .admin-individual-panel label { display:grid; gap:.45rem; flex:0 1 360px; min-width:220px; font-weight:700; }
+        .admin-student-combobox { position:relative; }
+        .admin-student-search { width:100%; padding:.7rem; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
+        .admin-student-search:focus { border-color:#1d4ed8; outline:2px solid rgba(29,78,216,.12); }
+        .admin-student-suggestions { position:absolute; z-index:10; top:calc(100% + .35rem); left:0; right:0; max-height:260px; overflow:auto; padding:.35rem; background:#fff; border:1px solid #cbd5e1; border-radius:10px; box-shadow:0 12px 28px rgba(15,23,42,.14); }
+        .admin-student-suggestions button { display:flex; flex-direction:column; align-items:flex-start; width:100%; padding:.6rem .7rem; background:#fff; color:#1e293b; border:0; border-radius:7px; text-align:left; cursor:pointer; }
+        .admin-student-suggestions button:hover, .admin-student-suggestions button[aria-selected="true"] { background:#eff6ff; }
+        .admin-student-suggestions small { margin-top:.15rem; color:#64748b; font-size:.75rem; font-weight:500; }
+        .admin-student-empty { display:block; padding:.7rem; color:#64748b; font-size:.82rem; font-weight:500; }
         .admin-individual-panel select { width:100%; padding:.7rem; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
         .admin-preview-panel { display:grid; gap:.8rem; background:#fff; border:1px solid #dbe3ec; border-radius:18px; padding:1.2rem; }
         .admin-preview-panel iframe { width:100%; min-height:760px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; }
