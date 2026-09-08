@@ -18,7 +18,7 @@ function getShortStudentName(name: string) {
   return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
-export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: string; name: string; schedule: string; students: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; avatarUrl?: string | null; parents: Array<{ id: string; name: string; phone: string; email: string }> }; canEdit: boolean }) {
+export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: string; name: string; schedule: string; students: number; gradeScale: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; avatarUrl?: string | null; parents: Array<{ id: string; name: string; phone: string; email: string }> }; canEdit: boolean }) {
   const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -461,7 +461,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
 
                     <div className="student-summary-grid">
                       <section className="student-chart-panel">
-                        <div className="student-chart-heading"><div><p className="eyebrow">DESEMPENHO</p><h2>Média por disciplina</h2></div><span>0-20</span></div>
+                        <div className="student-chart-heading"><div><p className="eyebrow">DESEMPENHO</p><h2>Média por disciplina</h2></div><span>0-{turma.gradeScale}</span></div>
                         {subjectAverages.length ? <div className="student-bar-chart">{subjectAverages.map((item) => <div className="student-bar-row" key={item.subject}><div className="student-bar-label"><span>{item.subject}</span><strong>{item.average.toFixed(1)}</strong></div><div className="student-bar-track"><span style={{ width: `${Math.min(100, (item.average / maxSubjectAverage) * 100)}%` }} /></div></div>)}</div> : <p className="student-record-empty">Ainda não existem notas registadas.</p>}
                       </section>
 
@@ -472,7 +472,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                       </section>
 
                       <section className="student-chart-panel student-chart-panel-wide">
-                        <div className="student-chart-heading"><div><p className="eyebrow">DISTRIBUIÇÃO</p><h2>Faixas de notas</h2></div><span>escala 0-20</span></div>
+                        <div className="student-chart-heading"><div><p className="eyebrow">DISTRIBUIÇÃO</p><h2>Faixas de notas</h2></div><span>escala 0-{turma.gradeScale}</span></div>
                         {grades.length ? <div className="student-column-chart">{gradeBands.map((band) => <div className="student-column" key={band.label}><div className="student-column-value">{band.count}</div><div className="student-column-track"><span style={{ height: `${(band.count / maxGradeBandCount) * 100}%` }} /></div><strong>{band.label}</strong></div>)}</div> : <p className="student-record-empty">A distribuição aparecerá quando houver notas.</p>}
                       </section>
                     </div>

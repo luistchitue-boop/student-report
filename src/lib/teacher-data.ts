@@ -24,6 +24,7 @@ function mapTurmaForCoordinator(turma: any) {
     id: turma.id,
     name: turma.name,
     schedule: turma.schedule ?? "Sem horário definido",
+    gradeScale: turma.gradeScale === 10 ? 10 : 20,
     students: turma._count.students,
     subjects: turma.subjects.map((subject: { name: string }) => subject.name),
     roster: turma.students.map((student: any) => ({
@@ -38,8 +39,12 @@ function mapTurmaForCoordinator(turma: any) {
   };
 }
 
-const turmaInclude = {
+const turmaSelect = {
+  id: true,
+  name: true,
+  schedule: true,
   _count: { select: { students: true } },
+  gradeScale: true,
   subjects: { orderBy: { name: "asc" as const }, select: { name: true } },
   students: {
     orderBy: { name: "asc" as const },
@@ -53,12 +58,12 @@ const turmaInclude = {
 export async function getCoordinatorTurmas(userId: string) {
   const teacher = await prisma.teacher.findUnique({ where: { userId }, select: { role: true } });
   if (teacher?.role === "ADMIN") {
-    return (await prisma.turma.findMany({ orderBy: { name: "asc" }, include: turmaInclude })).map(mapTurmaForCoordinator);
+    return (await prisma.turma.findMany({ orderBy: { name: "asc" }, select: turmaSelect })).map(mapTurmaForCoordinator);
   }
 
   const coordinator = await prisma.teacher.findUnique({
     where: { userId },
-    include: { turmaAssignments: { include: { turma: { include: turmaInclude } } } },
+    include: { turmaAssignments: { include: { turma: { select: turmaSelect } } } },
   });
   if (!coordinator) return [];
   const assignedTurmas = coordinator.turmaAssignments.map((assignment) => assignment.turma);

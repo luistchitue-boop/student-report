@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Turma, subject, and a valid weekly interval are required" }, { status: 400 });
   }
 
-  const turma = await getAuthorizedTurma(session.user.id, turmaId);
+  const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
   if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
   if (!turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
 
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     select: { studentId: true, value: true },
   });
 
-  return NextResponse.json({ students: turma.students, subjects: turma.subjects.map((entry) => entry.name), grades, alreadyRecorded: grades.length > 0 });
+  return NextResponse.json({ students: turma.students, subjects: turma.subjects.map((entry) => entry.name), gradeScale: turma.gradeScale, grades, alreadyRecorded: grades.length > 0 });
 }
 
 export async function POST(request: NextRequest) {
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     const validGrades: Array<{ studentId: string; value: number }> = grades.flatMap((entry: { studentId?: unknown; value?: unknown }) => {
       if (typeof entry.studentId !== "string" || !turmaStudentIds.has(entry.studentId)) return [];
       const value = Number(entry.value);
-      return Number.isFinite(value) && value >= 0 && value <= 20 ? [{ studentId: entry.studentId, value }] : [];
+      return Number.isFinite(value) && value >= 0 && value <= turma.gradeScale ? [{ studentId: entry.studentId, value }] : [];
     });
     const term = `Semanal:${weekStart}:${weekEnd}`;
 

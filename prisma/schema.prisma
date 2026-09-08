@@ -87,6 +87,7 @@ model Turma {
   name         String
   code         String?  @unique
   schedule     String?
+  gradeScale   Int      @default(20)
   coordinatorId String?
   createdAt    DateTime @default(now())
 

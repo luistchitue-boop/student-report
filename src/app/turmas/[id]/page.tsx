@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { getCoordinatorTurmaById } from "@/lib/teacher-data";
 import { StudentCardClient } from "./student-card-client";
 import { StudentImportClient } from "./student-import-client";
+import { GradeScaleClient } from "./grade-scale-client";
 import { TurmaDisciplinasClient } from "./disciplinas-client";
 
 const PAGE_SIZE = 10;
@@ -118,6 +119,7 @@ export default async function TurmaDetailPage({
               <Link href={`/turmas/${turma.id}/novo_aluno`} className="new-student-button">
                 Novo aluno
               </Link>
+              {session.user.role === "ADMIN" && <GradeScaleClient turmaId={turma.id} initialScale={turma.gradeScale} />}
             </div>
           </div>
 

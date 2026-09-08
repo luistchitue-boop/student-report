@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
 async function generateStudentReportPdf({
   studentName,
   turmaName,
+  gradeScale,
   periodStart,
   periodEnd,
   hasPreviousPeriod,
@@ -123,6 +124,7 @@ async function generateStudentReportPdf({
 }: {
   studentName: string;
   turmaName: string;
+  gradeScale: number;
   periodStart: Date;
   periodEnd: Date;
   hasPreviousPeriod: boolean;
@@ -234,6 +236,8 @@ async function generateStudentReportPdf({
   const subjectAverages = Array.from(new Set(grades.map((grade) => grade.subject))).map((subject) => ({ subject, value: grades.filter((grade) => grade.subject === subject).reduce((total, grade) => total + Number(grade.value), 0) / grades.filter((grade) => grade.subject === subject).length }));
   const previousSubjectAverages = new Map(Array.from(new Set(previousGrades.map((grade) => grade.subject))).map((subject) => [subject, previousGrades.filter((grade) => grade.subject === subject).reduce((total, grade) => total + Number(grade.value), 0) / previousGrades.filter((grade) => grade.subject === subject).length]));
   const chartWidth = pageWidth - margin * 2;
+  const passThreshold = gradeScale * 0.5;
+  const highThreshold = gradeScale * 0.7;
   subjectAverages.forEach((item) => {
     const label = item.subject.length > 18 ? `${item.subject.slice(0, 17)}...` : item.subject;
     doc.setFontSize(9);
@@ -241,12 +245,12 @@ async function generateStudentReportPdf({
     doc.text(label, margin, y + 10);
     doc.setFillColor(236, 211, 198);
     doc.roundedRect(margin + 105, y, chartWidth - 145, 14, 4, 4, "F");
-    const gradeColor: [number, number, number] = item.value >= 14 ? [57, 117, 93] : item.value >= 10 ? [215, 139, 48] : [194, 74, 67];
+    const gradeColor: [number, number, number] = item.value >= highThreshold ? [57, 117, 93] : item.value >= passThreshold ? [215, 139, 48] : [194, 74, 67];
     doc.setFillColor(...gradeColor);
-    doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, item.value / 20), 14, 4, 4, "F");
+    doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, item.value / gradeScale), 14, 4, 4, "F");
     const previousValue = previousSubjectAverages.get(item.subject);
     if (hasPreviousPeriod && previousValue !== undefined) {
-      const previousX = margin + 105 + (chartWidth - 145) * Math.min(1, previousValue / 20);
+      const previousX = margin + 105 + (chartWidth - 145) * Math.min(1, previousValue / gradeScale);
       doc.setFillColor(52, 112, 181);
       doc.setDrawColor(255, 255, 255);
       doc.setLineWidth(1);
@@ -268,17 +272,17 @@ async function generateStudentReportPdf({
   doc.setTextColor(...ink);
   doc.setFillColor(194, 74, 67);
   doc.circle(margin + 4, y + 4, 4, "F");
-  doc.text("0-9", margin + 12, y + 7);
+  doc.text(`0-${Math.max(0, passThreshold - 1).toFixed(0)}`, margin + 12, y + 7);
   doc.setFillColor(215, 139, 48);
   doc.circle(margin + 48, y + 4, 4, "F");
-  doc.text("10-13", margin + 56, y + 7);
+  doc.text(`${passThreshold.toFixed(0)}-${Math.max(0, highThreshold - 1).toFixed(0)}`, margin + 56, y + 7);
   doc.setFillColor(57, 117, 93);
   doc.circle(margin + 105, y + 4, 4, "F");
-  doc.text("14-20", margin + 113, y + 7);
-  const lowGrades = grades.filter((grade) => Number(grade.value) < 10).length;
-  const middleGrades = grades.filter((grade) => Number(grade.value) >= 10 && Number(grade.value) < 14).length;
-  const highGrades = grades.filter((grade) => Number(grade.value) >= 14).length;
-  doc.text(`Notas: ${lowGrades} abaixo de 10 · ${middleGrades} entre 10-13 · ${highGrades} entre 14-20`, margin + 180, y + 7);
+  doc.text(`${highThreshold.toFixed(0)}-${gradeScale}`, margin + 113, y + 7);
+  const lowGrades = grades.filter((grade) => Number(grade.value) < passThreshold).length;
+  const middleGrades = grades.filter((grade) => Number(grade.value) >= passThreshold && Number(grade.value) < highThreshold).length;
+  const highGrades = grades.filter((grade) => Number(grade.value) >= highThreshold).length;
+  doc.text(`Notas: ${lowGrades} abaixo de ${passThreshold.toFixed(0)} · ${middleGrades} entre ${passThreshold.toFixed(0)}-${Math.max(0, highThreshold - 1).toFixed(0)} · ${highGrades} entre ${highThreshold.toFixed(0)}-${gradeScale}`, margin + 180, y + 7);
   if (hasPreviousPeriod) {
     doc.setFillColor(52, 112, 181);
     doc.circle(margin + 4, y + 21, 4, "F");
@@ -578,6 +582,7 @@ export async function POST(request: Request) {
           const pdf = await generateStudentReportPdf({
             studentName: student.name,
             turmaName: turma.name,
+            gradeScale: turma.gradeScale,
             periodStart: period.start,
             periodEnd: period.end,
             hasPreviousPeriod: Boolean(previousPeriod),
@@ -614,6 +619,7 @@ export async function POST(request: Request) {
         const pdf = await generateStudentReportPdf({
           studentName: student.name,
           turmaName: turma.name,
+          gradeScale: turma.gradeScale,
           periodStart: period.start,
           periodEnd: period.end,
           hasPreviousPeriod: Boolean(previousPeriod),

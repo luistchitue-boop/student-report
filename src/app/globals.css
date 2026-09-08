@@ -228,6 +228,18 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .student-import-button:disabled { opacity:0.55; cursor:not-allowed; }
 .student-import-input { display:none; }
 .student-import-status { flex-basis:100%; margin:0; color:var(--muted); font-size:0.75rem; font-weight:600; }
+.grade-scale-button { display:inline-flex; align-items:center; justify-content:center; min-height:2.2rem; padding:0.45rem 0.8rem; border:1px solid #cbbf93; border-radius:9px; background:#fbf7e8; color:#806a24; font-size:0.76rem; font-weight:600; cursor:pointer; }
+.grade-scale-button:hover { background:#f5edcf; }
+.grade-scale-status { color:#39755d; font-size:0.74rem; font-weight:700; }
+.grade-scale-modal-backdrop { position:fixed; inset:0; z-index:30; display:grid; place-items:center; padding:1rem; background:rgba(24,38,33,0.42); }
+.grade-scale-modal { width:min(100%, 440px); display:grid; gap:1rem; background:#fff; border:1px solid #dfe5df; border-radius:20px; padding:1.25rem; box-shadow:0 24px 70px rgba(20,35,28,0.2); }
+.grade-scale-modal-heading { display:flex; justify-content:space-between; align-items:start; gap:1rem; }
+.grade-scale-modal-heading h2 { margin:0.25rem 0 0; color:var(--navy); font-size:1.15rem; }
+.grade-scale-modal p:not(.eyebrow) { margin:0; color:var(--muted); font-size:0.82rem; line-height:1.5; }
+.grade-scale-modal label { display:grid; gap:0.4rem; color:#53645b; font-size:0.75rem; font-weight:800; text-transform:uppercase; }
+.grade-scale-modal select { min-height:2.6rem; padding:0.6rem 0.7rem; border:1px solid #ccd9ce; border-radius:10px; background:#fff; color:var(--ink); }
+.grade-scale-close { border:0; background:transparent; color:#68756d; font-size:1.5rem; line-height:1; cursor:pointer; }
+.grade-scale-actions { display:flex; justify-content:flex-end; gap:0.6rem; }
 .new-student-shell { max-width:760px !important; }
 .new-student-panel { background:#fff; border:1px solid #dfe5df; border-radius:24px; padding:1.35rem; box-shadow:0 18px 44px rgba(26,38,32,0.06); }
 .new-student-section { display:grid; gap:0.8rem; padding:1rem; border:1px solid #e1ebe2; border-radius:16px; background:#f8fbf8; }

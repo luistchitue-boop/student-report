@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
             id: studentId,
             turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
           },
-      select: { id: true },
+      select: { id: true, turma: { select: { gradeScale: true } } },
     });
 
     if (!student) {
@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      gradeScale: student.turma.gradeScale,
       grades: grades.map((grade) => ({
         id: grade.id,
         studentId: grade.studentId,
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
             id: studentId,
             turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
           },
-      select: { turma: { select: { subjects: { select: { name: true } } } } },
+      select: { turma: { select: { gradeScale: true, subjects: { select: { name: true } } } } },
     });
 
     if (!student) {
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
         const rawValue = entry.value;
         const numericValue = Number(rawValue);
 
-        if (!subjectNames.has(entry.subject) || rawValue === undefined || rawValue === null || rawValue === "" || Number.isNaN(numericValue) || numericValue < 0 || numericValue > 20) {
+        if (!subjectNames.has(entry.subject) || rawValue === undefined || rawValue === null || rawValue === "" || Number.isNaN(numericValue) || numericValue < 0 || numericValue > student.turma.gradeScale) {
           continue;
         }
 
@@ -262,14 +263,15 @@ export async function PATCH(request: NextRequest) {
 
     if (type === "grade") {
       const value = Number(body.value);
-      if (!Number.isFinite(value) || value < 0 || value > 20) return NextResponse.json({ error: "Grade must be between 0 and 20" }, { status: 400 });
+      if (!Number.isFinite(value) || value < 0) return NextResponse.json({ error: "Grade must be valid" }, { status: 400 });
       const grade = await prisma.grade.findFirst({
         where: isAdmin
           ? { id }
           : { id, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
-        include: { student: { include: { turma: { select: { subjects: { select: { name: true } } } } } } },
+        include: { student: { include: { turma: { select: { gradeScale: true, subjects: { select: { name: true } } } } } } },
       });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
+      if (value > grade.student.turma.gradeScale) return NextResponse.json({ error: `Grade must be between 0 and ${grade.student.turma.gradeScale}` }, { status: 400 });
       const subject = typeof body.subject === "string" ? body.subject : grade.subject;
       if (!grade.student.turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
       const updated = await prisma.grade.update({ where: { id }, data: { value, subject, term: typeof body.term === "string" ? body.term : grade.term } });

@@ -9,6 +9,7 @@ import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coo
 type Turma = {
   id: string;
   name: string;
+  gradeScale: number;
   subjects: string[];
   roster: Array<{ id: string; name: string; age: number; avatarUrl?: string | null }>;
 };
@@ -110,8 +111,8 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       .filter(([, value]) => value.trim() !== "")
       .map(([studentId, value]) => ({ studentId, value: Number(value) }));
 
-    if (gradeEntries.some((entry) => !Number.isFinite(entry.value) || entry.value < 0 || entry.value > 20)) {
-      setStatus("As notas devem estar entre 0 e 20.");
+    if (gradeEntries.some((entry) => !Number.isFinite(entry.value) || entry.value < 0 || entry.value > turma.gradeScale)) {
+      setStatus(`As notas devem estar entre 0 e ${turma.gradeScale}.`);
       return;
     }
 
@@ -236,7 +237,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
               <span className="mini-pauta-avatar">{student.avatarUrl ? <img src={student.avatarUrl} alt={`Fotografia de ${displayName(student.name)}`} /> : displayName(student.name).charAt(0).toUpperCase()}</span>
               <span className="mini-pauta-content">
                 <span className="mini-pauta-student"><strong>{displayName(student.name)}</strong></span>
-                <span className="mini-pauta-input-wrap"><span>Nota</span><input type="number" min="0" max="20" step="0.1" value={grades[student.id] ?? ""} onChange={(event) => setGrades((current) => ({ ...current, [student.id]: event.target.value }))} placeholder="-" disabled={!weekStart || !weekEnd} /></span>
+                <span className="mini-pauta-input-wrap"><span>Nota (0-{turma.gradeScale})</span><input type="number" min="0" max={turma.gradeScale} step="0.1" value={grades[student.id] ?? ""} onChange={(event) => setGrades((current) => ({ ...current, [student.id]: event.target.value }))} placeholder="-" disabled={!weekStart || !weekEnd} /></span>
               </span>
             </label>
           ))}
