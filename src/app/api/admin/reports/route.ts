@@ -553,6 +553,11 @@ export async function POST(request: Request) {
       where: { id: { in: turmaIds } },
       include: {
         coordinator: { select: { name: true } },
+        teacherAssignments: {
+          where: { isMain: true, teacher: { role: "COORDENADOR" } },
+          select: { teacher: { select: { name: true } } },
+          take: 1,
+        },
         students: {
           include: {
             parents: { select: { id: true, name: true, email: true, phone: true } },
@@ -583,12 +588,13 @@ export async function POST(request: Request) {
         const previousGrades = student.grades.filter((grade) => grade.term === previousTerm);
         const currentAbsences = student.absences.filter((absence) => absence.dia.getTime() >= currentStartTime && absence.dia.getTime() <= currentEndTime);
         const previousUnjustifiedAbsences = student.absences.filter((absence) => previousPeriod && absence.dia.getTime() >= previousStartTime && absence.dia.getTime() < currentStartTime && !absence.justified).length;
+        const reportTeacherName = turma.teacherAssignments[0]?.teacher.name ?? turma.coordinator?.name ?? "";
         if (preview) {
           const pdf = await generateStudentReportPdf({
             studentName: student.name,
             turmaName: turma.name,
             gradeScale: turma.gradeScale,
-            teacherName: turma.coordinator?.name ?? "",
+            teacherName: reportTeacherName,
             periodStart: period.start,
             periodEnd: period.end,
             hasPreviousPeriod: Boolean(previousPeriod),
@@ -626,7 +632,7 @@ export async function POST(request: Request) {
           studentName: student.name,
           turmaName: turma.name,
           gradeScale: turma.gradeScale,
-          teacherName: turma.coordinator?.name ?? "",
+          teacherName: reportTeacherName,
           periodStart: period.start,
           periodEnd: period.end,
           hasPreviousPeriod: Boolean(previousPeriod),
