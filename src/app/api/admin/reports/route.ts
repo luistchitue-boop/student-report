@@ -350,6 +350,7 @@ async function generateStudentReportPdf({
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text(`${studentName} · ${turmaName}`, margin, 130);
+  doc.text(`${formatPeriodDate(periodStart)} a ${formatPeriodDate(periodEnd)}`, margin, 146);
   const detailPhotoX = pageWidth - margin - 28;
   const detailPhotoY = 122;
   doc.setFillColor(190, 185, 178);
@@ -379,6 +380,17 @@ async function generateStudentReportPdf({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.text(`${studentName} · ${turmaName}`, margin, 130);
+    doc.text(`${formatPeriodDate(periodStart)} a ${formatPeriodDate(periodEnd)}`, margin, 146);
+    const continuationPhotoX = pageWidth - margin - 28;
+    const continuationPhotoY = 122;
+    doc.setFillColor(190, 185, 178);
+    doc.circle(continuationPhotoX, continuationPhotoY + 2, 29, "F");
+    doc.setFillColor(220, 238, 224);
+    doc.circle(continuationPhotoX, continuationPhotoY, 28, "F");
+    if (avatarDataUrl) doc.addImage(avatarDataUrl.data, avatarDataUrl.format, continuationPhotoX - 27, continuationPhotoY - 27, 54, 54);
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(2);
+    doc.circle(continuationPhotoX, continuationPhotoY, 28, "S");
     detailY = 168;
   };
   const ensureDetailSpace = (height: number, continuationColumns?: Array<{ label: string; width: number }>) => {
