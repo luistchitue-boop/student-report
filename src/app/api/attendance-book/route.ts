@@ -100,6 +100,12 @@ export async function POST(request: NextRequest) {
 
     const turmaStudentIds = new Set(turma.students.map((student) => student.id));
     const validStudentIds: string[] = [...new Set(studentIds)].filter((studentId) => turmaStudentIds.has(studentId));
+
+    const existingAbsences = await prisma.absence.findMany({
+      where: {
+        studentId: { in: validStudentIds },
+        dia,
+        tempo,
       },
       select: { studentId: true, subject: true },
     });
