@@ -645,7 +645,7 @@ export async function POST(request: Request) {
     const futureWeeklyPeriods = periods.slice(periodIndex + 1, periodIndex + 1 + Math.max(0, 5 - pastWeeklyPeriods.length));
     const weeklyPeriods = [...pastWeeklyPeriods, ...futureWeeklyPeriods];
     const weeklyPeriodTerms = weeklyPeriods.map((weeklyPeriod) => `Semanal:${formatPeriodDate(weeklyPeriod.start)}:${formatPeriodDate(weeklyPeriod.end)}`);
-    const weeklyPeriodLabels = weeklyPeriods.map((weeklyPeriod) => `${String(weeklyPeriod.start.getDate()).padStart(2, "0")}/${String(weeklyPeriod.start.getMonth() + 1).padStart(2, "0")}`);
+    const weeklyPeriodLabels = weeklyPeriods.map((weeklyPeriod) => `${String(weeklyPeriod.start.getDate()).padStart(2, "0")}/${String(weeklyPeriod.start.getMonth() + 1).padStart(2, "0")}-${String(weeklyPeriod.end.getDate()).padStart(2, "0")}/${String(weeklyPeriod.end.getMonth() + 1).padStart(2, "0")}`);
     const absenceStart = previousPeriodStart ?? currentPeriodStart;
 
     const turmas = await prisma.turma.findMany({
