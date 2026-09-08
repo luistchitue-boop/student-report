@@ -203,6 +203,7 @@ async function generateStudentReportPdf({
       const radius = 0.4 + progress * 1.25;
       doc.setFillColor(249 - Math.round(progress * 16), 222 - Math.round(progress * 28), 205 - Math.round(progress * 34));
       for (let x = pageWidth - 78; x <= pageWidth - 12; x += 14) doc.circle(x, 104 + row * 14, radius, "F");
+      for (let x = 12; x <= 78; x += 14) doc.circle(x, 14 + row * 14, radius, "F");
     }
   };
   const drawSchoolHeader = () => {
@@ -226,12 +227,13 @@ async function generateStudentReportPdf({
   doc.line(0, 90, 40, 80);
   doc.line(pageWidth - 42, 0, pageWidth, 24);
   drawSchoolHeader();
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(23);
-  doc.text("RELATÓRIO SEMANAL", pageWidth / 2, 112, { align: "center" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(`${formatPeriodDate(periodStart)} a ${formatPeriodDate(periodEnd)}`, pageWidth / 2, 128, { align: "center" });
+  const reportHeaderCenterX = pageWidth / 2;
+  doc.setFont("times", "bold");
+  doc.setFontSize(22);
+  doc.text("RELATÓRIO SEMANAL", reportHeaderCenterX, 112, { align: "center" });
+  doc.setFont("times", "normal");
+  doc.setFontSize(11);
+  doc.text(`${formatPeriodDate(periodStart)} a ${formatPeriodDate(periodEnd)}`, reportHeaderCenterX, 128, { align: "center" });
 
   const photoCenterX = 85;
   const photoCenterY = 185;
