@@ -111,6 +111,7 @@ async function generateStudentReportPdf({
   studentName,
   turmaName,
   gradeScale,
+  teacherName,
   periodStart,
   periodEnd,
   hasPreviousPeriod,
@@ -125,6 +126,7 @@ async function generateStudentReportPdf({
   studentName: string;
   turmaName: string;
   gradeScale: number;
+  teacherName: string;
   periodStart: Date;
   periodEnd: Date;
   hasPreviousPeriod: boolean;
@@ -140,7 +142,7 @@ async function generateStudentReportPdf({
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 40;
-  const paper = [246, 229, 219] as const;
+        const paper = [246, 229, 219] as const;
   const terracotta = [181, 132, 112] as const;
   const ink = [102, 68, 55] as const;
   const drawDotPattern = () => {
@@ -446,18 +448,16 @@ async function generateStudentReportPdf({
   }
 
   const observationText = teacherObservation?.trim() ?? "";
-  if (observationText) {
-    detailY += 30;
-    ensureDetailSpace(54);
-    doc.setTextColor(...ink);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Observação do professor", margin, detailY);
-    doc.setFont("helvetica", "normal");
-  }
+  const observationWidth = tableWidth - 70;
+  const observationX = margin + 18;
   const observationFontSize = 14;
   const observationLineHeight = 17;
-  const observationLines = doc.splitTextToSize(observationText, tableWidth);
+  const observationLines = observationText ? doc.splitTextToSize(observationText, observationWidth) : [];
+  const signatureName = teacherName.trim() || "Professor(a)";
+  if (observationText) {
+    detailY += 30;
+    ensureDetailSpace(20 + observationLines.length * observationLineHeight + 34);
+  }
   const drawObservationQuote = (quoteY: number) => {
     doc.setTextColor(226, 202, 193);
     doc.setFont("helvetica", "bold");
@@ -470,19 +470,23 @@ async function generateStudentReportPdf({
   };
   if (observationText && detailY + 20 + observationLines.length * observationLineHeight > detailBottom) {
     startDetailContinuation();
-    doc.setTextColor(...ink);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Observação do professor (continuação)", margin, detailY);
     drawObservationQuote(detailY + 4);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(observationFontSize);
-    doc.text(observationLines, margin, detailY + 20, { lineHeightFactor: observationLineHeight / observationFontSize });
+    doc.text(observationLines, observationX, detailY + 20, { lineHeightFactor: observationLineHeight / observationFontSize, maxWidth: observationWidth });
+    detailY += 20 + observationLines.length * observationLineHeight;
   } else if (observationText) {
     drawObservationQuote(detailY + 4);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(observationFontSize);
-    doc.text(observationLines, margin, detailY + 20, { lineHeightFactor: observationLineHeight / observationFontSize });
+    doc.text(observationLines, observationX, detailY + 20, { lineHeightFactor: observationLineHeight / observationFontSize, maxWidth: observationWidth });
+    detailY += 20 + observationLines.length * observationLineHeight;
+  }
+  if (observationText) {
+    doc.setTextColor(...ink);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(11);
+    doc.text(signatureName, pageWidth - margin - 12, detailY + 24, { align: "right" });
   }
 
   return Buffer.from(doc.output("arraybuffer"));
@@ -548,6 +552,7 @@ export async function POST(request: Request) {
     const turmas = await prisma.turma.findMany({
       where: { id: { in: turmaIds } },
       include: {
+        coordinator: { select: { name: true } },
         students: {
           include: {
             parents: { select: { id: true, name: true, email: true, phone: true } },
@@ -583,6 +588,7 @@ export async function POST(request: Request) {
             studentName: student.name,
             turmaName: turma.name,
             gradeScale: turma.gradeScale,
+            teacherName: turma.coordinator?.name ?? "",
             periodStart: period.start,
             periodEnd: period.end,
             hasPreviousPeriod: Boolean(previousPeriod),
@@ -620,6 +626,7 @@ export async function POST(request: Request) {
           studentName: student.name,
           turmaName: turma.name,
           gradeScale: turma.gradeScale,
+          teacherName: turma.coordinator?.name ?? "",
           periodStart: period.start,
           periodEnd: period.end,
           hasPreviousPeriod: Boolean(previousPeriod),
