@@ -119,6 +119,10 @@ async function generateStudentReportPdf({
   behavior,
   teacherObservation,
   grades,
+  weeklyGrades,
+  globalGrades,
+  weeklyPeriodLabels,
+  weeklyPeriodTerms,
   previousGrades,
   absences,
   previousUnjustifiedAbsences,
@@ -134,6 +138,10 @@ async function generateStudentReportPdf({
   behavior?: string | null;
   teacherObservation?: string | null;
   grades: Array<{ subject: string; value: number; term: string }>;
+  weeklyGrades: Array<{ subject: string; value: number; term: string }>;
+  globalGrades: Array<{ subject: string; value: number; term: string }>;
+  weeklyPeriodLabels: string[];
+  weeklyPeriodTerms: string[];
   previousGrades: Array<{ subject: string; value: number; term: string }>;
   absences: Array<{ subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }>;
   previousUnjustifiedAbsences: number;
@@ -379,7 +387,7 @@ async function generateStudentReportPdf({
       if (continuationColumns) drawTableHeader(continuationColumns);
     }
   };
-  const drawTableHeader = (columns: Array<{ label: string; width: number }>) => {
+  const drawTableHeader = (columns: Array<{ label: string; width: number; align?: "left" | "center" }>) => {
     ensureDetailSpace(rowHeight);
     let x = margin;
     doc.setFillColor(...terracotta);
@@ -388,35 +396,65 @@ async function generateStudentReportPdf({
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     columns.forEach((column) => {
-      doc.text(column.label, x + 7, detailY + 15);
+      doc.text(column.label, column.align === "center" ? x + column.width / 2 : x + 7, detailY + 15, column.align === "center" ? { align: "center" } : undefined);
       x += column.width;
     });
     detailY += rowHeight;
   };
 
-  const gradeColumns = [{ label: "Disciplina", width: 250 }, { label: "Nota", width: 70 }, { label: "Período", width: tableWidth - 320 }];
+  const subjectGrades = Array.from(new Set(weeklyGrades.map((grade) => grade.subject)));
+  const weeklyColumns = weeklyPeriodLabels.length;
+  const gradeValueColumnWidth = 58;
+  const gradeColumns = [
+    { label: "Disciplina", width: tableWidth - (weeklyColumns + 1) * gradeValueColumnWidth },
+    ...weeklyPeriodLabels.map((label) => ({ label, width: gradeValueColumnWidth, align: "center" as const })),
+    { label: "AC1*", width: gradeValueColumnWidth, align: "center" as const },
+  ];
   const absenceColumns = [{ label: "Disciplina", width: 170 }, { label: "Data", width: 85 }, { label: "Tempo", width: 75 }, { label: "Tipo / estado", width: tableWidth - 330 }];
   doc.text("Notas registadas", margin, detailY - 14);
   drawTableHeader(gradeColumns);
   doc.setFont("helvetica", "normal");
-  grades.forEach((grade, index) => {
+  subjectGrades.forEach((subject, index) => {
     ensureDetailSpace(rowHeight, gradeColumns);
     doc.setFillColor(index % 2 ? 255 : 252, index % 2 ? 248 : 241, index % 2 ? 244 : 235);
     doc.rect(margin, detailY, tableWidth, rowHeight, "F");
     doc.setTextColor(...ink);
     doc.setFontSize(9);
-    doc.text(grade.subject, margin + 7, detailY + 15);
-    doc.text(Number(grade.value).toFixed(1), margin + 257, detailY + 15);
-    doc.text(grade.term, margin + 327, detailY + 15);
+    doc.text(subject, margin + 7, detailY + 15);
+    const subjectWeeklyGrades = weeklyGrades.filter((grade) => grade.subject === subject);
+    weeklyPeriodTerms.forEach((term, weekIndex) => {
+      const value = subjectWeeklyGrades.find((grade) => grade.term === term)?.value;
+      const columnCenter = margin + gradeColumns[0].width + weekIndex * gradeValueColumnWidth + gradeValueColumnWidth / 2;
+      if (value === undefined) {
+        doc.setTextColor(120, 120, 120);
+        doc.text("-", columnCenter, detailY + 15, { align: "center" });
+      } else {
+        const numericValue = Number(value);
+        const gradeColor: [number, number, number] = numericValue >= highThreshold ? [57, 117, 93] : numericValue >= passThreshold ? [215, 139, 48] : [194, 74, 67];
+        doc.setTextColor(...gradeColor);
+        doc.text(numericValue.toFixed(1), columnCenter, detailY + 15, { align: "center" });
+      }
+    });
+    const subjectGlobalGrades = globalGrades.filter((grade) => grade.subject === subject);
+    const subjectAverage = subjectGlobalGrades.length ? subjectGlobalGrades.reduce((total, grade) => total + Number(grade.value), 0) / subjectGlobalGrades.length : 0;
+    const averageColor: [number, number, number] = subjectAverage >= highThreshold ? [57, 117, 93] : subjectAverage >= passThreshold ? [215, 139, 48] : [194, 74, 67];
+    doc.setTextColor(...averageColor);
+    doc.text(subjectAverage.toFixed(1), margin + tableWidth - gradeValueColumnWidth / 2, detailY + 15, { align: "center" });
     detailY += rowHeight;
   });
-  if (!grades.length) {
+  if (!subjectGrades.length) {
     doc.setTextColor(96, 113, 104);
     doc.text("Sem notas registadas.", margin + 7, detailY + 15);
     detailY += rowHeight;
   }
-
-  detailY += 30;
+  detailY += 8;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  const ac1NoteLines = doc.splitTextToSize("* AC1: média calculada com todas as notas semanais registadas, não apenas as semanas apresentadas.", tableWidth);
+  ensureDetailSpace(ac1NoteLines.length * 10 + 4);
+  doc.setTextColor(96, 113, 104);
+  doc.text(ac1NoteLines, margin, detailY + 9, { lineHeightFactor: 1.2 });
+  detailY += ac1NoteLines.length * 10 + 40;
   ensureDetailSpace(rowHeight * 2);
   doc.setTextColor(...ink);
   doc.setFont("helvetica", "bold");
@@ -545,8 +583,11 @@ export async function POST(request: Request) {
     const currentPeriodEnd = formatPeriodDate(period.end);
     const previousPeriodStart = previousPeriod ? formatPeriodDate(previousPeriod.start) : null;
     const previousPeriodEnd = previousPeriod ? formatPeriodDate(previousPeriod.end) : null;
-    const gradeTerms = [`Semanal:${currentPeriodStart}:${currentPeriodEnd}`];
-    if (previousPeriodStart && previousPeriodEnd) gradeTerms.push(`Semanal:${previousPeriodStart}:${previousPeriodEnd}`);
+    const pastWeeklyPeriods = periods.slice(Math.max(0, periodIndex - 4), periodIndex + 1);
+    const futureWeeklyPeriods = periods.slice(periodIndex + 1, periodIndex + 1 + Math.max(0, 5 - pastWeeklyPeriods.length));
+    const weeklyPeriods = [...pastWeeklyPeriods, ...futureWeeklyPeriods];
+    const weeklyPeriodTerms = weeklyPeriods.map((weeklyPeriod) => `Semanal:${formatPeriodDate(weeklyPeriod.start)}:${formatPeriodDate(weeklyPeriod.end)}`);
+    const weeklyPeriodLabels = weeklyPeriods.map((weeklyPeriod) => `${String(weeklyPeriod.start.getDate()).padStart(2, "0")}/${String(weeklyPeriod.start.getMonth() + 1).padStart(2, "0")}`);
     const absenceStart = previousPeriodStart ?? currentPeriodStart;
 
     const turmas = await prisma.turma.findMany({
@@ -562,7 +603,7 @@ export async function POST(request: Request) {
           include: {
             parents: { select: { id: true, name: true, email: true, phone: true } },
             weeklyObservations: { where: { weekStart: { gte: periodStartDate, lt: periodStartNextDate } }, select: { behavior: true, teacherObservation: true } },
-            grades: { where: { term: { in: gradeTerms } } },
+            grades: { where: { term: { startsWith: "Semanal:" } } },
             absences: { where: { dia: { gte: new Date(`${absenceStart}T00:00:00Z`), lte: new Date(`${currentPeriodEnd}T23:59:59.999Z`) } } },
           },
         },
@@ -586,6 +627,8 @@ export async function POST(request: Request) {
         const previousStartTime = previousPeriod ? new Date(`${previousPeriodStart}T00:00:00Z`).getTime() : 0;
         const currentGrades = student.grades.filter((grade) => grade.term === currentTerm);
         const previousGrades = student.grades.filter((grade) => grade.term === previousTerm);
+        const weeklyGrades = student.grades.filter((grade) => weeklyPeriodTerms.includes(grade.term));
+        const globalGrades = student.grades;
         const currentAbsences = student.absences.filter((absence) => absence.dia.getTime() >= currentStartTime && absence.dia.getTime() <= currentEndTime);
         const previousUnjustifiedAbsences = student.absences.filter((absence) => previousPeriod && absence.dia.getTime() >= previousStartTime && absence.dia.getTime() < currentStartTime && !absence.justified).length;
         const reportTeacherName = turma.teacherAssignments[0]?.teacher.name ?? turma.coordinator?.name ?? "";
@@ -602,6 +645,10 @@ export async function POST(request: Request) {
             behavior: student.weeklyObservations[0]?.behavior,
             teacherObservation: student.weeklyObservations[0]?.teacherObservation,
             grades: currentGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
+            weeklyGrades: weeklyGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
+            globalGrades: globalGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
+            weeklyPeriodLabels,
+            weeklyPeriodTerms,
             previousGrades: previousGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
             absences: currentAbsences.map((absence: { subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }) => ({ subject: absence.subject, dia: absence.dia, tempo: absence.tempo, faultType: absence.faultType, justified: absence.justified })),
             previousUnjustifiedAbsences,
@@ -644,6 +691,10 @@ export async function POST(request: Request) {
             value: Number(grade.value),
             term: grade.term,
           })),
+          weeklyGrades: weeklyGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
+          globalGrades: globalGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
+          weeklyPeriodLabels,
+          weeklyPeriodTerms,
           previousGrades: previousGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
           absences: currentAbsences.map((absence: { subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }) => ({
             subject: absence.subject,
