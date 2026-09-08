@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getWeeklyCoordinationPeriods, formatPeriodDate } from "@/lib/weekly-coordination";
 
 type Turma = {
   id: string;
@@ -29,6 +30,13 @@ function isWeekend(dateValue: string) {
 export function AttendanceBookClient({ turma }: { turma: Turma }) {
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  
+  // Get current weekly period
+  const weeklyPeriods = getWeeklyCoordinationPeriods(now.getFullYear());
+  const currentPeriod = weeklyPeriods.find((period) => now >= period.start && now <= period.end);
+  const weekStart = currentPeriod ? formatPeriodDate(currentPeriod.start) : todayKey;
+  const weekEnd = currentPeriod ? formatPeriodDate(currentPeriod.end) : todayKey;
+  
   const [date, setDate] = useState("");
   const [subject, setSubject] = useState(turma.subjects[0] ?? "");
   const [tempo, setTempo] = useState("1º tempo");
@@ -115,7 +123,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
 
       <section className="attendance-book-panel">
         <div className="attendance-book-toolbar">
-          <label>Data<input type="date" max={todayKey} value={date} onChange={(event) => { const nextDate = event.target.value; if (nextDate && isWeekend(nextDate)) { setDate(""); setSelectedIds([]); setStatus("A escola não oferece aulas aos fins de semana."); return; } setStatus(""); setDate(nextDate); }} /></label>
+          <label>Data<input type="date" min={weekStart} max={weekEnd} value={date} onChange={(event) => { const nextDate = event.target.value; if (nextDate && isWeekend(nextDate)) { setDate(""); setSelectedIds([]); setStatus("A escola não oferece aulas aos fins de semana."); return; } setStatus(""); setDate(nextDate); }} /></label>
           <label>Disciplina<select value={subject} onChange={(event) => setSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
           <label>Tempo<select value={tempo} onChange={(event) => setTempo(event.target.value)}>{tempos.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
           <fieldset className="attendance-fault-switch">
