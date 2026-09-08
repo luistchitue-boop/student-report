@@ -248,6 +248,8 @@ async function generateStudentReportPdf({
   const chartWidth = pageWidth - margin * 2;
   const passThreshold = gradeScale * 0.5;
   const highThreshold = gradeScale * 0.7;
+  const lightenColor = (color: [number, number, number]): [number, number, number] => color.map((channel) => Math.round(channel + (255 - channel) * 0.55)) as [number, number, number];
+  const getGradeColor = (value: number): [number, number, number] => value >= highThreshold ? [57, 117, 93] : value >= passThreshold ? [215, 139, 48] : [194, 74, 67];
   subjectAverages.forEach((item) => {
     const label = item.subject.length > 18 ? `${item.subject.slice(0, 17)}...` : item.subject;
     doc.setFontSize(9);
@@ -255,20 +257,21 @@ async function generateStudentReportPdf({
     doc.text(label, margin, y + 10);
     doc.setFillColor(236, 211, 198);
     doc.roundedRect(margin + 105, y, chartWidth - 145, 14, 4, 4, "F");
-    const gradeColor: [number, number, number] = item.value >= highThreshold ? [57, 117, 93] : item.value >= passThreshold ? [215, 139, 48] : [194, 74, 67];
-    doc.setFillColor(...gradeColor);
-    doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, item.value / gradeScale), 14, 4, 4, "F");
+    const gradeColor = getGradeColor(item.value);
     const previousValue = previousSubjectAverages.get(item.subject);
     if (hasPreviousPeriod && previousValue !== undefined) {
+      const previousColor = lightenColor(getGradeColor(previousValue));
+      doc.setFillColor(...previousColor);
+      doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, previousValue / gradeScale), 14, 4, 4, "F");
+    }
+    doc.setFillColor(...gradeColor);
+    doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, item.value / gradeScale), 14, 4, 4, "F");
+    if (hasPreviousPeriod && previousValue !== undefined) {
       const previousX = margin + 105 + (chartWidth - 145) * Math.min(1, previousValue / gradeScale);
-      doc.setFillColor(52, 112, 181);
-      doc.setDrawColor(255, 255, 255);
-      doc.setLineWidth(1);
-      doc.circle(previousX, y + 7, 7, "FD");
-      doc.setTextColor(255, 255, 255);
+      doc.setTextColor(...getGradeColor(previousValue));
       doc.setFont("helvetica", "bold");
       doc.setFontSize(6.5);
-      doc.text(previousValue.toFixed(1), previousX, y + 9, { align: "center" });
+      doc.text(previousValue.toFixed(1), Math.min(previousX + 3, pageWidth - margin - 45), y + 10);
     }
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
@@ -294,9 +297,9 @@ async function generateStudentReportPdf({
   const highGrades = grades.filter((grade) => Number(grade.value) >= highThreshold).length;
   doc.text(`Notas: ${lowGrades} abaixo de ${passThreshold.toFixed(0)} · ${middleGrades} entre ${passThreshold.toFixed(0)}-${Math.max(0, highThreshold - 1).toFixed(0)} · ${highGrades} entre ${highThreshold.toFixed(0)}-${gradeScale}`, margin + 180, y + 7);
   if (hasPreviousPeriod) {
-    doc.setFillColor(52, 112, 181);
-    doc.circle(margin + 4, y + 21, 4, "F");
-    doc.text("círculo azul = período anterior", margin + 12, y + 24);
+    doc.setFillColor(190, 190, 190);
+    doc.roundedRect(margin, y + 17, 12, 6, 2, 2, "F");
+    doc.text("barra clara = período anterior", margin + 18, y + 23);
     y += 17;
   }
   y += 22;
@@ -405,14 +408,14 @@ async function generateStudentReportPdf({
         doc.text("-", columnCenter, detailY + 15, { align: "center" });
       } else {
         const numericValue = Number(value);
-        const gradeColor: [number, number, number] = numericValue >= highThreshold ? [57, 117, 93] : numericValue >= passThreshold ? [215, 139, 48] : [194, 74, 67];
+        const gradeColor = getGradeColor(numericValue);
         doc.setTextColor(...gradeColor);
         doc.text(numericValue.toFixed(1), columnCenter, detailY + 15, { align: "center" });
       }
     });
     const subjectGlobalGrades = globalGrades.filter((grade) => grade.subject === subject);
     const subjectAverage = subjectGlobalGrades.length ? subjectGlobalGrades.reduce((total, grade) => total + Number(grade.value), 0) / subjectGlobalGrades.length : 0;
-    const averageColor: [number, number, number] = subjectAverage >= highThreshold ? [57, 117, 93] : subjectAverage >= passThreshold ? [215, 139, 48] : [194, 74, 67];
+    const averageColor = getGradeColor(subjectAverage);
     doc.setTextColor(...averageColor);
     doc.text(subjectAverage.toFixed(1), margin + tableWidth - gradeValueColumnWidth / 2, detailY + 15, { align: "center" });
     detailY += rowHeight;
@@ -478,19 +481,20 @@ async function generateStudentReportPdf({
     doc.text(String(label), margin, detailY + 11);
     doc.setFillColor(239, 240, 234);
     doc.roundedRect(margin + 105, detailY, chartWidth - 145, 16, 5, 5, "F");
-    doc.setFillColor(Number(color[0]), Number(color[1]), Number(color[2]));
     const barScale = label === "Injustificadas" ? unjustifiedScale : absenceTotal;
+    if (label === "Injustificadas" && hasPreviousPeriod) {
+      const previousColor = lightenColor(color);
+      doc.setFillColor(...previousColor);
+      doc.roundedRect(margin + 105, detailY, (chartWidth - 145) * previousUnjustifiedAbsences / barScale, 16, 5, 5, "F");
+    }
+    doc.setFillColor(Number(color[0]), Number(color[1]), Number(color[2]));
     doc.roundedRect(margin + 105, detailY, (chartWidth - 145) * Number(value) / barScale, 16, 5, 5, "F");
     if (label === "Injustificadas" && hasPreviousPeriod) {
       const previousX = margin + 105 + (chartWidth - 145) * previousUnjustifiedAbsences / barScale;
-      doc.setFillColor(52, 112, 181);
-      doc.setDrawColor(255, 255, 255);
-      doc.setLineWidth(1);
-      doc.circle(previousX, detailY + 8, 7, "FD");
-      doc.setTextColor(255, 255, 255);
+      doc.setTextColor(...color);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(6.5);
-      doc.text(String(previousUnjustifiedAbsences), previousX, detailY + 10, { align: "center" });
+      doc.text(String(previousUnjustifiedAbsences), Math.min(previousX + 3, pageWidth - margin - 45), detailY + 10);
     }
     doc.setTextColor(64, 85, 76);
     doc.setFont("helvetica", "normal");
