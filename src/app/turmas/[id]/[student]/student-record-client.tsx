@@ -183,9 +183,12 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     if (!selectedAbsenceIds.length || !justificationTitle.trim() || !justificationNotes.trim()) {
       throw new Error("Selecione faltas e preencha os dois campos.");
     }
+    if (!justificationFile || !justificationFile.type.startsWith("image/")) {
+      throw new Error("Carregue uma imagem para o comprovativo.");
+    }
 
     let attachment: { url: string; pathname: string; name: string; contentType: string; size: number } | undefined;
-    if (justificationFile) {
+    {
       const uploadData = new FormData();
       uploadData.append("file", justificationFile);
       uploadData.append("absenceIds", JSON.stringify(selectedAbsenceIds));
@@ -597,9 +600,9 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                 <div className="student-record-list-heading"><div><p className="eyebrow">JUSTIFICATIVO</p><h2>Justificar faltas</h2></div><button type="button" className="modal-close" onClick={() => setShowJustificationModal(false)} aria-label="Fechar">×</button></div>
                 <label>Título do justificativo<input required value={justificationTitle} onChange={(event) => setJustificationTitle(event.target.value)} /></label>
                 <label>Observações<textarea required rows={4} value={justificationNotes} onChange={(event) => setJustificationNotes(event.target.value)} /></label>
-                <label>Comprovativo<input type="file" accept="application/pdf,image/jpeg,image/png" onChange={(event) => setJustificationFile(event.target.files?.[0] ?? null)} /></label>
+                <label>Comprovativo<input className="justification-file-input" type="file" accept="image/*" onChange={(event) => setJustificationFile(event.target.files?.[0] ?? null)} /></label>
                 {justificationFile && <p className="justification-file-name">{justificationFile.name}</p>}
-                <button type="submit" className="mini-pauta-save-button">Confirmar justificativo</button>
+                <button type="submit" className="mini-pauta-save-button" disabled={!justificationFile || !justificationFile.type.startsWith("image/")}>Confirmar justificativo</button>
               </form>
             </div>
           ) : null}
