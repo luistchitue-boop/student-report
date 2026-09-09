@@ -264,7 +264,8 @@ async function generateStudentReportPdf({
   const justified = absences.filter((absence) => absence.justified).length;
   const unjustified = absences.length - justified;
   const metrics: Array<[string, string, { data: string; format: "PNG" | "JPEG" } | null]> = [["Média geral", average, null], ["Notas", String(grades.length), gradesImage], ["Faltas", String(unjustified), absenceImage]];
-  if (behavior?.trim()) metrics.push(["Comportamento", behavior.trim(), behaviorImage]);
+  const behaviorLabel = behavior?.trim().replace(/^Razoavel$/, "Razoável");
+  if (behaviorLabel) metrics.push(["Comportamento", behaviorLabel, behaviorImage]);
   metrics.forEach(([label, value, backgroundImage], index) => {
     const x = margin + index * 130;
     doc.setFillColor(index === 0 ? terracotta[0] : 255, index === 0 ? terracotta[1] : 248, index === 0 ? terracotta[2] : 242);
