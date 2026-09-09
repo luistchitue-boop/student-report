@@ -74,10 +74,6 @@ export async function POST(request: NextRequest) {
     }
 
     const start = new Date(`${weekStart}T12:00:00Z`);
-    const end = new Date(`${weekEnd}T12:00:00Z`);
-    if (end.getTime() - start.getTime() !== 6 * 24 * 60 * 60 * 1000) {
-      return NextResponse.json({ error: "O intervalo semanal deve ter exatamente 7 dias." }, { status: 400 });
-    }
     const officialPeriod = getWeeklyCoordinationPeriods(start.getUTCFullYear()).find((period) => period.key === formatPeriodDate(start) && formatPeriodDate(period.end) === weekEnd);
     if (!officialPeriod) return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
     if (officialPeriod.key > formatPeriodDate(new Date())) {
