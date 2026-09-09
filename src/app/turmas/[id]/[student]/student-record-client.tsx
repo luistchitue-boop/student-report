@@ -45,6 +45,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
   const [justificationNotes, setJustificationNotes] = useState("");
   const [justificationFile, setJustificationFile] = useState<File | null>(null);
   const [showJustificationModal, setShowJustificationModal] = useState(false);
+  const [previewAbsenceId, setPreviewAbsenceId] = useState<string | null>(null);
 
   function isFuturePeriod(periodKey: string) {
     const period = weeklyPeriods.find((item) => item.key === periodKey);
@@ -531,7 +532,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                   <>
                     <div className="student-record-list-heading"><div><p className="eyebrow">JUSTIFICAÇÃO DE FALTAS</p><h2>Selecione as faltas</h2></div><span>{absences.filter((absence) => !absence.justified).length} por justificar</span></div>
                     {absences.length ? absences.map((absence) => (
-                      <label key={absence.id} className={`justification-row ${absence.justified ? "justified" : ""}`}>
+                      <label key={absence.id} className={`justification-row ${absence.justified ? "justified" : ""} ${absence.justified && absence.hasAttachment ? "has-attachment" : ""}`} onClick={(event) => { if ((event.target as HTMLElement).closest("input, a")) return; if (absence.justified && absence.hasAttachment) setPreviewAbsenceId(absence.id); }}>
                         <input type="checkbox" checked={selectedAbsenceIds.includes(absence.id)} disabled={!canEdit || absence.justified} onChange={() => setSelectedAbsenceIds((current) => current.includes(absence.id) ? current.filter((id) => id !== absence.id) : [...current, absence.id])} />
                         <span><strong>{absence.subject}</strong><small>{absence.dia.slice(0, 10)} · {absence.tempo} · {absence.faultType === "AUSENCIA_NA_SALA" ? "Ausência na sala" : "Falta de material"}</small></span>
                         <span className="justification-status">{absence.justified ? "Justificada" : "Injustificada"}{absence.hasAttachment && <a href={`/api/student-justifications/${absence.id}/attachment`} target="_blank" rel="noreferrer" className="justification-attachment-link">Comprovativo</a>}</span>
@@ -604,6 +605,14 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                 {justificationFile && <p className="justification-file-name">{justificationFile.name}</p>}
                 <button type="submit" className="mini-pauta-save-button" disabled={!justificationFile || !justificationFile.type.startsWith("image/")}>Confirmar justificativo</button>
               </form>
+            </div>
+          ) : null}
+          {previewAbsenceId ? (
+            <div className="justification-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewAbsenceId(null); }}>
+              <div className="justification-preview" role="dialog" aria-modal="true" aria-label="Comprovativo da falta">
+                <button type="button" className="modal-close" onClick={() => setPreviewAbsenceId(null)} aria-label="Fechar">×</button>
+                <img src={`/api/student-justifications/${previewAbsenceId}/attachment`} alt="Comprovativo da falta" />
+              </div>
             </div>
           ) : null}
         </main>
