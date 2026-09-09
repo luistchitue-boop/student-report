@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
+import { hashPassword } from "@/lib/password";
 
 declare global {
   var prismaAdminTeachers: PrismaClient | undefined;
@@ -43,6 +44,34 @@ export async function PATCH(request: Request) {
   try {
     const body = await request.json();
     const teacherId = typeof body.teacherId === "string" ? body.teacherId : "";
+
+    if (body.action === "resetPassword") {
+      const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
+      const teacher = await prisma.teacher.findFirst({
+        where: { id: teacherId, role: { not: "ADMIN" } },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      });
+
+      if (!teacher) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
+      if (teacher.userId === session.user.id) return NextResponse.json({ error: "Use as definições da sua conta para alterar a sua palavra-passe" }, { status: 400 });
+      if (newPassword.length < 6) return NextResponse.json({ error: "A palavra-passe deve ter pelo menos 6 caracteres" }, { status: 400 });
+
+      await prisma.user.update({
+        where: { id: teacher.user.id },
+        data: { password: await hashPassword(newPassword) },
+      });
+      await createActivityLog({
+        actorId: session.user.id,
+        actorName: describeActorName(session.user),
+        action: "Redefiniu a palavra-passe de uma conta",
+        entity: "User",
+        entityId: teacher.user.id,
+        details: { name: teacher.user.name, email: teacher.user.email },
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
     const requestedRole = body.role === "ADMIN" || body.role === "DIRECCAO" || body.role === "COORDENADOR" ? body.role : "";
     const requestedTurmaIds: unknown[] = Array.isArray(body.turmaIds) ? body.turmaIds : [];
     const turmaIds = [...new Set(requestedTurmaIds.filter((id): id is string => typeof id === "string"))];

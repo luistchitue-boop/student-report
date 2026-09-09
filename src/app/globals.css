@@ -27,6 +27,8 @@
 .admin-remove-button { min-height:3rem; padding:0.8rem 1rem; border:1px solid #e2c2ba; border-radius:12px; background:#fff; color:#a14a3a; font-size:0.75rem; font-weight:800; }
 .admin-remove-button:hover { background:#fff4f1; }
 .admin-assignment-card select { min-height:2.7rem; padding:0.65rem 0.75rem; border:1px solid #ccd9ce; border-radius:10px; background:#fbfcf8; color:var(--ink); }
+.admin-password-reset { display:flex; align-items:flex-end; gap:0.8rem; flex-wrap:wrap; }
+.admin-password-reset .admin-submit { margin-top:1.5rem; }
 .admin-assignment-chips { display:flex; flex-wrap:wrap; gap:0.55rem; min-height:2.2rem; }
 .admin-assignment-chip { display:inline-flex; align-items:center; gap:0.45rem; padding:0.45rem 0.65rem; border:1px solid #cfe3d7; border-radius:999px; background:#eaf5ec; color:#173b31; font-size:0.75rem; font-weight:800; }
 .admin-assignment-chip.main { border-color:#c8a34a; background:#fff7df; color:#70571d; }

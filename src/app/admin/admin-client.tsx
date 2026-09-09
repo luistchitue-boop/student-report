@@ -36,6 +36,7 @@ export function AdminClient({
   const [existingTurmas, setExistingTurmas] = useState<ExistingTurma[]>([]);
   const [assignmentState, setAssignmentState] = useState<Record<string, string[]>>({});
   const [assignmentMessage, setAssignmentMessage] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
   const [selectedRole, setSelectedRole] = useState<"COORDENADOR" | "DIRECCAO" | "ADMIN">("COORDENADOR");
   const [turmaToAdd, setTurmaToAdd] = useState("");
@@ -126,6 +127,24 @@ export function AdminClient({
     const data = await response.json();
     setAssignmentMessage(response.ok ? "Conta removida com sucesso." : data.error ?? "Não foi possível remover a conta.");
     if (response.ok) loadAssignments();
+  }
+
+  async function resetUserPassword(teacherId: string) {
+    if (resetPassword.length < 6) {
+      setAssignmentMessage("A palavra-passe deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (!window.confirm("Redefinir a palavra-passe desta conta?")) return;
+
+    setAssignmentMessage("");
+    const response = await fetch("/api/admin/teachers", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId, action: "resetPassword", newPassword: resetPassword }),
+    });
+    const data = await response.json();
+    setAssignmentMessage(response.ok ? "Palavra-passe redefinida com sucesso." : data.error ?? "Não foi possível redefinir a palavra-passe.");
+    if (response.ok) setResetPassword("");
   }
 
   const selectedTeacher = existingTeachers.find((teacher) => teacher.id === selectedTeacherId);
@@ -226,6 +245,7 @@ export function AdminClient({
             </select></label>
             <div className="admin-assignment-header"><div><strong>{selectedTeacher.name}</strong><small>{selectedRole} · {selectedTeacherTurmas.length} turma(s) atribuída(s)</small></div><div className="admin-assignment-actions"><button type="button" className="admin-submit" onClick={() => saveAssignments(selectedTeacher.id)}>Guardar alterações</button><button type="button" className="admin-remove-button" onClick={() => removeUser(selectedTeacher.id)}>Remover conta</button></div></div>
             <label className="admin-field"><span>Perfil</span><select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value as "COORDENADOR" | "DIRECCAO" | "ADMIN")}><option value="COORDENADOR">Coordenador</option><option value="DIRECCAO">Direção</option><option value="ADMIN">Administrador</option></select></label>
+            <div className="admin-password-reset"><label className="admin-field"><span>Nova palavra-passe temporária</span><input type="password" value={resetPassword} onChange={(event) => setResetPassword(event.target.value)} minLength={6} placeholder="Mínimo de 6 caracteres" /></label><button type="button" className="admin-submit" onClick={() => resetUserPassword(selectedTeacher.id)} disabled={resetPassword.length < 6}>Redefinir palavra-passe</button></div>
             <div className="admin-assignment-chips">
               {selectedTeacherTurmas.length ? selectedTeacherTurmas.map((turmaId) => <span key={turmaId} className={`admin-assignment-chip ${mainTurmaIds.includes(turmaId) ? "main" : ""}`}><button type="button" className="admin-main-toggle" onClick={() => { if (selectedRole !== "COORDENADOR") return; setMainTurmaIds((current) => current.includes(turmaId) ? current.filter((id) => id !== turmaId) : [...current, turmaId]); }} disabled={selectedRole !== "COORDENADOR"} aria-label="Alternar coordenador principal">{mainTurmaIds.includes(turmaId) ? "★" : "☆"}</button>{existingTurmas.find((turma) => turma.id === turmaId)?.name ?? "Turma"}<button type="button" onClick={() => { removeAssignment(turmaId); setMainTurmaIds((current) => current.filter((id) => id !== turmaId)); }} aria-label="Remover turma">×</button></span>) : <span className="admin-assignment-empty">Nenhuma turma atribuída</span>}
             </div>
