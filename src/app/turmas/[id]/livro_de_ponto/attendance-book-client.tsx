@@ -33,9 +33,10 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
   
   // Get current weekly period
   const weeklyPeriods = getWeeklyCoordinationPeriods(now.getFullYear());
-  const currentPeriod = weeklyPeriods.find((period) => now >= period.start && now <= period.end);
-  const weekStart = currentPeriod ? formatPeriodDate(currentPeriod.start) : todayKey;
-  const weekEnd = currentPeriod ? formatPeriodDate(currentPeriod.end) : todayKey;
+  const firstPeriodStart = weeklyPeriods[0]?.start;
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 12);
+  const datePickerMin = firstPeriodStart ? formatPeriodDate(firstPeriodStart) : todayKey;
+  const datePickerMax = formatPeriodDate(monthEnd);
   
   const [date, setDate] = useState("");
   const [subject, setSubject] = useState(turma.subjects[0] ?? "");
@@ -123,7 +124,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
 
       <section className="attendance-book-panel">
         <div className="attendance-book-toolbar">
-          <label>Data<input type="date" min={weekStart} max={weekEnd} value={date} onChange={(event) => { const nextDate = event.target.value; if (nextDate && isWeekend(nextDate)) { setDate(""); setSelectedIds([]); setStatus("A escola não oferece aulas aos fins de semana."); return; } setStatus(""); setDate(nextDate); }} /></label>
+          <label>Data<input type="date" min={datePickerMin} max={datePickerMax} value={date} onChange={(event) => { const nextDate = event.target.value; if (nextDate && isWeekend(nextDate)) { setDate(""); setSelectedIds([]); setStatus("A escola não oferece aulas aos fins de semana."); return; } setStatus(""); setDate(nextDate); }} /></label>
           <label>Disciplina<select value={subject} onChange={(event) => setSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
           <label>Tempo<select value={tempo} onChange={(event) => setTempo(event.target.value)}>{tempos.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
           <fieldset className="attendance-fault-switch">
