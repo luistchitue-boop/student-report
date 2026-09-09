@@ -36,7 +36,7 @@ export function ClosedPeriodsManager() {
       if (!response.ok) throw new Error("Não foi possível carregar os períodos.");
       const data = await response.json();
       
-      const closedPeriodsMap = new Map(
+      const closedPeriodsMap = new Map<string, ClosedPeriod>(
         data.closedPeriods.map((p: ClosedPeriod) => [
           `${p.weekStart}|${p.weekEnd}`,
           p,
