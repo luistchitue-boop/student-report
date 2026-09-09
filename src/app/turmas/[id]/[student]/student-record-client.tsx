@@ -571,7 +571,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                     <option value="">Selecione uma opção</option>
                     <option value="Muito bom">Muito bom</option>
                     <option value="Bom">Bom</option>
-                    <option value="Razoavel">Razoavel</option>
+                    <option value="Razoavel">Razoável</option>
                     <option value="Mau">Mau</option>
                   </select>
                 </label>
