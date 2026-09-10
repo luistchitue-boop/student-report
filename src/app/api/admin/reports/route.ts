@@ -8,6 +8,7 @@ import twilio from "twilio";
 import { put } from "@vercel/blob";
 import { jsPDF } from "jspdf";
 import { auth } from "@/auth";
+import { proofreadCoordinatorObservation } from "@/lib/proofread-observation";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 declare global {
@@ -691,6 +692,7 @@ export async function POST(request: Request) {
         const globalGrades = student.grades;
         const currentAbsences = student.absences.filter((absence) => absence.dia.getTime() >= currentStartTime && absence.dia.getTime() <= currentEndTime);
         const reportTeacherName = turma.teacherAssignments[0]?.teacher.name ?? turma.coordinator?.name ?? "";
+        const teacherObservation = await proofreadCoordinatorObservation(student.weeklyObservations[0]?.teacherObservation);
         if (preview) {
           const pdf = await generateStudentReportPdf({
             studentName: student.name,
@@ -702,7 +704,7 @@ export async function POST(request: Request) {
             hasPreviousPeriod: Boolean(previousPeriod),
             avatarUrl: student.avatarUrl,
             behavior: student.weeklyObservations[0]?.behavior,
-            teacherObservation: student.weeklyObservations[0]?.teacherObservation,
+            teacherObservation,
             grades: currentGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
             weeklyGrades: weeklyGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
             globalGrades: globalGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
@@ -743,7 +745,7 @@ export async function POST(request: Request) {
           hasPreviousPeriod: Boolean(previousPeriod),
           avatarUrl: student.avatarUrl,
           behavior: student.weeklyObservations[0]?.behavior,
-          teacherObservation: student.weeklyObservations[0]?.teacherObservation,
+          teacherObservation,
           grades: currentGrades.map((grade: { subject: string; value: number | string; term: string }) => ({
             subject: grade.subject,
             value: Number(grade.value),

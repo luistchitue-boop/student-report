@@ -16,6 +16,12 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## AI proofreading for reports
+
+Set `AI_GATEWAY_API_KEY` in the server environment to enable automatic proofreading of coordinator weekly observations before PDF reports are generated. The default model is `google/gemini-2.5-flash-lite`; set `AI_GATEWAY_MODEL` to use another chat model available in Vercel AI Gateway.
+
+Proofreading is limited to spelling, accents, grammar, punctuation, and capitalization. If the gateway is unavailable, the original observation is used.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
