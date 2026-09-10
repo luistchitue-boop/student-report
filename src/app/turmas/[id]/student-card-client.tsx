@@ -11,10 +11,12 @@ function getDisplayName(name: string): string {
 export function StudentCardClient({
   turmaId,
   student,
+  availableTurmas,
   isAdmin,
 }: {
   turmaId: string;
   student: { id: string; name: string; attendance: string; active: boolean; avatarUrl?: string | null };
+  availableTurmas: Array<{ id: string; name: string }>;
   isAdmin: boolean;
 }) {
   const [isActive, setIsActive] = useState(student.active);
@@ -25,6 +27,8 @@ export function StudentCardClient({
   const [avatarUrl, setAvatarUrl] = useState(student.avatarUrl ?? "");
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [destinationTurmaId, setDestinationTurmaId] = useState(availableTurmas[0]?.id ?? "");
+  const [isTransferring, setIsTransferring] = useState(false);
 
   const handleOpenModal = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -127,6 +131,27 @@ export function StudentCardClient({
     }
   };
 
+  const handleTransfer = async () => {
+    if (!destinationTurmaId) return;
+    if (!window.confirm(`Transferir o aluno "${student.name}" para outra turma?`)) return;
+
+    setIsTransferring(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/turmas/${turmaId}/students/${student.id}/transfer`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ destinationTurmaId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível transferir o aluno.");
+      window.location.reload();
+    } catch (transferError) {
+      setError(transferError instanceof Error ? transferError.message : "Não foi possível transferir o aluno.");
+      setIsTransferring(false);
+    }
+  };
+
   return (
     <>
       <Link
@@ -198,11 +223,25 @@ export function StudentCardClient({
                   <span>Inativo</span>
                 </label>
               </div>
+              {isAdmin && availableTurmas.length > 0 && (
+                <div className="student-transfer-field">
+                  <label htmlFor={`transfer-${student.id}`}>Transferir para</label>
+                  <select
+                    id={`transfer-${student.id}`}
+                    value={destinationTurmaId}
+                    onChange={(event) => setDestinationTurmaId(event.target.value)}
+                    disabled={isTransferring || isLoading}
+                  >
+                    <option value="">Selecionar turma</option>
+                    {availableTurmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
+                  </select>
+                </div>
+              )}
               {error && <div className="modal-error">{error}</div>}
             </div>
 
             <div className="modal-footer">
-              {isAdmin && <button type="button" className="modal-button danger" onClick={handleDelete} disabled={isDeleting || isLoading}>
+              {isAdmin && <button type="button" className="modal-button danger" onClick={handleDelete} disabled={isDeleting || isLoading || isTransferring}>
                 {isDeleting ? "A eliminar..." : "Eliminar aluno"}
               </button>}
               <button
@@ -216,10 +255,13 @@ export function StudentCardClient({
                 type="button"
                 className="modal-button save"
                 onClick={handleSaveState}
-                disabled={isLoading || selectedState === isActive}
+                disabled={isLoading || isTransferring || selectedState === isActive}
               >
                 {isLoading ? "A guardar..." : "Guardar"}
               </button>
+              {isAdmin && availableTurmas.length > 0 && <button type="button" className="modal-button transfer" onClick={handleTransfer} disabled={isLoading || isTransferring || !destinationTurmaId}>
+                {isTransferring ? "A transferir..." : "Transferir"}
+              </button>}
             </div>
           </div>
         </div>

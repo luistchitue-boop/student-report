@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
-import { getCoordinatorTurmaById } from "@/lib/teacher-data";
+import { getCoordinatorTurmas } from "@/lib/teacher-data";
 import { StudentCardClient } from "./student-card-client";
 import { StudentImportClient } from "./student-import-client";
 import { GradeScaleClient } from "./grade-scale-client";
@@ -25,7 +25,8 @@ export default async function TurmaDetailPage({
   }
 
   const { id } = await params;
-  const turma = await getCoordinatorTurmaById(session.user.id, id);
+  const turmas = await getCoordinatorTurmas(session.user.id);
+  const turma = turmas.find((candidate) => candidate.id === id);
 
   if (!turma) {
     notFound();
@@ -134,7 +135,13 @@ export default async function TurmaDetailPage({
 
           <div className="student-grid" aria-label={`Lista de alunos da turma ${turma.name}`}>
             {visibleStudents.map((student: { id: string; name: string; age: number; attendance: string; active: boolean; parents: unknown[] }) => (
-              <StudentCardClient key={student.id} turmaId={turma.id} student={student} isAdmin={session.user.role === "ADMIN"} />
+              <StudentCardClient
+                key={student.id}
+                turmaId={turma.id}
+                student={student}
+                availableTurmas={session.user.role === "ADMIN" ? turmas.filter((candidate) => candidate.id !== turma.id).map((candidate) => ({ id: candidate.id, name: candidate.name })) : []}
+                isAdmin={session.user.role === "ADMIN"}
+              />
             ))}
           </div>
           {!visibleStudents.length && <p className="student-search-empty">Nenhum aluno encontrado.</p>}

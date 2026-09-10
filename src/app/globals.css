@@ -315,9 +315,14 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .modal-button:hover:not(:disabled) { border-color:var(--green); background:#f0f8f1; }
 .modal-button.save { background:var(--green); border-color:var(--green); color:#fff; }
 .modal-button.save:hover:not(:disabled) { box-shadow:0 4px 12px rgba(57,117,93,0.2); }
+.modal-button.transfer { background:#806a24; border-color:#806a24; color:#fff; }
+.modal-button.transfer:hover:not(:disabled) { background:#67561d; border-color:#67561d; }
 .modal-button.danger { border-color:#e2c2ba; color:#a14a3a; }
 .modal-button.danger:hover:not(:disabled) { background:#fff3f1; border-color:#c98578; }
 .modal-button:disabled { opacity:0.55; cursor:not-allowed; }
+.student-transfer-field { display:grid; gap:0.35rem; margin-top:1rem; }
+.student-transfer-field label { color:#53645b; font-size:0.7rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; }
+.student-transfer-field select { min-height:2.45rem; padding:0.5rem 0.7rem; border:1px solid #ccd7cc; border-radius:9px; background:#fff; color:var(--ink); font-size:0.8rem; }
 .attendance-book-shell { max-width:980px !important; }
 .attendance-book-subtitle { margin-top:0.45rem; color:#68756d; font-size:0.9rem; font-weight:700; }
 .attendance-book-panel { background:#fff; border:1px solid #dfe5df; border-radius:24px; padding:1.35rem; box-shadow:0 18px 44px rgba(26,38,32,0.06); }
