@@ -61,7 +61,7 @@ export async function PUT(request: NextRequest) {
     const studentId = typeof body.studentId === "string" ? body.studentId : "";
     const weekStart = parseDate(body.weekStart);
     const weekEnd = parseDate(body.weekEnd);
-    const teacherObservation = typeof body.teacherObservation === "string" ? body.teacherObservation.trim().slice(0, 90) : "";
+    const teacherObservation = typeof body.teacherObservation === "string" ? body.teacherObservation.trim().slice(0, 300) : "";
     const behavior = typeof body.behavior === "string" ? body.behavior.trim() : "";
     if (!studentId || !weekStart || !weekEnd) return NextResponse.json({ error: "Aluno e período semanal são obrigatórios" }, { status: 400 });
     if (!isCurrentWeeklyPeriod(weekStart)) return NextResponse.json({ error: "Só é possível alterar a observação da semana atual." }, { status: 400 });

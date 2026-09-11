@@ -556,16 +556,16 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                     Observação do professor
                     <textarea
                       rows={4}
-                      maxLength={90}
+                      maxLength={300}
                       disabled={!canEdit || observationLoading}
                       value={reportNote}
-                      onChange={(event) => setReportNote(event.target.value.slice(0, 90))}
-                      placeholder="Escreva uma observação de até 90 caracteres"
+                      onChange={(event) => setReportNote(event.target.value.slice(0, 300))}
+                      placeholder="Escreva uma observação de até 300 caracteres"
                       style={{ padding: "0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8", resize: "vertical" }}
                     />
                   </label>
                   <div style={{ color: "#4a5d5a", fontSize: "0.85rem", fontWeight: 700 }}>
-                    {reportNote.length}/90 caracteres
+                    {reportNote.length}/300 caracteres
                   </div>
                 </div>
 
