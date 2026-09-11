@@ -7,6 +7,7 @@ import sharp from "sharp";
 import twilio from "twilio";
 import { put } from "@vercel/blob";
 import { jsPDF } from "jspdf";
+import { PDFDocument } from "pdf-lib";
 import { auth } from "@/auth";
 import { proofreadCoordinatorObservation } from "@/lib/proofread-observation";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
@@ -622,9 +623,7 @@ export async function POST(request: Request) {
     if (!turmaIds.length || (body.studentIds && !studentIds.length)) {
       return NextResponse.json({ error: "Selecione pelo menos uma turma ou um aluno" }, { status: 400 });
     }
-    if (preview && studentIds.length !== 1) {
-      return NextResponse.json({ error: "Selecione exatamente um aluno para pré-visualizar o relatório." }, { status: 400 });
-    }
+    if (preview && studentIds.length > 1) return NextResponse.json({ error: "Selecione no máximo um aluno para pré-visualizar o relatório." }, { status: 400 });
 
     const { RESEND_API_KEY, RESEND_FROM_EMAIL, BLOB_READ_WRITE_TOKEN, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM } = process.env;
     if (!preview && channel === "EMAIL" && (!RESEND_API_KEY || !RESEND_FROM_EMAIL)) {
@@ -672,6 +671,7 @@ export async function POST(request: Request) {
     });
 
     const recipients: Array<{ email: string; phone: string; reportUrl: string; studentName: string; firstName: string; studentId: string; turmaId: string; recipientName: string; pdfBuffer?: Buffer }> = [];
+    const previewPdfs: Buffer[] = [];
     const saveDelivery = (data: { turmaId: string; studentId: string; recipientName?: string; recipientEmail: string; reportUrl?: string; status: "SENT" | "FAILED"; error?: string }) => prisma.reportDelivery.upsert({
       where: { studentId_periodStart_recipientEmail_channel: { studentId: data.studentId, periodStart: period.start, recipientEmail: data.recipientEmail, channel } },
       update: { turmaId: data.turmaId, periodEnd: period.end, recipientName: data.recipientName, reportUrl: data.reportUrl, status: data.status, error: data.error, attemptedAt: new Date() },
@@ -713,7 +713,8 @@ export async function POST(request: Request) {
             previousGrades: previousGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
             absences: currentAbsences.map((absence: { subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }) => ({ subject: absence.subject, dia: absence.dia, tempo: absence.tempo, faultType: absence.faultType, justified: absence.justified })),
           });
-          return new NextResponse(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${safeFileName(student.name)}-preview.pdf"` } });
+          previewPdfs.push(pdf);
+          continue;
         }
         if (!student.parents.length) {
           await saveDelivery({ turmaId: turma.id, studentId: student.id, recipientEmail: "(sem email)", status: "FAILED", error: "Aluno sem encarregado registado." });
@@ -791,6 +792,18 @@ export async function POST(request: Request) {
           });
         });
       }
+    }
+
+    if (preview) {
+      if (!previewPdfs.length) return NextResponse.json({ error: "Não foram encontrados alunos ativos nas turmas selecionadas." }, { status: 404 });
+      const mergedPdf = await PDFDocument.create();
+      for (const pdf of previewPdfs) {
+        const sourcePdf = await PDFDocument.load(pdf);
+        const pages = await mergedPdf.copyPages(sourcePdf, sourcePdf.getPageIndices());
+        pages.forEach((page) => mergedPdf.addPage(page));
+      }
+      const mergedBytes = await mergedPdf.save();
+      return new NextResponse(new Uint8Array(mergedBytes), { headers: { "Content-Type": "application/pdf", "Content-Disposition": "inline; filename=relatorios-preview.pdf" } });
     }
 
     if (!recipients.length) {

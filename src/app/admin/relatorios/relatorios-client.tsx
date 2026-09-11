@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { formatPeriodDate, getWeeklyCoordinationPeriods, isDateInPeriod } from "@/lib/weekly-coordination";
 
 type Turma = {
   id: string;
@@ -16,7 +16,8 @@ type FailedDelivery = { id: string; studentName: string; recipientName?: string 
 
 export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
-  const [selectedPeriod, setSelectedPeriod] = useState("");
+  const currentPeriod = weeklyPeriods.find((period) => isDateInPeriod(new Date(), period));
+  const [selectedPeriod, setSelectedPeriod] = useState(currentPeriod?.key ?? "");
   const [channel, setChannel] = useState<"EMAIL" | "WHATSAPP">("EMAIL");
   const [selectedTurmas, setSelectedTurmas] = useState<string[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
@@ -41,7 +42,8 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
         const data = await response.json();
         
         const closed = new Map<string, boolean>();
-        data.closedPeriods.forEach((p: any) => {
+        const closedPeriodList = Array.isArray(data.closedPeriods) ? data.closedPeriods as Array<{ weekStart: string }> : [];
+        closedPeriodList.forEach((p) => {
           const start = new Date(p.weekStart).toISOString().slice(0, 10);
           closed.set(start, true);
         });
@@ -90,6 +92,26 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
       setPreviewUrl(URL.createObjectURL(await response.blob()));
       setStatus("success");
       setMessage("Pré-visualização gerada. Nenhuma mensagem foi enviada.");
+    } catch (error) {
+      setStatus("error");
+      setMessage(error instanceof Error ? error.message : "Não foi possível gerar a pré-visualização.");
+    }
+  }
+
+  async function handleTurmasPreview() {
+    if (!selectedPeriod || !selectedTurmas.length) return;
+    setStatus("sending");
+    setMessage("");
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    try {
+      const response = await fetch("/api/admin/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ preview: true, turmaIds: selectedTurmas, periodKey: selectedPeriod }) });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Não foi possível gerar a pré-visualização.");
+      }
+      setPreviewUrl(URL.createObjectURL(await response.blob()));
+      setStatus("success");
+      setMessage("Pré-visualização gerada com os relatórios dos alunos selecionados. Nenhuma mensagem foi enviada.");
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Não foi possível gerar a pré-visualização.");
@@ -194,6 +216,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
       </div>
 
       <div className="admin-actions">
+        <button className="admin-preview-button" type="button" onClick={handleTurmasPreview} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>Pré-visualizar PDF</button>
         <button className="admin-submit" type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>{status === "sending" ? "A enviar..." : `Enviar por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
       </div>
 
@@ -264,8 +287,9 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
         .admin-checkbox span { display:flex; flex-direction:column; gap:.18rem; }
         .admin-checkbox small { color:#64748b; }
         .admin-actions { display:flex; justify-content:flex-start; }
-        .admin-submit, .admin-individual-panel button { background:#1d4ed8; color:#fff; border:0; border-radius:10px; padding:.8rem 1.2rem; font-size:.95rem; font-weight:700; cursor:pointer; }
-        .admin-submit:disabled, .admin-individual-panel button:disabled { opacity:.6; cursor:not-allowed; }
+        .admin-submit, .admin-preview-button, .admin-individual-panel button { background:#1d4ed8; color:#fff; border:0; border-radius:10px; padding:.8rem 1.2rem; font-size:.95rem; font-weight:700; cursor:pointer; }
+        .admin-preview-button { background:#0f766e; }
+        .admin-submit:disabled, .admin-preview-button:disabled, .admin-individual-panel button:disabled { opacity:.6; cursor:not-allowed; }
         .admin-individual-panel { display:flex; align-items:end; gap:1rem; flex-wrap:wrap; }
         .admin-individual-panel label { display:grid; gap:.45rem; flex:0 1 360px; min-width:220px; font-weight:700; }
         .admin-student-combobox { position:relative; }
