@@ -11,7 +11,7 @@ type Turma = {
   roster: Array<{ id: string; name: string; age: number; avatarUrl?: string | null }>;
 };
 
-const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
+const tempos = Array.from({ length: 8 }, (_, index) => `${index + 1}º tempo`);
 const faultTypes = [
   { value: "FALTA_DE_MATERIAL", label: "Falta de material" },
   { value: "AUSENCIA_NA_SALA", label: "Ausência na sala" },
