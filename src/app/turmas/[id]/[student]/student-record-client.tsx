@@ -526,7 +526,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
             {tab === "justificativos" && (
               <div className="student-record-list-panel">
                 <div className="weekly-period-selector">
-                  <label>Período semanal<select value={justificationStart} onChange={(event) => selectJustificationPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={!isCurrentPeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{periodStatus(period.key)}</option>)}</select></label>
+                  <label>Período semanal<select value={justificationStart} onChange={(event) => selectJustificationPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
                 </div>
                 {!justificationStart || !justificationEnd ? <p className="student-record-empty">Selecione o intervalo para ver as faltas.</p> : recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : (
                   <>
