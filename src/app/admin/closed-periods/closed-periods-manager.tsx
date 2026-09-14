@@ -38,13 +38,13 @@ export function ClosedPeriodsManager() {
       
       const closedPeriodsMap = new Map<string, ClosedPeriod>(
         data.closedPeriods.map((p: ClosedPeriod) => [
-          `${p.weekStart}|${p.weekEnd}`,
+          `${formatPeriodDate(new Date(p.weekStart))}|${formatPeriodDate(new Date(p.weekEnd))}`,
           p,
         ])
       );
 
       const allPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear()).map((period) => {
-        const key = `${period.start.toISOString()}|${period.end.toISOString()}`;
+        const key = `${formatPeriodDate(period.start)}|${formatPeriodDate(period.end)}`;
         const closedInfo = closedPeriodsMap.get(key);
         return {
           ...period,

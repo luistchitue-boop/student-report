@@ -48,11 +48,10 @@ export async function GET(request: NextRequest) {
   const absences = await prisma.absence.findMany({
     where: {
       studentId: { in: turma.students.map((student) => student.id) },
-      subject,
       dia,
       ...(tempo ? { tempo } : {}),
     },
-    select: { studentId: true, tempo: true, faultType: true, notes: true },
+    select: { studentId: true, subject: true, tempo: true, faultType: true, notes: true },
   });
 
   return NextResponse.json({
@@ -110,13 +109,13 @@ export async function POST(request: NextRequest) {
       select: { studentId: true, subject: true },
     });
 
-    const blockedStudentIds = new Set(existingAbsences.map((absence) => absence.studentId));
-    const newStudentIds = validStudentIds.filter((studentId) => !blockedStudentIds.has(studentId));
-
-    if (newStudentIds.length) {
-      await prisma.absence.createMany({
-        data: newStudentIds.map((studentId) => ({ studentId, subject, dia, tempo, faultType, notes: "" })),
-      });
+    const savedStudentIds = validStudentIds;
+    if (savedStudentIds.length) {
+      await prisma.$transaction(savedStudentIds.map((studentId) => prisma.absence.upsert({
+        where: { studentId_dia_tempo: { studentId, dia, tempo } },
+        update: { subject, tempo, faultType, notes: "", createdAt: new Date() },
+        create: { studentId, subject, dia, tempo, faultType, notes: "" },
+      })));
 
       await createActivityLog({
         actorId: session.user.id,
@@ -129,18 +128,14 @@ export async function POST(request: NextRequest) {
           subject,
           dia: date,
           tempo,
-          studentIds: newStudentIds,
+          studentIds: savedStudentIds,
           faultType,
+          overwrittenStudentIds: existingAbsences.filter((absence) => savedStudentIds.includes(absence.studentId)).map((absence) => absence.studentId),
         },
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      saved: newStudentIds.length,
-      skipped: blockedStudentIds.size,
-      skippedStudentIds: [...blockedStudentIds],
-    });
+    return NextResponse.json({ success: true, saved: savedStudentIds.length, overwritten: existingAbsences.filter((absence) => savedStudentIds.includes(absence.studentId)).length });
   } catch (error) {
     console.error("Attendance book save error:", error);
     return NextResponse.json({ error: "Não foi possível guardar o livro de ponto" }, { status: 500 });

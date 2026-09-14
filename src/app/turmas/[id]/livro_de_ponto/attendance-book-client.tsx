@@ -104,8 +104,8 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível guardar o livro de ponto.");
       const savedMessage = `${data.saved ?? 0} falta(s) guardada(s) para ${date}.`;
-      const skippedMessage = data.skipped ? ` ${data.skipped} aluno(s) já tinha(m) uma falta neste dia e tempo lectivo e foi(ram) ignorado(s).` : "";
-      setStatus(`${savedMessage}${skippedMessage}`);
+      const overwrittenMessage = data.overwritten ? ` ${data.overwritten} registo(s) anterior(es) foram substituído(s).` : "";
+      setStatus(`${savedMessage}${overwrittenMessage}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível guardar o livro de ponto.");
     } finally {

@@ -1,14 +1,13 @@
 import { PrismaClient } from "@prisma/client";
+import { formatPeriodDate } from "@/lib/weekly-coordination";
 
 export async function isWeeklyPeriodClosed(weekStart: Date, weekEnd: Date, prisma: PrismaClient): Promise<boolean> {
-  const closedPeriod = await prisma.closedWeeklyPeriod.findUnique({
-    where: {
-      weekStart_weekEnd: {
-        weekStart,
-        weekEnd,
-      },
-    },
+  const closedPeriods = await prisma.closedWeeklyPeriod.findMany({
+    select: { weekStart: true, weekEnd: true },
   });
+  const startKey = formatPeriodDate(weekStart);
+  const endKey = formatPeriodDate(weekEnd);
+  const closedPeriod = closedPeriods.find((period) => formatPeriodDate(period.weekStart) === startKey && formatPeriodDate(period.weekEnd) === endKey);
   return !!closedPeriod;
 }
 

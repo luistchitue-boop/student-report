@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { isWeeklyPeriodClosed, getClosedWeeklyPeriods } from "@/lib/closed-periods";
+import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 declare global {
   var prismaAdminPeriods: PrismaClient | undefined;
@@ -42,8 +43,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Data de início e fim do período são obrigatórias." }, { status: 400 });
     }
 
-    const start = new Date(weekStart);
-    const end = new Date(weekEnd);
+    const requestedStart = new Date(weekStart);
+    const requestedEnd = new Date(weekEnd);
+    const period = getWeeklyCoordinationPeriods(requestedStart.getUTCFullYear()).find((item) => formatPeriodDate(item.start) === formatPeriodDate(requestedStart) && formatPeriodDate(item.end) === formatPeriodDate(requestedEnd));
+    if (!period) return NextResponse.json({ error: "Período semanal inválido." }, { status: 400 });
+    const start = new Date(`${formatPeriodDate(period.start)}T12:00:00.000Z`);
+    const end = new Date(`${formatPeriodDate(period.end)}T12:00:00.000Z`);
 
     if (action === "close") {
       const alreadyClosed = await isWeeklyPeriodClosed(start, end, prisma);
@@ -70,12 +75,12 @@ export async function POST(request: Request) {
 
       return NextResponse.json({ success: true, closedPeriod });
     } else if (action === "open") {
-      const result = await prisma.closedWeeklyPeriod.deleteMany({
-        where: {
-          weekStart: start,
-          weekEnd: end,
-        },
+      const matchingPeriods = await prisma.closedWeeklyPeriod.findMany({
+        where: { weekStart: { gte: new Date(`${formatPeriodDate(period.start)}T00:00:00.000Z`), lt: new Date(`${formatPeriodDate(period.start)}T23:59:59.999Z`) } },
+        select: { id: true, weekEnd: true },
       });
+      const ids = matchingPeriods.filter((closedPeriod) => formatPeriodDate(closedPeriod.weekEnd) === formatPeriodDate(period.end)).map((closedPeriod) => closedPeriod.id);
+      const result = ids.length ? await prisma.closedWeeklyPeriod.deleteMany({ where: { id: { in: ids } } }) : { count: 0 };
 
       if (result.count === 0) {
         return NextResponse.json({ error: "Este período não está fechado." }, { status: 400 });
