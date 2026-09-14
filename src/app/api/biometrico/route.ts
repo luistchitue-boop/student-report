@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
+import { getTurmaPeriodCompleteness } from "@/lib/turma-completeness";
 
 const prisma = new PrismaClient();
 
@@ -37,6 +38,11 @@ export async function POST(request: Request) {
 
     if (!turma) {
       return NextResponse.json({ error: "Não tem acesso a esta turma." }, { status: 403 });
+    }
+
+    const completeness = await getTurmaPeriodCompleteness(prisma, turma.id, period);
+    if (!completeness?.complete) {
+      return NextResponse.json({ error: "Não é possível marcar o biométrico enquanto a completude dos dados estiver abaixo de 100%.", completeness }, { status: 409 });
     }
 
     if (!title || !description) {

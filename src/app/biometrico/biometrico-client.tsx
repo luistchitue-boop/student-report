@@ -11,6 +11,9 @@ type Period = {
   description: string;
   isCurrent: boolean;
   isClosed: boolean;
+  isComplete: boolean;
+  missingSubjects: string[];
+  missingBehaviorCount: number;
   isTest?: boolean;
 };
 
@@ -28,7 +31,7 @@ export function BiometricoClient({ periods, turmas, selectedTurmaId }: { periods
   const [saving, setSaving] = useState(false);
 
   function openPeriod(period: Period) {
-    if (period.isClosed || period.start > new Date().toISOString()) return;
+    if (period.isClosed || !period.isComplete || period.start > new Date().toISOString()) return;
     setSelected(period);
     setTitle(period.title);
     setDescricao(period.description);
@@ -70,10 +73,10 @@ export function BiometricoClient({ periods, turmas, selectedTurmaId }: { periods
       </form>
       <div className="biometrico-list">
         {periods.map((period) => (
-          <button key={period.key} className={`biometrico-period ${period.isCurrent ? "current" : ""} ${period.isClosed ? "closed" : ""}`} onClick={() => openPeriod(period)} disabled={period.isClosed || new Date(period.start) > new Date()}>
+          <button key={period.key} className={`biometrico-period ${period.isCurrent ? "current" : ""} ${period.isClosed ? "closed" : ""} ${!period.isComplete ? "incomplete" : ""}`} onClick={() => openPeriod(period)} disabled={period.isClosed || !period.isComplete || new Date(period.start) > new Date()}>
             <span className="biometrico-period-date">{period.isTest ? "Teste · " : ""}{displayDate(period.start)} - {displayDate(period.end)}</span>
             <strong>{period.status === "registado" ? period.title : "Ausente"}</strong>
-            <span className={`biometrico-status ${period.status}`}>{period.status === "registado" ? "Registado" : "Ausente"}</span>
+            <span className={`biometrico-status ${period.status}`}>{period.isClosed ? "Fechado" : !period.isComplete ? `Incompleto · ${period.missingSubjects.length} disciplina(s) · ${period.missingBehaviorCount} comportamento(s)` : period.status === "registado" ? "Registado" : "Ausente"}</span>
           </button>
         ))}
       </div>

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { getClosedWeeklyPeriods } from "@/lib/closed-periods";
+import { getTurmaPeriodCompleteness } from "@/lib/turma-completeness";
 import { BiometricoClient } from "./biometrico-client";
 
 const prisma = new PrismaClient();
@@ -33,6 +34,7 @@ export default async function BiometricoPage({
     select: { id: true, weekStart: true, weekEnd: true, title: true, description: true },
   });
   const reportByWeek = new Map(reports.map((report) => [formatPeriodDate(report.weekStart), report]));
+  const completenessByPeriod = new Map((await Promise.all(periods.filter((period) => period.start <= now).map(async (period) => [period.key, await getTurmaPeriodCompleteness(prisma, turmaId ?? "", period)] as const))).filter((entry): entry is readonly [string, NonNullable<typeof entry[1]>] => Boolean(entry[1])));
 
   return (
     <AppShell active="biometrico">
@@ -56,6 +58,9 @@ export default async function BiometricoPage({
             description: reportByWeek.get(period.key)?.description ?? "",
             isCurrent: period.start <= now && period.end >= now,
             isClosed: closedPeriodKeys.has(`${period.key}:${formatPeriodDate(period.end)}`),
+            isComplete: completenessByPeriod.get(period.key)?.complete ?? false,
+            missingSubjects: completenessByPeriod.get(period.key)?.missingSubjects ?? [],
+            missingBehaviorCount: completenessByPeriod.get(period.key)?.missingBehaviorStudents.length ?? 0,
           }))}
         />
       </main>
