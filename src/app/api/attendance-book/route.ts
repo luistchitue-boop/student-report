@@ -110,29 +110,8 @@ export async function POST(request: NextRequest) {
       select: { studentId: true, subject: true },
     });
 
-    const conflictingAbsences = existingAbsences.filter((absence) => absence.subject !== subject);
-    if (conflictingAbsences.length > 0) {
-      return NextResponse.json(
-        {
-          error: "Cada aluno só pode ter uma falta por data e tempo lectivo, independentemente da disciplina.",
-          conflictingStudentIds: [...new Set(conflictingAbsences.map((absence) => absence.studentId))],
-        },
-        { status: 409 }
-      );
-    }
-
-    const duplicatedStudentIds = new Set(existingAbsences.map((absence) => absence.studentId));
-    if (duplicatedStudentIds.size > 0) {
-      return NextResponse.json(
-        {
-          error: "Já existe uma falta para este aluno na mesma disciplina, no mesmo dia e no mesmo tempo lectivo.",
-          duplicatedStudentIds: [...duplicatedStudentIds],
-        },
-        { status: 409 }
-      );
-    }
-
-    const newStudentIds = validStudentIds.filter((studentId) => !duplicatedStudentIds.has(studentId));
+    const blockedStudentIds = new Set(existingAbsences.map((absence) => absence.studentId));
+    const newStudentIds = validStudentIds.filter((studentId) => !blockedStudentIds.has(studentId));
 
     if (newStudentIds.length) {
       await prisma.absence.createMany({
@@ -156,7 +135,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, saved: newStudentIds.length });
+    return NextResponse.json({
+      success: true,
+      saved: newStudentIds.length,
+      skipped: blockedStudentIds.size,
+      skippedStudentIds: [...blockedStudentIds],
+    });
   } catch (error) {
     console.error("Attendance book save error:", error);
     return NextResponse.json({ error: "Não foi possível guardar o livro de ponto" }, { status: 500 });
