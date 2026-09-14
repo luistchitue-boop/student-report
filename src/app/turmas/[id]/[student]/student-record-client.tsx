@@ -111,14 +111,6 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
       setGrades([]);
       return;
     }
-    if (tab === "notas") {
-      const start = new Date(`${gradeStart}T12:00:00Z`);
-      const end = new Date(`${gradeEnd}T12:00:00Z`);
-      if (end.getTime() - start.getTime() !== 6 * 24 * 60 * 60 * 1000) {
-        setGrades([]);
-        return;
-      }
-    }
     if (tab === "justificativos" && (!justificationStart || !justificationEnd)) {
       setAbsences([]);
       setRecordsLoading(false);
@@ -216,13 +208,6 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     setJustificationFile(null);
     setStatusMessage(`${result.justified} falta(s) justificadas.`);
   }
-
-  const validGradePeriod = (() => {
-    if (!gradeStart || !gradeEnd) return false;
-    const start = new Date(`${gradeStart}T12:00:00Z`);
-    const end = new Date(`${gradeEnd}T12:00:00Z`);
-    return end.getTime() - start.getTime() === 6 * 24 * 60 * 60 * 1000;
-  })();
 
   async function updateRecord(type: "grade" | "absence", record: GradeRecord | AbsenceRecord) {
     const body = type === "grade"
@@ -490,7 +475,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
                 <div className="weekly-period-selector">
                   <label>Período semanal<select value={gradeStart} onChange={(event) => { const period = weeklyPeriods.find((item) => item.key === event.target.value); setGradeStart(event.target.value); setGradeEnd(period ? formatPeriodDate(period.end) : ""); }}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
                 </div>
-                {!gradeStart || !gradeEnd ? <p className="student-record-empty">Selecione o período semanal para ver as notas.</p> : !validGradePeriod ? <p className="student-record-empty record-warning">O período deve ter exatamente 7 dias.</p> : <>
+                {!gradeStart || !gradeEnd ? <p className="student-record-empty">Selecione o período semanal para ver as notas.</p> : <>
                 <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO ACADÉMICO</p><h2>Notas registadas</h2></div><span>{grades.length} registo(s)</span></div>
                 {recordsLoading ? <p className="student-record-empty">A carregar notas...</p> : grades.length ? grades.map((grade) => (
                   <div className="student-record-row" key={grade.id}>
