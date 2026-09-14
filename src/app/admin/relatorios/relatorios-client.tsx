@@ -13,6 +13,7 @@ type Turma = {
 
 type DeliveryResult = { email: string; studentName: string; success: boolean; error?: string };
 type FailedDelivery = { id: string; studentName: string; recipientName?: string | null; recipientEmail: string; error?: string | null; attemptedAt: string };
+type Completeness = { turmaId: string; turmaName: string; subjectCount: number; missingSubjects: string[]; activeStudentCount: number; missingBehaviorStudents: Array<{ id: string; name: string }>; complete: boolean };
 
 export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
@@ -31,6 +32,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   const [failedDeliveries, setFailedDeliveries] = useState<FailedDelivery[]>([]);
   const [auditStatus, setAuditStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [closedPeriods, setClosedPeriods] = useState<Map<string, boolean>>(new Map());
+  const [completeness, setCompleteness] = useState<Completeness[]>([]);
   const studentsForSelection = turmas.flatMap((turma) => turma.roster.filter((student) => student.active).map((student) => ({ ...student, turmaName: turma.name })));
   const filteredStudents = studentsForSelection.filter((student) => student.name.toLocaleLowerCase().includes(studentSearch.trim().toLocaleLowerCase()));
 
@@ -75,6 +77,23 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
+
+  useEffect(() => {
+    if (!selectedPeriod || !selectedTurmas.length) {
+      return;
+    }
+    let cancelled = false;
+    const query = new URLSearchParams({ periodKey: selectedPeriod });
+    selectedTurmas.forEach((turmaId) => query.append("turmaId", turmaId));
+    fetch(`/api/admin/reports/completeness?${query.toString()}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Não foi possível verificar a completude dos dados.");
+        return response.json() as Promise<{ completeness?: Completeness[] }>;
+      })
+      .then((data) => { if (!cancelled) setCompleteness(data.completeness ?? []); })
+      .catch((error: unknown) => { if (!cancelled) setMessage(error instanceof Error ? error.message : "Não foi possível verificar a completude dos dados."); });
+    return () => { cancelled = true; };
+  }, [selectedPeriod, selectedTurmas]);
 
   async function handlePreview() {
     if (!selectedPeriod || !selectedStudentId) return;
@@ -135,6 +154,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   }
 
   function toggleTurma(turmaId: string) {
+    setCompleteness([]);
     setSelectedTurmas((current) => current.includes(turmaId) ? current.filter((value) => value !== turmaId) : [...current, turmaId]);
     resetFeedback();
   }
@@ -151,6 +171,11 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
     if (!turmaIds.length) {
       setStatus("error");
       setMessage("Selecione pelo menos uma turma ou um aluno antes de enviar.");
+      return;
+    }
+    if (!studentId && completeness.length === selectedTurmas.length && completeness.some((item) => !item.complete)) {
+      setStatus("error");
+      setMessage("Complete as notas semanais por disciplina e o comportamento de todos os alunos antes de enviar.");
       return;
     }
 
@@ -177,6 +202,9 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
     }
   }
 
+  const completenessReady = completeness.length === selectedTurmas.length && selectedTurmas.length > 0;
+  const allSelectedTurmasComplete = completenessReady && completeness.every((item) => item.complete);
+
   return (
     <section className="admin-shell workspace">
       <div className="section-heading admin-heading">
@@ -193,7 +221,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
 
       <div className="weekly-period-selector admin-report-period">
         <label>Período semanal
-          <select value={selectedPeriod} onChange={(event) => { setSelectedPeriod(event.target.value); setSelectedTurmas([]); setSelectedStudentId(""); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>
+          <select value={selectedPeriod} onChange={(event) => { setSelectedPeriod(event.target.value); setSelectedTurmas([]); setCompleteness([]); setSelectedStudentId(""); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>
             <option value="">Selecione um período</option>
             {weeklyPeriods.map((period) => {
               const isClosed = closedPeriods.has(period.key);
@@ -215,9 +243,28 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
         </div>
       </div>
 
+      {selectedPeriod && selectedTurmas.length > 0 && (
+        <div className="admin-completeness-panel">
+          <div className="admin-completeness-heading">
+            <div><strong>Completude dos dados</strong><small>Notas por disciplina e comportamento por aluno</small></div>
+            <span className={`admin-completeness-status ${!completenessReady ? "checking" : allSelectedTurmasComplete ? "ready" : "blocked"}`}>{!completenessReady ? "A verificar" : allSelectedTurmasComplete ? "Pronto para enviar" : "Envio bloqueado"}</span>
+          </div>
+          {completenessReady && completeness.map((item) => (
+            <div key={item.turmaId} className={`admin-completeness-row ${item.complete ? "complete" : "incomplete"}`}>
+              <div className="admin-completeness-row-heading"><strong>{item.turmaName}</strong><span>{item.complete ? "Completo" : "Incompleto"}</span></div>
+              <div className="admin-completeness-metrics"><span>{item.subjectCount - item.missingSubjects.length}/{item.subjectCount} disciplinas</span><span>{item.activeStudentCount - item.missingBehaviorStudents.length}/{item.activeStudentCount} comportamentos</span></div>
+              {item.complete ? <p>Todos os dados necessários estão preenchidos.</p> : <div className="admin-completeness-missing">
+                {item.missingSubjects.length > 0 && <div><strong>Disciplinas sem notas</strong><span>{item.missingSubjects.join(", ")}</span></div>}
+                {item.missingBehaviorStudents.length > 0 && <div><strong>Alunos sem comportamento</strong><span>{item.missingBehaviorStudents.map((student) => student.name).join(", ")}</span></div>}
+              </div>}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="admin-actions">
         <button className="admin-preview-button" type="button" onClick={handleTurmasPreview} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>Pré-visualizar PDF</button>
-        <button className="admin-submit" type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>{status === "sending" ? "A enviar..." : `Enviar por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
+        <button className="admin-submit" type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0 || !allSelectedTurmasComplete}>{status === "sending" ? "A enviar..." : `Enviar por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
       </div>
 
       <div className="admin-individual-panel">
@@ -278,6 +325,26 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
         .admin-channel-tabs button.active { color:#1d4ed8; border-bottom-color:#1d4ed8; }
         .admin-heading { margin-bottom:0; }
         .admin-turma-panel, .admin-individual-panel, .admin-delivery-results { background:#f8fafc; border:1px solid #e2e8f0; border-radius:18px; padding:1.2rem; }
+        .admin-completeness-panel { display:grid; gap:.75rem; background:#fff; border:1px solid #dbe3ec; border-radius:18px; padding:1.2rem; }
+        .admin-completeness-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; color:#334155; }
+        .admin-completeness-heading > div { display:grid; gap:.2rem; }
+        .admin-completeness-heading small { color:#64748b; font-size:.78rem; font-weight:500; }
+        .admin-completeness-status { display:inline-flex; align-items:center; padding:.38rem .65rem; border-radius:999px; font-size:.72rem; font-weight:800; white-space:nowrap; }
+        .admin-completeness-status.checking { background:#f1f5f9; color:#475569; }
+        .admin-completeness-status.ready { background:#dcfce7; color:#166534; }
+        .admin-completeness-status.blocked { background:#ffedd5; color:#9a3412; }
+        .admin-completeness-row { display:grid; gap:.55rem; padding:.85rem .9rem; border:1px solid transparent; border-radius:12px; font-size:.84rem; }
+        .admin-completeness-row.complete { background:#ecfdf5; color:#166534; }
+        .admin-completeness-row.incomplete { background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
+        .admin-completeness-row-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+        .admin-completeness-row-heading > span { font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+        .admin-completeness-metrics { display:flex; gap:.5rem; flex-wrap:wrap; }
+        .admin-completeness-metrics span { padding:.28rem .5rem; border-radius:6px; background:rgba(255,255,255,.72); font-size:.74rem; font-weight:700; }
+        .admin-completeness-row p { margin:0; font-size:.8rem; }
+        .admin-completeness-missing { display:grid; gap:.45rem; }
+        .admin-completeness-missing div { display:grid; gap:.1rem; }
+        .admin-completeness-missing strong { font-size:.75rem; }
+        .admin-completeness-missing span { line-height:1.45; }
         .admin-report-period { max-width:520px; }
         .admin-turma-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.9rem; }
         .admin-checkbox { display:flex; align-items:center; gap:.7rem; background:#fff; border:1px solid #dbe3ec; border-radius:12px; padding:.9rem 1rem; cursor:pointer; }
