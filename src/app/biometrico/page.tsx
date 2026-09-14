@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
-import { formatPeriodDate, getWeeklyCoordinationPeriods, isDateInPeriod } from "@/lib/weekly-coordination";
+import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { getClosedWeeklyPeriods } from "@/lib/closed-periods";
 import { BiometricoClient } from "./biometrico-client";
 
 const prisma = new PrismaClient();
@@ -25,6 +26,8 @@ export default async function BiometricoPage({
   const requestedTurmaId = searchParams ? (await searchParams).turmaId : undefined;
   const turmaId = turmas.some((turma) => turma.id === requestedTurmaId) ? requestedTurmaId! : turmas[0]?.id;
   const periods = getWeeklyCoordinationPeriods(now.getFullYear());
+  const closedPeriods = await getClosedWeeklyPeriods(prisma);
+  const closedPeriodKeys = new Set(closedPeriods.map((period) => `${formatPeriodDate(period.weekStart)}:${formatPeriodDate(period.weekEnd)}`));
   const reports = await prisma.weeklyCoordinationReport.findMany({
     where: { userId: session.user.id, turmaId, weekStart: { gte: periods[0]?.start, lte: periods[periods.length - 1]?.end } },
     select: { id: true, weekStart: true, weekEnd: true, title: true, description: true },
@@ -51,7 +54,8 @@ export default async function BiometricoPage({
             status: reportByWeek.has(period.key) ? "registado" : "ausente",
             title: reportByWeek.get(period.key)?.title ?? "",
             description: reportByWeek.get(period.key)?.description ?? "",
-            isCurrent: isDateInPeriod(now, period),
+            isCurrent: period.start <= now && period.end >= now,
+            isClosed: closedPeriodKeys.has(`${period.key}:${formatPeriodDate(period.end)}`),
           }))}
         />
       </main>

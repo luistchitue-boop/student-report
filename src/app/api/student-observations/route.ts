@@ -13,12 +13,6 @@ function parseDate(value: unknown) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function isCurrentWeeklyPeriod(weekStart: Date) {
-  const today = new Date();
-  const currentPeriod = getWeeklyCoordinationPeriods(today.getFullYear()).find((period) => period.start <= today && period.end >= today);
-  return currentPeriod ? formatPeriodDate(currentPeriod.start) === weekStart.toISOString().slice(0, 10) : false;
-}
-
 async function getAuthorizedStudent(studentId: string, session: { user: { id: string; role?: string | null } }) {
   const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
   return prisma.student.findFirst({
@@ -64,9 +58,14 @@ export async function PUT(request: NextRequest) {
     const teacherObservation = typeof body.teacherObservation === "string" ? body.teacherObservation.trim().slice(0, 300) : "";
     const behavior = typeof body.behavior === "string" ? body.behavior.trim() : "";
     if (!studentId || !weekStart || !weekEnd) return NextResponse.json({ error: "Aluno e período semanal são obrigatórios" }, { status: 400 });
-    if (!isCurrentWeeklyPeriod(weekStart)) return NextResponse.json({ error: "Só é possível alterar a observação da semana atual." }, { status: 400 });
 
-    const periodClosed = await isWeeklyPeriodClosed(weekStart, weekEnd, prisma);
+    const officialPeriod = getWeeklyCoordinationPeriods(weekStart.getUTCFullYear()).find((period) => formatPeriodDate(period.start) === weekStart.toISOString().slice(0, 10));
+    if (!officialPeriod || formatPeriodDate(officialPeriod.end) !== weekEnd.toISOString().slice(0, 10)) {
+      return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
+    }
+    if (officialPeriod.start > new Date()) return NextResponse.json({ error: "Não é possível registar observações num período futuro." }, { status: 400 });
+
+    const periodClosed = await isWeeklyPeriodClosed(officialPeriod.start, officialPeriod.end, prisma);
     if (periodClosed) {
       return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar observações." }, { status: 403 });
     }

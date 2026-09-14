@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
-import { formatPeriodDate, getWeeklyCoordinationPeriods, isDateInPeriod } from "@/lib/weekly-coordination";
+import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
 
 const prisma = new PrismaClient();
 
@@ -22,8 +23,11 @@ export async function POST(request: Request) {
     const periods = getWeeklyCoordinationPeriods(new Date().getFullYear());
     const period = periods.find((item) => item.key === weekStart);
 
-    if (!period || !isDateInPeriod(new Date(), period)) {
-      return NextResponse.json({ error: "Só pode preencher o período correspondente à data de hoje." }, { status: 400 });
+    if (!period || period.start > new Date()) {
+      return NextResponse.json({ error: "Não é possível preencher um período futuro." }, { status: 400 });
+    }
+    if (period && await isWeeklyPeriodClosed(period.start, period.end, prisma)) {
+      return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar o relatório." }, { status: 403 });
     }
 
     const turma = await prisma.turma.findFirst({

@@ -53,18 +53,6 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
     return period.start.getTime() > new Date(`${todayKey}T12:00:00`).getTime();
   }
 
-  function isCurrentPeriod(periodKey: string) {
-    const period = weeklyPeriods.find((item) => item.key === periodKey);
-    if (!period) return false;
-    const todayTime = new Date(`${todayKey}T12:00:00`).getTime();
-    return period.start.getTime() <= todayTime && period.end.getTime() >= todayTime;
-  }
-
-  function periodStatus(periodKey: string) {
-    if (isCurrentPeriod(periodKey)) return "";
-    return isFuturePeriod(periodKey) ? " (futuro)" : " (passado)";
-  }
-
   function selectJustificationPeriod(value: string) {
     const period = weeklyPeriods.find((item) => item.key === value);
     setJustificationStart(value);
@@ -533,7 +521,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
             {tab === "relatorio" && (
               <div style={{ display: "grid", gap: "1rem" }}>
                 <div className="weekly-period-selector">
-                  <label>Período semanal<select value={reportStart} onChange={(event) => selectReportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={!isCurrentPeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{periodStatus(period.key)}</option>)}</select></label>
+                  <label>Período semanal<select value={reportStart} onChange={(event) => selectReportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
                 </div>
 
                 <div style={{ display: "grid", gap: "0.55rem" }}>
