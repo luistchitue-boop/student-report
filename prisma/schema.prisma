@@ -74,6 +74,7 @@ model Teacher {
   id        String   @id @default(cuid())
   userId    String   @unique
   name      String
+  phone     String?
   role      String   @default("COORDENADOR")
   createdAt DateTime @default(now())
 

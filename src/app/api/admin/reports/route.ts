@@ -149,6 +149,7 @@ async function generateStudentReportPdf({
   turmaName,
   gradeScale,
   teacherName,
+  teacherPhone,
   periodStart,
   periodEnd,
   hasPreviousPeriod,
@@ -167,6 +168,7 @@ async function generateStudentReportPdf({
   turmaName: string;
   gradeScale: number;
   teacherName: string;
+  teacherPhone?: string | null;
   periodStart: Date;
   periodEnd: Date;
   hasPreviousPeriod: boolean;
@@ -553,6 +555,7 @@ async function generateStudentReportPdf({
   const observationLineHeight = 17;
   const observationLines = observationText ? doc.splitTextToSize(observationText, observationWidth) : [];
   const signatureName = teacherName.trim() || "Professor(a)";
+  const signaturePhone = teacherPhone?.trim() ?? "";
   if (observationText) {
     detailY += 30;
     ensureDetailSpace(20 + observationLines.length * observationLineHeight + 34);
@@ -586,6 +589,11 @@ async function generateStudentReportPdf({
     doc.setFont("helvetica", "italic");
     doc.setFontSize(11);
     doc.text(signatureName, pageWidth - margin - 12, detailY + 24, { align: "right" });
+    if (signaturePhone) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(signaturePhone, pageWidth - margin - 12, detailY + 38, { align: "right" });
+    }
   }
 
   return Buffer.from(doc.output("arraybuffer"));
@@ -655,7 +663,7 @@ export async function POST(request: Request) {
         coordinator: { select: { name: true } },
         teacherAssignments: {
           where: { isMain: true, teacher: { role: "COORDENADOR" } },
-          select: { teacher: { select: { name: true } } },
+          select: { teacher: { select: { name: true, phone: true } } },
           take: 1,
         },
         students: {
@@ -692,6 +700,7 @@ export async function POST(request: Request) {
         const globalGrades = student.grades;
         const currentAbsences = student.absences.filter((absence) => absence.dia.getTime() >= currentStartTime && absence.dia.getTime() <= currentEndTime);
         const reportTeacherName = turma.teacherAssignments[0]?.teacher.name ?? turma.coordinator?.name ?? "";
+        const reportTeacherPhone = turma.teacherAssignments[0]?.teacher.phone ?? null;
         const teacherObservation = await proofreadCoordinatorObservation(student.weeklyObservations[0]?.teacherObservation);
         if (preview) {
           const pdf = await generateStudentReportPdf({
@@ -699,6 +708,7 @@ export async function POST(request: Request) {
             turmaName: turma.name,
             gradeScale: turma.gradeScale,
             teacherName: reportTeacherName,
+            teacherPhone: reportTeacherPhone,
             periodStart: period.start,
             periodEnd: period.end,
             hasPreviousPeriod: Boolean(previousPeriod),
@@ -741,6 +751,7 @@ export async function POST(request: Request) {
           turmaName: turma.name,
           gradeScale: turma.gradeScale,
           teacherName: reportTeacherName,
+          teacherPhone: reportTeacherPhone,
           periodStart: period.start,
           periodEnd: period.end,
           hasPreviousPeriod: Boolean(previousPeriod),

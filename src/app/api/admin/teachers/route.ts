@@ -29,7 +29,7 @@ export async function GET() {
     prisma.teacher.findMany({
       where: { role: { not: "ADMIN" } },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, role: true, user: { select: { email: true } }, turmaAssignments: { select: { turmaId: true, isMain: true } } },
+      select: { id: true, name: true, phone: true, role: true, user: { select: { email: true } }, turmaAssignments: { select: { turmaId: true, isMain: true } } },
     }),
     prisma.turma.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, coordinatorId: true } }),
   ]);
@@ -73,6 +73,7 @@ export async function PATCH(request: Request) {
     }
 
     const requestedRole = body.role === "ADMIN" || body.role === "DIRECCAO" || body.role === "COORDENADOR" ? body.role : "";
+    const phone = typeof body.phone === "string" ? body.phone.trim().slice(0, 30) || null : undefined;
     const requestedTurmaIds: unknown[] = Array.isArray(body.turmaIds) ? body.turmaIds : [];
     const turmaIds = [...new Set(requestedTurmaIds.filter((id): id is string => typeof id === "string"))];
     const requestedMainTurmaIds: string[] | null = Array.isArray(body.mainTurmaIds)
@@ -90,7 +91,7 @@ export async function PATCH(request: Request) {
     const mainTurmaIds = requestedMainTurmaIds ?? existingMainTurmaIds.filter((turmaId) => turmaIds.includes(turmaId));
 
     await prisma.$transaction(async (transaction) => {
-      await transaction.teacher.update({ where: { id: teacher.id }, data: { role: requestedRole } });
+      await transaction.teacher.update({ where: { id: teacher.id }, data: { role: requestedRole, ...(phone !== undefined ? { phone } : {}) } });
       await transaction.teacherTurma.deleteMany({ where: { teacherId: teacher.id, turmaId: { notIn: turmaIds } } });
       await transaction.teacherTurma.updateMany({ where: { teacherId: teacher.id, turmaId: { in: turmaIds } }, data: { isMain: false } });
       const existingTurmaIds = new Set(teacher.turmaAssignments.map((assignment) => assignment.turmaId));
