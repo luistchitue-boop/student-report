@@ -10,7 +10,7 @@ import { jsPDF } from "jspdf";
 import { PDFDocument } from "pdf-lib";
 import { auth } from "@/auth";
 import { proofreadCoordinatorObservation } from "@/lib/proofread-observation";
-import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { formatPeriodDate, getMonthlyCoordinationPeriods, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 declare global {
   var prismaAdminReports: PrismaClient | undefined;
@@ -163,6 +163,7 @@ async function generateStudentReportPdf({
   weeklyPeriodTerms,
   previousGrades,
   absences,
+  weeklyObservations,
 }: {
   studentName: string;
   turmaName: string;
@@ -182,6 +183,7 @@ async function generateStudentReportPdf({
   weeklyPeriodTerms: string[];
   previousGrades: Array<{ subject: string; value: number; term: string }>;
   absences: Array<{ subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }>;
+  weeklyObservations: Array<{ weekStart: Date; weekEnd: Date; behavior?: string | null; teacherObservation?: string | null }>;
 }) {
   const [logoDataUrl, avatarDataUrl, qrCodeDataUrl, behaviorImage, absenceImage, gradesImage] = await Promise.all([
     loadImageDataUrl(),
@@ -238,7 +240,7 @@ async function generateStudentReportPdf({
   const reportHeaderCenterX = pageWidth / 2;
   doc.setFont("times", "bold");
   doc.setFontSize(22);
-  doc.text("RELATÓRIO SEMANAL", reportHeaderCenterX, 112, { align: "center" });
+  doc.text(periodStart.getMonth() === periodEnd.getMonth() && periodStart.getFullYear() === periodEnd.getFullYear() ? "RELATÓRIO MENSAL" : "RELATÓRIO SEMANAL", reportHeaderCenterX, 112, { align: "center" });
   doc.setFont("times", "normal");
   doc.setFontSize(11);
   doc.text(`${formatPeriodDate(periodStart)} a ${formatPeriodDate(periodEnd)}`, reportHeaderCenterX, 128, { align: "center" });
@@ -548,43 +550,38 @@ async function generateStudentReportPdf({
     });
   }
 
-  const observationText = teacherObservation?.trim() ?? "";
+  const monthlyObservations = weeklyObservations
+    .filter((observation) => observation.teacherObservation?.trim())
+    .sort((first, second) => first.weekStart.getTime() - second.weekStart.getTime());
   const observationWidth = tableWidth - 70;
   const observationX = margin + 18;
   const observationFontSize = 14;
   const observationLineHeight = 17;
-  const observationLines = observationText ? doc.splitTextToSize(observationText, observationWidth) : [];
   const signatureName = teacherName.trim() || "Professor(a)";
   const signaturePhone = teacherPhone?.trim() ?? "";
-  if (observationText) {
-    detailY += 30;
-    ensureDetailSpace(20 + observationLines.length * observationLineHeight + 34);
-  }
-  const drawObservationQuote = (quoteY: number) => {
-    doc.setTextColor(226, 202, 193);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(82);
-    doc.text('"', margin + 3, quoteY + 62);
-    doc.text('"', pageWidth - margin - 48, quoteY + 62);
+  if (monthlyObservations.length) {
     doc.setTextColor(...ink);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-  };
-  if (observationText && detailY + 20 + observationLines.length * observationLineHeight > detailBottom) {
-    startDetailContinuation();
-    drawObservationQuote(detailY + 4);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(observationFontSize);
-    doc.text(observationLines, observationX, detailY + 20, { lineHeightFactor: observationLineHeight / observationFontSize, maxWidth: observationWidth });
-    detailY += 20 + observationLines.length * observationLineHeight;
-  } else if (observationText) {
-    drawObservationQuote(detailY + 4);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(observationFontSize);
-    doc.text(observationLines, observationX, detailY + 20, { lineHeightFactor: observationLineHeight / observationFontSize, maxWidth: observationWidth });
-    detailY += 20 + observationLines.length * observationLineHeight;
+    doc.setFontSize(12);
+    detailY += 30;
+    ensureDetailSpace(20 + monthlyObservations.length * 62);
+    doc.text("Observações das semanas", margin, detailY);
+    detailY += 18;
+    monthlyObservations.forEach((observation) => {
+      const observationText = observation.teacherObservation?.trim() ?? "";
+      const observationLines = doc.splitTextToSize(observationText, observationWidth);
+      const intervalLabel = `${formatPeriodDate(observation.weekStart)} a ${formatPeriodDate(observation.weekEnd)}`;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...ink);
+      doc.text(intervalLabel, margin, detailY + 12);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(observationLines, observationX, detailY + 24, { lineHeightFactor: observationLineHeight / observationFontSize, maxWidth: observationWidth });
+      detailY += 18 + observationLines.length * observationLineHeight + 14;
+    });
   }
-  if (observationText) {
+  if (monthlyObservations.length && (signatureName || signaturePhone)) {
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "italic");
     doc.setFontSize(11);
@@ -615,16 +612,18 @@ export async function POST(request: Request) {
     const rawStudentIds = Array.isArray(body.studentIds) ? body.studentIds : [];
     const studentIds = rawStudentIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
     const periodKey = typeof body.periodKey === "string" ? body.periodKey : "";
-    const periods = getWeeklyCoordinationPeriods(new Date().getFullYear());
+    const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
+    const monthlyPeriods = getMonthlyCoordinationPeriods(new Date().getFullYear());
+    const periods = [...weeklyPeriods, ...monthlyPeriods];
     const periodIndex = periods.findIndex((item) => item.key === periodKey);
     const period = periodIndex >= 0 ? periods[periodIndex] : undefined;
     const previousPeriod = periodIndex > 0 ? periods[periodIndex - 1] : undefined;
 
     if (!period) {
-      return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
+      return NextResponse.json({ error: "Selecione um período válido." }, { status: 400 });
     }
 
-    if (period.key > formatPeriodDate(new Date())) {
+    if (period.start > new Date()) {
       return NextResponse.json({ error: "Não é possível enviar relatórios de um período futuro." }, { status: 400 });
     }
 
@@ -645,16 +644,17 @@ export async function POST(request: Request) {
     }
 
     const periodStartDate = new Date(`${formatPeriodDate(period.start)}T00:00:00.000Z`);
-    const periodStartNextDate = new Date(periodStartDate.getTime() + 24 * 60 * 60 * 1000);
+    const periodEndNextDate = new Date(period.end.getFullYear(), period.end.getMonth(), period.end.getDate() + 1, 12);
     const currentPeriodStart = formatPeriodDate(period.start);
     const currentPeriodEnd = formatPeriodDate(period.end);
     const previousPeriodStart = previousPeriod ? formatPeriodDate(previousPeriod.start) : null;
     const previousPeriodEnd = previousPeriod ? formatPeriodDate(previousPeriod.end) : null;
-    const pastWeeklyPeriods = periods.slice(Math.max(0, periodIndex - 4), periodIndex + 1);
-    const futureWeeklyPeriods = periods.slice(periodIndex + 1, periodIndex + 1 + Math.max(0, 5 - pastWeeklyPeriods.length));
-    const weeklyPeriods = [...pastWeeklyPeriods, ...futureWeeklyPeriods];
-    const weeklyPeriodTerms = weeklyPeriods.map((weeklyPeriod) => `Semanal:${formatPeriodDate(weeklyPeriod.start)}:${formatPeriodDate(weeklyPeriod.end)}`);
-    const weeklyPeriodLabels = weeklyPeriods.map((weeklyPeriod) => `${String(weeklyPeriod.start.getDate()).padStart(2, "0")}/${String(weeklyPeriod.start.getMonth() + 1).padStart(2, "0")}-${String(weeklyPeriod.end.getDate()).padStart(2, "0")}/${String(weeklyPeriod.end.getMonth() + 1).padStart(2, "0")}`);
+    const periodIndexInYear = weeklyPeriods.findIndex((item) => item.key === period.key);
+    const pastWeeklyPeriods = weeklyPeriods.slice(Math.max(0, periodIndexInYear - 4), periodIndexInYear + 1);
+    const futureWeeklyPeriods = weeklyPeriods.slice(periodIndexInYear + 1, periodIndexInYear + 1 + Math.max(0, 5 - pastWeeklyPeriods.length));
+    const reportPeriods = period.type === "MONTHLY" ? weeklyPeriods.filter((weeklyPeriod) => weeklyPeriod.start >= period.start && weeklyPeriod.end <= period.end) : [...pastWeeklyPeriods, ...futureWeeklyPeriods];
+    const weeklyPeriodTerms = reportPeriods.map((weeklyPeriod) => `Semanal:${formatPeriodDate(weeklyPeriod.start)}:${formatPeriodDate(weeklyPeriod.end)}`);
+    const weeklyPeriodLabels = reportPeriods.map((weeklyPeriod) => `${String(weeklyPeriod.start.getDate()).padStart(2, "0")}/${String(weeklyPeriod.start.getMonth() + 1).padStart(2, "0")}-${String(weeklyPeriod.end.getDate()).padStart(2, "0")}/${String(weeklyPeriod.end.getMonth() + 1).padStart(2, "0")}`);
     const absenceStart = previousPeriodStart ?? currentPeriodStart;
 
     const turmas = await prisma.turma.findMany({
@@ -670,7 +670,7 @@ export async function POST(request: Request) {
           where: { active: true },
           include: {
             parents: { select: { id: true, name: true, email: true, phone: true } },
-            weeklyObservations: { where: { weekStart: { gte: periodStartDate, lt: periodStartNextDate } }, select: { behavior: true, teacherObservation: true } },
+            weeklyObservations: { where: { weekStart: { gte: periodStartDate, lt: periodEndNextDate } }, select: { weekStart: true, weekEnd: true, behavior: true, teacherObservation: true } },
             grades: { where: { term: { startsWith: "Semanal:" } } },
             absences: { where: { dia: { gte: new Date(`${absenceStart}T00:00:00Z`), lte: new Date(`${currentPeriodEnd}T23:59:59.999Z`) } } },
           },
@@ -690,12 +690,20 @@ export async function POST(request: Request) {
       for (const student of turma.students) {
         if (!student.active) continue;
         if (studentIds.length && !studentIds.includes(student.id)) continue;
-        const currentTerm = `Semanal:${currentPeriodStart}:${currentPeriodEnd}`;
-        const previousTerm = previousPeriodStart && previousPeriodEnd ? `Semanal:${previousPeriodStart}:${previousPeriodEnd}` : "";
         const currentStartTime = new Date(`${formatPeriodDate(period.start)}T00:00:00Z`).getTime();
         const currentEndTime = new Date(`${formatPeriodDate(period.end)}T23:59:59.999Z`).getTime();
-        const currentGrades = student.grades.filter((grade) => grade.term === currentTerm);
-        const previousGrades = student.grades.filter((grade) => grade.term === previousTerm);
+        const currentTerm = `Semanal:${currentPeriodStart}:${currentPeriodEnd}`;
+        const previousTerm = previousPeriodStart && previousPeriodEnd ? `Semanal:${previousPeriodStart}:${previousPeriodEnd}` : "";
+        const currentGrades = period.type === "MONTHLY"
+          ? student.grades.filter((grade) => weeklyPeriodTerms.includes(grade.term))
+          : student.grades.filter((grade) => grade.term === currentTerm);
+        const previousGrades = previousPeriod
+          ? student.grades.filter((grade) => period.type === "MONTHLY"
+            ? weeklyPeriods
+              .filter((weeklyPeriod) => weeklyPeriod.start >= previousPeriod.start && weeklyPeriod.end <= previousPeriod.end)
+              .some((weeklyPeriod) => grade.term === `Semanal:${formatPeriodDate(weeklyPeriod.start)}:${formatPeriodDate(weeklyPeriod.end)}`)
+            : grade.term === previousTerm)
+          : [];
         const weeklyGrades = student.grades.filter((grade) => weeklyPeriodTerms.includes(grade.term));
         const globalGrades = student.grades;
         const currentAbsences = student.absences.filter((absence) => absence.dia.getTime() >= currentStartTime && absence.dia.getTime() <= currentEndTime);
@@ -722,6 +730,7 @@ export async function POST(request: Request) {
             weeklyPeriodTerms,
             previousGrades: previousGrades.map((grade: { subject: string; value: number | string; term: string }) => ({ subject: grade.subject, value: Number(grade.value), term: grade.term })),
             absences: currentAbsences.map((absence: { subject: string; dia: Date; tempo: string; faultType: string; justified: boolean }) => ({ subject: absence.subject, dia: absence.dia, tempo: absence.tempo, faultType: absence.faultType, justified: absence.justified })),
+            weeklyObservations: student.weeklyObservations.map((observation) => ({ weekStart: observation.weekStart, weekEnd: observation.weekEnd, behavior: observation.behavior, teacherObservation: observation.teacherObservation })),
           });
           previewPdfs.push(pdf);
           continue;
@@ -775,6 +784,7 @@ export async function POST(request: Request) {
             faultType: absence.faultType,
             justified: absence.justified,
           })),
+          weeklyObservations: student.weeklyObservations.map((observation) => ({ weekStart: observation.weekStart, weekEnd: observation.weekEnd, behavior: observation.behavior, teacherObservation: observation.teacherObservation })),
         });
 
         // For WhatsApp, upload to blob storage. For email, store PDF buffer for direct attachment.

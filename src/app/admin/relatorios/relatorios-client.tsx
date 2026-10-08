@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatPeriodDate, getWeeklyCoordinationPeriods, isDateInPeriod } from "@/lib/weekly-coordination";
+import { formatPeriodDate, getPeriodLabel, getReportPeriods, isDateInPeriod } from "@/lib/weekly-coordination";
 
 type Turma = {
   id: string;
@@ -16,8 +16,8 @@ type FailedDelivery = { id: string; studentName: string; recipientName?: string 
 type Completeness = { turmaId: string; turmaName: string; subjectCount: number; missingSubjects: string[]; activeStudentCount: number; missingBehaviorStudents: Array<{ id: string; name: string }>; complete: boolean };
 
 export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
-  const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
-  const currentPeriod = weeklyPeriods.find((period) => isDateInPeriod(new Date(), period));
+  const reportPeriods = getReportPeriods(new Date().getFullYear());
+  const currentPeriod = reportPeriods.find((period) => isDateInPeriod(new Date(), period));
   const [selectedPeriod, setSelectedPeriod] = useState(currentPeriod?.key ?? "");
   const [channel, setChannel] = useState<"EMAIL" | "WHATSAPP">("EMAIL");
   const [selectedTurmas, setSelectedTurmas] = useState<string[]>([]);
@@ -162,7 +162,7 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
   async function handleSendReports(studentId?: string) {
     if (!selectedPeriod) {
       setStatus("error");
-      setMessage("Selecione um período semanal antes de enviar.");
+      setMessage("Selecione um período antes de enviar.");
       return;
     }
 
@@ -220,14 +220,14 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
       </div>
 
       <div className="weekly-period-selector admin-report-period">
-        <label>Período semanal
+        <label>Período de relatório
           <select value={selectedPeriod} onChange={(event) => { setSelectedPeriod(event.target.value); setSelectedTurmas([]); setCompleteness([]); setSelectedStudentId(""); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>
             <option value="">Selecione um período</option>
-            {weeklyPeriods.map((period) => {
+            {reportPeriods.map((period) => {
               const isClosed = closedPeriods.has(period.key);
               const isFuture = isFuturePeriod(period.key);
-              const isDisabled = isFuture || isClosed;
-              const label = `${period.start.toLocaleDateString("pt-AO")} - ${period.end.toLocaleDateString("pt-AO")}${isFuture ? " (futuro)" : ""}${isClosed ? " (fechado)" : ""}`;
+              const isDisabled = period.type === "WEEKLY" && (isFuture || isClosed);
+              const label = `${period.type === "WEEKLY" ? "Semanal" : "Mensal"}: ${getPeriodLabel(period)}${isFuture ? " (futuro)" : ""}${period.type === "WEEKLY" && isClosed ? " (fechado)" : ""}`;
               return <option key={period.key} value={period.key} disabled={isDisabled}>{label}</option>;
             })}
           </select>
