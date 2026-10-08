@@ -13,14 +13,20 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const periodKey = searchParams.get("periodKey") ?? "";
   const turmaIds = searchParams.getAll("turmaId").filter(Boolean);
-  const weeklyPeriod = getWeeklyCoordinationPeriods(new Date().getFullYear()).find((item) => item.key === periodKey);
-  const monthlyPeriod = getMonthlyCoordinationPeriods(new Date().getFullYear()).find((item) => item.key === periodKey);
+  const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
+  const monthlyPeriods = getMonthlyCoordinationPeriods(new Date().getFullYear());
+  const weeklyPeriod = weeklyPeriods.find((item) => item.key === periodKey);
+  const monthlyPeriod = monthlyPeriods.find((item) => item.key === periodKey);
   const period = weeklyPeriod ?? monthlyPeriod;
   if (!period || period.start > new Date()) return NextResponse.json({ error: "Período inválido." }, { status: 400 });
   if (!turmaIds.length) return NextResponse.json({ completeness: [] });
 
-  const termPrefix = period.type === "MONTHLY" ? "Mensal:" : "Semanal:";
-  const term = `${termPrefix}${formatPeriodDate(period.start)}:${formatPeriodDate(period.end)}`;
+  const periodGradeTerms = period.type === "MONTHLY"
+    ? weeklyPeriods
+        .filter((weeklyPeriodItem) => weeklyPeriodItem.start >= period.start && weeklyPeriodItem.end <= period.end)
+        .map((weeklyPeriodItem) => `Semanal:${formatPeriodDate(weeklyPeriodItem.start)}:${formatPeriodDate(weeklyPeriodItem.end)}`)
+    : [`Semanal:${formatPeriodDate(period.start)}:${formatPeriodDate(period.end)}`];
+
   const turmas = await prisma.turma.findMany({
     where: { id: { in: turmaIds } },
     select: {
@@ -32,7 +38,7 @@ export async function GET(request: Request) {
         select: {
           id: true,
           name: true,
-          grades: { where: { term }, select: { subject: true } },
+          grades: { where: { term: { in: periodGradeTerms } }, select: { subject: true } },
           weeklyObservations: { where: { weekStart: { gte: period.start, lte: period.end } }, select: { behavior: true } },
         },
       },
