@@ -77,16 +77,13 @@ export async function PATCH(
     if (!apiKey || !fromEmail) {
       return NextResponse.json({ error: "A confirmação por e-mail não está configurada." }, { status: 500 });
     }
-    if (!parent.email) {
-      return NextResponse.json({ error: "Não existe um e-mail associado a este perfil." }, { status: 400 });
-    }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
     const confirmationUrl = createParentContactConfirmationUrl(parentId, phone, email, appUrl);
     const resend = new Resend(apiKey);
     const result = await resend.emails.send({
       from: fromEmail,
-      to: parent.email,
+      to: email,
       subject: "Confirme a alteração dos seus contactos",
       text: `Caro encarregado de educação,\n\nFoi solicitada uma alteração dos seus contactos. Para confirmar, aceda a este link:\n${confirmationUrl}\n\nO link expira em 15 minutos. Se não realizou esta alteração, ignore este e-mail.`,
       html: `<!doctype html><html lang="pt"><body style="font-family:Arial,sans-serif;color:#173044;padding:32px"><h1>Confirmar alteração dos contactos</h1><p>Foi solicitada uma alteração dos seus contactos.</p><p><a href="${confirmationUrl}">Confirmar contactos</a></p><p>O link expira em 15 minutos.</p><p>Se não realizou esta alteração, ignore este e-mail.</p></body></html>`,
