@@ -40,12 +40,12 @@ export function ParentLookupForm() {
         <p style={{ margin: "0 0 0.4rem", color: "#2f7d5a", fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Acesso público</p>
         <h1 style={{ margin: "0 0 0.75rem", color: "#163b31", fontSize: "1.8rem" }}>Atualize os seus contactos</h1>
         <p style={{ margin: "0 0 1.5rem", color: "#53645b", lineHeight: 1.6 }}>
-          Introduza o nome completo sem espaços, em letras minúsculas e sem caracteres especiais.
+          Introduza o nome completo de um dos encarregados de educação, sem espaços, em letras minúsculas e sem caracteres especiais.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: "1rem" }}>
           <label style={{ display: "grid", gap: "0.5rem", color: "#163b31", fontWeight: 600 }}>
-            Nome completo
+            Nome completo do encarregado
             <input
               type="text"
               value={name}
