@@ -15,7 +15,7 @@ type DeliveryResult = { email: string; studentName: string; success: boolean; er
 type FailedDelivery = { id: string; studentName: string; recipientName?: string | null; recipientEmail: string; error?: string | null; attemptedAt: string };
 type Completeness = { turmaId: string; turmaName: string; subjectCount: number; missingSubjects: string[]; activeStudentCount: number; missingBehaviorStudents: Array<{ id: string; name: string }>; complete: boolean };
 
-export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
+export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend: boolean }) {
   const reportPeriods = getReportPeriods(new Date().getFullYear());
   const currentPeriod = reportPeriods.find((period) => isDateInPeriod(new Date(), period));
   const [selectedPeriod, setSelectedPeriod] = useState(currentPeriod?.key ?? "");
@@ -210,14 +210,16 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
       <div className="section-heading admin-heading">
         <div>
           <p className="eyebrow">SELECIONE AS TURMAS</p>
-          <h3>Gerar e enviar relatórios por {channel === "EMAIL" ? "e-mail" : "WhatsApp"}</h3>
+          <h3>{canSend ? "Gerar e enviar relatórios" : "Visualizar relatórios e completude"}{canSend ? ` por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}` : ""}</h3>
         </div>
       </div>
 
-      <div className="admin-channel-tabs" role="tablist" aria-label="Canal de envio">
-        <button type="button" className={channel === "EMAIL" ? "active" : ""} onClick={() => { setChannel("EMAIL"); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>E-mail</button>
-        <button type="button" className={channel === "WHATSAPP" ? "active" : ""} onClick={() => { setChannel("WHATSAPP"); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>WhatsApp</button>
-      </div>
+      {canSend && (
+        <div className="admin-channel-tabs" role="tablist" aria-label="Canal de envio">
+          <button type="button" className={channel === "EMAIL" ? "active" : ""} onClick={() => { setChannel("EMAIL"); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>E-mail</button>
+          <button type="button" className={channel === "WHATSAPP" ? "active" : ""} onClick={() => { setChannel("WHATSAPP"); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>WhatsApp</button>
+        </div>
+      )}
 
       <div className="weekly-period-selector admin-report-period">
         <label>Período de relatório
@@ -264,7 +266,9 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
 
       <div className="admin-actions">
         <button className="admin-preview-button" type="button" onClick={handleTurmasPreview} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>Pré-visualizar PDF</button>
-        <button className="admin-submit" type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0 || !allSelectedTurmasComplete}>{status === "sending" ? "A enviar..." : `Enviar por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
+        {canSend && (
+          <button className="admin-submit" type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0 || !allSelectedTurmasComplete}>{status === "sending" ? "A enviar..." : `Enviar por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
+        )}
       </div>
 
       <div className="admin-individual-panel">
@@ -290,7 +294,9 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
           </div>
         </label>
         <button type="button" onClick={handlePreview} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>Pré-visualizar PDF</button>
-        <button type="button" onClick={() => handleSendReports(selectedStudentId)} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>{status === "sending" ? "A enviar..." : `Enviar caso individual por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
+        {canSend && (
+          <button type="button" onClick={() => handleSendReports(selectedStudentId)} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>{status === "sending" ? "A enviar..." : `Enviar caso individual por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
+        )}
       </div>
 
       {previewUrl && <div className="admin-preview-panel">
@@ -300,23 +306,25 @@ export function RelatoriosClient({ turmas }: { turmas: Turma[] }) {
 
       {message && <p className={`admin-status ${status}`}>{message}</p>}
 
-      {deliveryResults.length > 0 && <div className="admin-delivery-results">
+      {canSend && deliveryResults.length > 0 && <div className="admin-delivery-results">
         <strong>Resultado do envio</strong>
         {deliveryResults.map((result) => <div key={`${result.studentName}-${result.email}`} className={result.success ? "delivery-success" : "delivery-failure"}><span>{result.studentName} · {result.email}</span><span>{result.success ? "Enviado" : `Falhou: ${result.error ?? "erro desconhecido"}`}</span></div>)}
       </div>}
 
-      <div className="admin-audit-panel">
-        <strong>Consultar relatórios não enviados por {channel === "EMAIL" ? "e-mail" : "WhatsApp"}</strong>
-        <div className="admin-audit-controls">
-          <select value={auditTurmaId} disabled={!selectedPeriod || auditStatus === "loading"} onChange={(event) => { setAuditTurmaId(event.target.value); setFailedDeliveries([]); setAuditStatus("idle"); }}>
-            <option value="">Selecione uma turma</option>
-            {turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
-          </select>
-          <button type="button" onClick={loadFailedDeliveries} disabled={!selectedPeriod || !auditTurmaId || auditStatus === "loading"}>{auditStatus === "loading" ? "A consultar..." : "Ver falhas"}</button>
+      {canSend && (
+        <div className="admin-audit-panel">
+          <strong>Consultar relatórios não enviados por {channel === "EMAIL" ? "e-mail" : "WhatsApp"}</strong>
+          <div className="admin-audit-controls">
+            <select value={auditTurmaId} disabled={!selectedPeriod || auditStatus === "loading"} onChange={(event) => { setAuditTurmaId(event.target.value); setFailedDeliveries([]); setAuditStatus("idle"); }}>
+              <option value="">Selecione uma turma</option>
+              {turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
+            </select>
+            <button type="button" onClick={loadFailedDeliveries} disabled={!selectedPeriod || !auditTurmaId || auditStatus === "loading"}>{auditStatus === "loading" ? "A consultar..." : "Ver falhas"}</button>
+          </div>
+          {auditStatus === "loaded" && !failedDeliveries.length && <p className="audit-empty">Não foram encontradas falhas para este período e turma.</p>}
+          {failedDeliveries.length > 0 && <div className="audit-failures">{failedDeliveries.map((delivery) => <div className="audit-failure" key={delivery.id}><strong>{delivery.studentName}</strong><span>{delivery.recipientName ? `${delivery.recipientName} · ` : ""}{delivery.recipientEmail}</span><small>{delivery.error || "Motivo não informado"}</small></div>)}</div>}
         </div>
-        {auditStatus === "loaded" && !failedDeliveries.length && <p className="audit-empty">Não foram encontradas falhas para este período e turma.</p>}
-        {failedDeliveries.length > 0 && <div className="audit-failures">{failedDeliveries.map((delivery) => <div className="audit-failure" key={delivery.id}><strong>{delivery.studentName}</strong><span>{delivery.recipientName ? `${delivery.recipientName} · ` : ""}{delivery.recipientEmail}</span><small>{delivery.error || "Motivo não informado"}</small></div>)}</div>}
-      </div>
+      )}
 
       <style>{`
         .admin-shell { display:flex; flex-direction:column; gap:1.5rem; }

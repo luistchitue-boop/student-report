@@ -598,8 +598,9 @@ async function generateStudentReportPdf({
 
 export async function POST(request: Request) {
   const session = await auth();
+  const userRole = session?.user?.role ?? "COORDENADOR";
 
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  if (!session?.user || userRole !== "ADMIN") {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
 

@@ -6,8 +6,9 @@ import { RelatoriosClient } from "./relatorios-client";
 
 export default async function AdminRelatoriosPage() {
   const session = await auth();
+  const userRole = session?.user?.role ?? "COORDENADOR";
 
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  if (!session?.user || (userRole !== "ADMIN" && userRole !== "DIRECCAO")) {
     redirect("/");
   }
 
@@ -23,7 +24,7 @@ export default async function AdminRelatoriosPage() {
           </div>
         </header>
 
-        <RelatoriosClient turmas={turmas} />
+        <RelatoriosClient turmas={turmas} canSend={userRole === "ADMIN"} />
       </main>
     </AppShell>
   );

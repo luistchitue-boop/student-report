@@ -79,9 +79,14 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
             </>
           )}
           {session?.user?.role === "DIRECCAO" && (
-            <Link href="/controlo" className={active === "controlo" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-              <ClipboardCheck size={16} strokeWidth={2.1} /> Controlo
-            </Link>
+            <>
+              <Link href="/controlo" className={active === "controlo" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+                <ClipboardCheck size={16} strokeWidth={2.1} /> Controlo
+              </Link>
+              <Link href="/admin/relatorios" className={active === "relatorios" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+                <FileText size={16} strokeWidth={2.1} /> Relatórios
+              </Link>
+            </>
           )}
           <Link href="/settings" className={active === "settings" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
             <Settings size={16} strokeWidth={2.1} /> Definições

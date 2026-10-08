@@ -7,7 +7,8 @@ const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  const userRole = session?.user?.role ?? "COORDENADOR";
+  if (!session?.user || (userRole !== "ADMIN" && userRole !== "DIRECCAO")) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const periodKey = searchParams.get("periodKey") ?? "";
