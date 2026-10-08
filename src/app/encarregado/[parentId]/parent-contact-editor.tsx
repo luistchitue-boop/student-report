@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
 
 type StudentSummary = {
   id: string;
@@ -22,12 +21,11 @@ export function ParentContactEditor({
 }: {
   parent: ParentSummary;
 }) {
-  const searchParams = useSearchParams();
   const [phone, setPhone] = useState(parent.phone);
   const [email, setEmail] = useState(parent.email);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(searchParams.get("confirmed") === "success");
+  const [success, setSuccess] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
 
   async function handleSubmit() {

@@ -28,7 +28,7 @@ export async function GET(
       data: { phone, email },
     });
 
-    return NextResponse.redirect(new URL(`/encarregado/${parentId}?confirmed=success`, request.url));
+    return NextResponse.redirect(new URL("/encarregado/confirmado", request.url));
   } catch (error) {
     console.error("Parent contact confirmation failed:", error);
     return NextResponse.redirect(new URL("/encarregado?confirmed=invalid", request.url));
