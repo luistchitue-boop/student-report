@@ -107,7 +107,7 @@ export function ParentContactEditor({
 
             {confirmationSent && (
               <p style={{ margin: 0, color: "#254a3d", background: "#eaf7ef", border: "1px solid #c5e1ce", borderRadius: 8, padding: "0.75rem 0.85rem" }}>
-                Foi enviado um e-mail de confirmação. Clique no link recebido para guardar as alterações.
+                Foi enviado um e-mail de confirmação. Clique no link recebido para guardar as alterações. Se não o encontrar na caixa de entrada, verifique também o spam.
               </p>
             )}
 
