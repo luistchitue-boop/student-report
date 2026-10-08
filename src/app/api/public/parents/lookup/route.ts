@@ -25,11 +25,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Nenhum encarregado encontrado com este nome." }, { status: 404 });
     }
 
-    if (matches.length > 1) {
-      return NextResponse.json({ error: "Este nome corresponde a mais do que um perfil. Contacte a escola." }, { status: 409 });
-    }
-
-    return NextResponse.json({ parentId: matches[0].id });
+    return NextResponse.json({
+      parentIds: matches.map((parent) => parent.id),
+      parentName: matches[0].name,
+    });
   } catch (error) {
     console.error("Parent lookup failed:", error);
     return NextResponse.json({ error: "Não foi possível encontrar o perfil." }, { status: 500 });

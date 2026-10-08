@@ -18,8 +18,10 @@ type ParentSummary = {
 
 export function ParentContactEditor({
   parent,
+  linkedParents,
 }: {
   parent: ParentSummary;
+  linkedParents: ParentSummary[];
 }) {
   const [phone, setPhone] = useState(parent.phone);
   const [email, setEmail] = useState(parent.email);
@@ -53,21 +55,25 @@ export function ParentContactEditor({
     }
   }
 
-  const student = parent.student;
+  const students = linkedParents.flatMap((linkedParent) => linkedParent.student ? [linkedParent.student] : []);
 
   return (
     <main style={{ minHeight: "100vh", padding: "2rem 1rem", background: "#f5f7f4" }}>
       <section style={{ width: "100%", maxWidth: 680, margin: "0 auto", background: "#fff", borderRadius: 18, boxShadow: "0 10px 30px rgba(25, 52, 45, 0.08)", padding: "2rem", border: "1px solid #dfe7e1" }}>
         <p style={{ margin: "0 0 0.4rem", color: "#2f7d5a", fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Dados do encarregado</p>
         <h1 style={{ margin: "0 0 0.25rem", color: "#163b31", fontSize: "1.75rem" }}>{parent.name}</h1>
-        <p style={{ margin: "0 0 1.5rem", color: "#53645b" }}>Atualize os contactos associados ao aluno abaixo.</p>
+        <p style={{ margin: "0 0 1.5rem", color: "#53645b" }}>Atualize os contactos partilhados entre os alunos abaixo.</p>
 
-        {student ? (
+        {students.length > 0 ? (
           <div style={{ display: "grid", gap: "1rem", padding: "1rem", borderRadius: 12, background: "#f2f6f3", border: "1px solid #dfe7e1" }}>
-            <div>
-              <div style={{ color: "#53645b", fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>Aluno</div>
-              <div style={{ color: "#163b31", fontSize: "1.1rem", fontWeight: 700 }}>{student.name}</div>
-              {student.turma && <div style={{ color: "#53645b" }}>{student.turma.name}</div>}
+            <div style={{ display: "grid", gap: "0.55rem" }}>
+              <div style={{ color: "#53645b", fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>Alunos associados</div>
+              {students.map((student) => (
+                <div key={student.id} style={{ color: "#163b31", borderLeft: "3px solid #2f7d5a", paddingLeft: "0.7rem" }}>
+                  <div style={{ fontWeight: 700 }}>{student.name}</div>
+                  {student.turma && <div style={{ color: "#53645b", fontSize: "0.85rem" }}>{student.turma.name}</div>}
+                </div>
+              ))}
             </div>
 
             <label style={{ display: "grid", gap: "0.45rem", color: "#163b31", fontWeight: 600 }}>

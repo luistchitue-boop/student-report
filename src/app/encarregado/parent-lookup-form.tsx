@@ -26,7 +26,7 @@ export function ParentLookupForm() {
         throw new Error(result.error || "Não foi possível encontrar o perfil.");
       }
 
-      router.push(`/encarregado/${result.parentId}`);
+      router.push(`/encarregado/${result.parentIds[0]}?name=${encodeURIComponent(result.parentName)}`);
     } catch (lookupError) {
       setError(lookupError instanceof Error ? lookupError.message : "Não foi possível encontrar o perfil.");
     } finally {

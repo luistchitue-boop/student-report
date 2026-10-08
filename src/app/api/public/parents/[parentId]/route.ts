@@ -71,6 +71,16 @@ export async function PATCH(
       return NextResponse.json({ error: "Perfil não encontrado." }, { status: 404 });
     }
 
+    const parentGroup = await prisma.parent.findMany({
+      where: { name: parent.name, student: { active: true } },
+      select: { id: true },
+    });
+    const parentIds = [...new Set(parentGroup.map((item) => item.id))];
+
+    if (parentIds.length === 0) {
+      return NextResponse.json({ error: "Perfil não encontrado." }, { status: 404 });
+    }
+
     const apiKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL;
 
@@ -79,7 +89,7 @@ export async function PATCH(
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
-    const confirmationUrl = createParentContactConfirmationUrl(parentId, phone, email, appUrl);
+    const confirmationUrl = createParentContactConfirmationUrl(parentIds, phone, email, appUrl);
     const resend = new Resend(apiKey);
     const result = await resend.emails.send({
       from: fromEmail,

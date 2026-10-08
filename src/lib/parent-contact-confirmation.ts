@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 
 export type ParentContactConfirmationPayload = {
-  parentId: string;
+  parentIds: string[];
   phone: string;
   email: string;
   expiresAt: number;
@@ -66,17 +66,17 @@ export function verifyParentContactConfirmation(token: string) {
 }
 
 export function createParentContactConfirmationUrl(
-  parentId: string,
+  parentIds: string[],
   phone: string,
   email: string,
   appUrl: string
 ) {
   const payload = {
-    parentId,
+    parentIds,
     phone,
     email,
     expiresAt: Date.now() + TOKEN_TTL_MS,
   };
 
-  return new URL(`/api/public/parents/${parentId}/confirm`, appUrl).toString() + `?token=${encodeURIComponent(createParentContactConfirmation(payload))}`;
+  return new URL(`/api/public/parents/${parentIds[0]}/confirm`, appUrl).toString() + `?token=${encodeURIComponent(createParentContactConfirmation(payload))}`;
 }

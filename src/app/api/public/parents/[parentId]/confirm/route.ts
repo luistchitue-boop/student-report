@@ -16,15 +16,15 @@ export async function GET(
   }
 
   try {
-    const { parentId: tokenParentId, phone, email, expiresAt } = verifyParentContactConfirmation(token);
+    const { parentIds: tokenParentIds, phone, email, expiresAt } = verifyParentContactConfirmation(token);
     const { parentId } = await params;
 
-    if (tokenParentId !== parentId || expiresAt <= Date.now()) {
+    if (!tokenParentIds.includes(parentId) || expiresAt <= Date.now()) {
       return NextResponse.redirect(new URL("/encarregado?confirmed=invalid", request.url));
     }
 
-    await prisma.parent.update({
-      where: { id: parentId },
+    await prisma.parent.updateMany({
+      where: { id: { in: tokenParentIds } },
       data: { phone, email },
     });
 

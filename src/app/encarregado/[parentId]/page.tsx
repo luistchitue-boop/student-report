@@ -13,6 +13,18 @@ export default async function ParentContactPage({ params }: { params: Promise<{ 
   const { parentId } = await params;
   const parent = await prisma.parent.findUnique({
     where: { id: parentId },
+    select: { id: true, name: true, phone: true, email: true },
+  });
+
+  if (!parent) {
+    notFound();
+  }
+
+  const linkedParents = await prisma.parent.findMany({
+    where: {
+      name: parent.name,
+      student: { active: true },
+    },
     select: {
       id: true,
       name: true,
@@ -26,11 +38,10 @@ export default async function ParentContactPage({ params }: { params: Promise<{ 
         },
       },
     },
+    orderBy: [{ student: { name: "asc" } }],
   });
 
-  if (!parent) {
-    notFound();
-  }
+  const selectedParent = linkedParents.find((linkedParent) => linkedParent.id === parentId) ?? linkedParents[0];
 
-  return <ParentContactEditor parent={parent} />;
+  return <ParentContactEditor parent={selectedParent ?? parent} linkedParents={linkedParents} />;
 }
