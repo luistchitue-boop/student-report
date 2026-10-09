@@ -28,7 +28,6 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [alreadyRecorded, setAlreadyRecorded] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportStart, setExportStart] = useState("");
   const [exportEnd, setExportEnd] = useState("");
@@ -92,9 +91,8 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       .then((data: { grades?: Array<{ studentId: string; value: number }>; alreadyRecorded?: boolean }) => {
         if (!cancelled) {
           setGrades(Object.fromEntries((data.grades ?? []).map((grade) => [grade.studentId, String(grade.value)])));
-          setAlreadyRecorded(Boolean(data.alreadyRecorded ?? (data.grades ?? []).length > 0));
           if (data.alreadyRecorded || (data.grades ?? []).length > 0) {
-            setStatus("Já existe uma mini pauta para esta disciplina no intervalo selecionado. Não pode guardar novamente o mesmo período.");
+            setStatus("Já existem notas neste período. Pode alterá-las e guardar para substituir as anteriores.");
           } else {
             setStatus("");
           }
@@ -123,11 +121,6 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       return;
     }
 
-    if (alreadyRecorded) {
-      setStatus("Já existe uma mini pauta para esta disciplina no intervalo semanal selecionado. Não pode guardar novamente o mesmo período.");
-      return;
-    }
-
     const gradeEntries = Object.entries(grades)
       .filter(([, value]) => value.trim() !== "")
       .map(([studentId, value]) => ({ studentId, value: Number(value) }));
@@ -147,7 +140,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível guardar a mini pauta.");
-      setStatus(`${data.saved} nota(s) guardada(s) para o intervalo selecionado.`);
+      setStatus(`${data.saved} nota(s) guardada(s). As notas anteriores deste período foram substituídas.`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível guardar a mini pauta.");
     } finally {
@@ -272,7 +265,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
 
         <div className="mini-pauta-footer">
           <span>{isLoading ? "A carregar notas..." : `${Object.values(grades).filter(Boolean).length} de ${turma.roster.length} alunos avaliados`}</span>
-          <div className="mini-pauta-footer-actions"><button type="button" className="mini-pauta-export-button" onClick={() => { setExportSubject(subject); setShowExportModal(true); }}>Export</button><button type="button" className="mini-pauta-save-button" onClick={saveGrades} disabled={isSaving || isLoading || alreadyRecorded || !weekStart || isFuturePeriod(weekStart)}>{isSaving ? "A guardar..." : "Guardar notas"}</button></div>
+          <div className="mini-pauta-footer-actions"><button type="button" className="mini-pauta-export-button" onClick={() => { setExportSubject(subject); setShowExportModal(true); }}>Export</button><button type="button" className="mini-pauta-save-button" onClick={saveGrades} disabled={isSaving || isLoading || !weekStart || isFuturePeriod(weekStart)}>{isSaving ? "A guardar..." : "Guardar notas"}</button></div>
         </div>
         {status ? <p className="mini-pauta-status">{status}</p> : null}
       </section>

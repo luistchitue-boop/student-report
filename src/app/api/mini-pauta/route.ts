@@ -97,24 +97,17 @@ export async function POST(request: NextRequest) {
     });
     const term = `Semanal:${weekStart}:${weekEnd}`;
 
-    const existingGradeCount = await prisma.grade.count({
-      where: { studentId: { in: turma.students.map((student) => student.id) }, subject, term },
-    });
-
-    if (existingGradeCount > 0) {
-      return NextResponse.json(
-        {
-          error: "Já existe uma mini pauta registada para esta disciplina no intervalo semanal selecionado. Não pode voltar a guardar o mesmo intervalo.",
-        },
-        { status: 409 }
-      );
-    }
-
-    if (validGrades.length) {
-      await prisma.grade.createMany({
-        data: validGrades.map((entry) => ({ studentId: entry.studentId, subject, value: entry.value, term })),
+    await prisma.$transaction(async (tx) => {
+      await tx.grade.deleteMany({
+        where: { studentId: { in: turma.students.map((student) => student.id) }, subject, term },
       });
-    }
+
+      if (validGrades.length) {
+        await tx.grade.createMany({
+          data: validGrades.map((entry) => ({ studentId: entry.studentId, subject, value: entry.value, term })),
+        });
+      }
+    });
 
     if (validGrades.length) {
       await createActivityLog({
