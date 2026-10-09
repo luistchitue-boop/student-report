@@ -648,6 +648,9 @@ export async function POST(request: Request) {
     const periodEndNextDate = new Date(period.end.getFullYear(), period.end.getMonth(), period.end.getDate() + 1, 12);
     const currentPeriodStart = formatPeriodDate(period.start);
     const currentPeriodEnd = formatPeriodDate(period.end);
+    const [periodEndYear, periodEndMonth, periodEndDay] = currentPeriodEnd.split("-").map(Number);
+    const absenceStartDate = new Date(`${currentPeriodStart}T00:00:00.000Z`);
+    const absenceEndExclusive = new Date(Date.UTC(periodEndYear, periodEndMonth - 1, periodEndDay + 1));
     const previousPeriodStart = previousPeriod ? formatPeriodDate(previousPeriod.start) : null;
     const previousPeriodEnd = previousPeriod ? formatPeriodDate(previousPeriod.end) : null;
     const periodIndexInYear = weeklyPeriods.findIndex((item) => item.key === period.key);
@@ -656,8 +659,6 @@ export async function POST(request: Request) {
     const reportPeriods = period.type === "MONTHLY" ? weeklyPeriods.filter((weeklyPeriod) => weeklyPeriod.start >= period.start && weeklyPeriod.end <= period.end) : [...pastWeeklyPeriods, ...futureWeeklyPeriods];
     const weeklyPeriodTerms = reportPeriods.map((weeklyPeriod) => `Semanal:${formatPeriodDate(weeklyPeriod.start)}:${formatPeriodDate(weeklyPeriod.end)}`);
     const weeklyPeriodLabels = reportPeriods.map((weeklyPeriod) => `${String(weeklyPeriod.start.getDate()).padStart(2, "0")}/${String(weeklyPeriod.start.getMonth() + 1).padStart(2, "0")}-${String(weeklyPeriod.end.getDate()).padStart(2, "0")}/${String(weeklyPeriod.end.getMonth() + 1).padStart(2, "0")}`);
-    const absenceStart = previousPeriodStart ?? currentPeriodStart;
-
     const turmas = await prisma.turma.findMany({
       where: { id: { in: turmaIds } },
       include: {
@@ -673,7 +674,7 @@ export async function POST(request: Request) {
             parents: { select: { id: true, name: true, email: true, phone: true } },
             weeklyObservations: { where: { weekStart: { gte: periodStartDate, lt: periodEndNextDate } }, select: { weekStart: true, weekEnd: true, behavior: true, teacherObservation: true } },
             grades: { where: { term: { startsWith: "Semanal:" } } },
-            absences: { where: { dia: { gte: new Date(`${absenceStart}T00:00:00Z`), lte: new Date(`${currentPeriodEnd}T23:59:59.999Z`) } } },
+            absences: { where: { dia: { gte: absenceStartDate, lt: absenceEndExclusive } } },
           },
         },
       },
@@ -691,8 +692,6 @@ export async function POST(request: Request) {
       for (const student of turma.students) {
         if (!student.active) continue;
         if (studentIds.length && !studentIds.includes(student.id)) continue;
-        const currentStartTime = new Date(`${formatPeriodDate(period.start)}T00:00:00Z`).getTime();
-        const currentEndTime = new Date(`${formatPeriodDate(period.end)}T23:59:59.999Z`).getTime();
         const currentTerm = `Semanal:${currentPeriodStart}:${currentPeriodEnd}`;
         const previousTerm = previousPeriodStart && previousPeriodEnd ? `Semanal:${previousPeriodStart}:${previousPeriodEnd}` : "";
         const currentGrades = period.type === "MONTHLY"
@@ -707,7 +706,7 @@ export async function POST(request: Request) {
           : [];
         const weeklyGrades = student.grades.filter((grade) => weeklyPeriodTerms.includes(grade.term));
         const globalGrades = student.grades;
-        const currentAbsences = student.absences.filter((absence) => absence.dia.getTime() >= currentStartTime && absence.dia.getTime() <= currentEndTime);
+        const currentAbsences = student.absences;
         const reportTeacherName = turma.teacherAssignments[0]?.teacher.name ?? turma.coordinator?.name ?? "";
         const reportTeacherPhone = turma.teacherAssignments[0]?.teacher.phone ?? null;
         const teacherObservation = await proofreadCoordinatorObservation(student.weeklyObservations[0]?.teacherObservation);
