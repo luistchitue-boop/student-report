@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PrismaClient } from "@prisma/client";
 import { ParentContactEditor } from "./parent-contact-editor";
+import { normalizeParentName } from "@/lib/parent-contact";
 
 const prisma = new PrismaClient();
 
@@ -20,11 +21,8 @@ export default async function ParentContactPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  const linkedParents = await prisma.parent.findMany({
-    where: {
-      name: parent.name,
-      student: { active: true },
-    },
+  const activeParents = await prisma.parent.findMany({
+    where: { student: { active: true } },
     select: {
       id: true,
       name: true,
@@ -40,6 +38,8 @@ export default async function ParentContactPage({ params }: { params: Promise<{ 
     },
     orderBy: [{ student: { name: "asc" } }],
   });
+  const normalizedName = normalizeParentName(parent.name);
+  const linkedParents = activeParents.filter((linkedParent) => normalizeParentName(linkedParent.name) === normalizedName);
 
   const selectedParent = linkedParents.find((linkedParent) => linkedParent.id === parentId) ?? linkedParents[0];
 

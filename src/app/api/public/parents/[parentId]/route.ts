@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { Resend } from "resend";
 import { createParentContactConfirmationUrl } from "@/lib/parent-contact-confirmation";
+import { normalizeParentName } from "@/lib/parent-contact";
 
 const prisma = new PrismaClient();
 
@@ -17,19 +18,26 @@ export async function GET(
       name: true,
       phone: true,
       email: true,
-      student: {
-        select: {
-          id: true,
-          name: true,
-          turma: { select: { id: true, name: true } },
-        },
-      },
     },
   });
 
   if (!parent) {
     return NextResponse.json({ error: "Perfil não encontrado." }, { status: 404 });
   }
+
+  const candidateParents = await prisma.parent.findMany({
+    where: { student: { active: true } },
+    select: {
+      id: true,
+      name: true,
+      student: { select: { id: true, name: true, turma: { select: { id: true, name: true } } } },
+    },
+  });
+  const normalizedName = normalizeParentName(parent.name);
+  const students = candidateParents
+    .filter((candidate) => normalizeParentName(candidate.name) === normalizedName)
+    .flatMap((candidate) => candidate.student ? [candidate.student] : [])
+    .filter((student, index, all) => all.findIndex((item) => item.id === student.id) === index);
 
   return NextResponse.json({
     parent: {
@@ -38,11 +46,7 @@ export async function GET(
       phone: parent.phone,
       email: parent.email,
     },
-    students: parent.student ? [{
-      id: parent.student.id,
-      name: parent.student.name,
-      turma: parent.student.turma,
-    }] : [],
+    students,
   });
 }
 
@@ -72,10 +76,13 @@ export async function PATCH(
     }
 
     const parentGroup = await prisma.parent.findMany({
-      where: { name: parent.name, student: { active: true } },
-      select: { id: true },
+      where: { student: { active: true } },
+      select: { id: true, name: true },
     });
-    const parentIds = [...new Set(parentGroup.map((item) => item.id))];
+    const normalizedName = normalizeParentName(parent.name);
+    const parentIds = parentGroup
+      .filter((item) => normalizeParentName(item.name) === normalizedName)
+      .map((item) => item.id);
 
     if (parentIds.length === 0) {
       return NextResponse.json({ error: "Perfil não encontrado." }, { status: 404 });

@@ -55,7 +55,9 @@ export function ParentContactEditor({
     }
   }
 
-  const students = linkedParents.flatMap((linkedParent) => linkedParent.student ? [linkedParent.student] : []);
+  const students = linkedParents
+    .flatMap((linkedParent) => linkedParent.student ? [linkedParent.student] : [])
+    .filter((student, index, all) => all.findIndex((item) => item.id === student.id) === index);
 
   return (
     <main style={{ minHeight: "100vh", padding: "2rem 1rem", background: "#f5f7f4" }}>
