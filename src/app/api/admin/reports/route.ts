@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
   const periodKey = searchParams.get("periodKey") ?? "";
   const turmaId = searchParams.get("turmaId") ?? "";
   const channel = searchParams.get("channel") === "WHATSAPP" ? "WHATSAPP" : "EMAIL";
-  const period = getWeeklyCoordinationPeriods(new Date().getFullYear()).find((item) => item.key === periodKey);
+  const period = [...getWeeklyCoordinationPeriods(new Date().getFullYear()), ...getMonthlyCoordinationPeriods(new Date().getFullYear())].find((item) => item.key === periodKey);
   if (!period || !turmaId) return NextResponse.json({ error: "Período e turma são obrigatórios." }, { status: 400 });
 
   const deliveries = await prisma.reportDelivery.findMany({
@@ -682,9 +682,9 @@ export async function POST(request: Request) {
 
     const recipients: Array<{ email: string; phone: string; reportUrl: string; studentName: string; firstName: string; studentId: string; turmaId: string; recipientName: string; pdfBuffer?: Buffer }> = [];
     const previewPdfs: Buffer[] = [];
-    const saveDelivery = (data: { turmaId: string; studentId: string; recipientName?: string; recipientEmail: string; reportUrl?: string; status: "SENT" | "FAILED"; error?: string }) => prisma.reportDelivery.upsert({
+    const saveDelivery = (data: { turmaId: string; studentId: string; recipientName?: string; recipientEmail: string; reportUrl?: string; providerEmailId?: string; status: "SENT" | "FAILED"; error?: string }) => prisma.reportDelivery.upsert({
       where: { studentId_periodStart_recipientEmail_channel: { studentId: data.studentId, periodStart: period.start, recipientEmail: data.recipientEmail, channel } },
-      update: { turmaId: data.turmaId, periodEnd: period.end, recipientName: data.recipientName, reportUrl: data.reportUrl, status: data.status, error: data.error, attemptedAt: new Date() },
+      update: { turmaId: data.turmaId, periodEnd: period.end, recipientName: data.recipientName, reportUrl: data.reportUrl, providerEmailId: data.providerEmailId, status: data.status, error: data.error, attemptedAt: new Date() },
       create: { ...data, channel, periodStart: period.start, periodEnd: period.end },
     });
 
@@ -870,7 +870,7 @@ export async function POST(request: Request) {
 
       if (!result.error) {
         sent += 1;
-        await saveDelivery({ turmaId: recipient.turmaId, studentId: recipient.studentId, recipientName: recipient.recipientName, recipientEmail: recipient.email, reportUrl: "attached", status: "SENT" });
+        await saveDelivery({ turmaId: recipient.turmaId, studentId: recipient.studentId, recipientName: recipient.recipientName, recipientEmail: recipient.email, reportUrl: "attached", providerEmailId: result.data?.id, status: "SENT" });
         results.push({ email: recipient.email, studentName: recipient.studentName, success: true });
       } else {
         await saveDelivery({ turmaId: recipient.turmaId, studentId: recipient.studentId, recipientName: recipient.recipientName, recipientEmail: recipient.email, reportUrl: "attached", status: "FAILED", error: result.error.message });

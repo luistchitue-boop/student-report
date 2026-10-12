@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatPeriodDate, getPeriodLabel, getReportPeriods, isDateInPeriod } from "@/lib/weekly-coordination";
+import { DeliveryOverview } from "./delivery-overview";
 
 type Turma = {
   id: string;
@@ -207,6 +208,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
 
   return (
     <section className="admin-shell workspace">
+      {canSend && <DeliveryOverview />}
       <div className="section-heading admin-heading">
         <div>
           <p className="eyebrow">SELECIONE AS TURMAS</p>
