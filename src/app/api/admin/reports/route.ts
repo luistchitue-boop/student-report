@@ -10,6 +10,7 @@ import { jsPDF } from "jspdf";
 import { PDFDocument } from "pdf-lib";
 import { auth } from "@/auth";
 import { proofreadCoordinatorObservation } from "@/lib/proofread-observation";
+import { isSendableEmailAddress } from "@/lib/email-address";
 import { formatPeriodDate, getMonthlyCoordinationPeriods, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 declare global {
@@ -745,8 +746,13 @@ export async function POST(request: Request) {
           const email = parent.email?.trim().toLowerCase();
           const phone = parent.phone ? normalizeAngolaPhone(parent.phone) : "";
           const recipient = channel === "EMAIL" ? email : phone;
-          if (!recipient || (channel === "EMAIL" ? !recipient.includes("@") : recipient.length < 8)) {
-            await saveDelivery({ turmaId: turma.id, studentId: student.id, recipientName: parent.name, recipientEmail: recipient || `(sem ${channel === "EMAIL" ? "email" : "telefone"} ${parent.name})`, status: "FAILED", error: channel === "EMAIL" ? "O encarregado não tem um endereço de e-mail válido." : "O encarregado não tem um número de WhatsApp válido." });
+          if (!recipient || (channel === "EMAIL" ? !isSendableEmailAddress(recipient) : recipient.length < 8)) {
+            const error = channel === "EMAIL"
+              ? email && !isSendableEmailAddress(email)
+                ? "Endereço de e-mail de teste/reservado; envio ignorado. Atualize o contacto do encarregado com um e-mail real."
+                : "O encarregado não tem um endereço de e-mail válido."
+              : "O encarregado não tem um número de WhatsApp válido.";
+            await saveDelivery({ turmaId: turma.id, studentId: student.id, recipientName: parent.name, recipientEmail: recipient || `(sem ${channel === "EMAIL" ? "email" : "telefone"} ${parent.name})`, status: "FAILED", error });
             continue;
           }
           const firstName = parent.name.trim().split(/\s+/)[0] || "encarregado";

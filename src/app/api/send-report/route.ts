@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import twilio from "twilio";
+import { isSendableEmailAddress } from "@/lib/email-address";
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character);
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
     const { phone, email, channel = "whatsapp", reportUrl, reportName } = await request.json();
     if (channel !== "whatsapp" && channel !== "sms" && channel !== "email") return NextResponse.json({ error: "Canal de envio não suportado." }, { status: 400 });
     if ((channel === "email" && !email) || (channel !== "email" && !phone) || !reportUrl || !reportName) return NextResponse.json({ error: "O destinatário, o endereço do relatório e o nome do relatório são obrigatórios." }, { status: 400 });
-    if (channel === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: "Introduza um endereço de e-mail válido." }, { status: 400 });
+    if (channel === "email" && !isSendableEmailAddress(email)) return NextResponse.json({ error: "Este endereço é inválido ou parece ser um endereço de teste. Introduza um e-mail real do encarregado." }, { status: 400 });
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
     const resolvedReportUrl = new URL(reportUrl, appUrl).toString();
     const parsedUrl = new URL(resolvedReportUrl);
