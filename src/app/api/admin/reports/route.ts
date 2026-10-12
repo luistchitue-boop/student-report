@@ -155,6 +155,7 @@ async function generateStudentReportPdf({
   gradeScale,
   teacherName,
   teacherPhone,
+  periodType,
   periodStart,
   periodEnd,
   hasPreviousPeriod,
@@ -175,6 +176,7 @@ async function generateStudentReportPdf({
   gradeScale: number;
   teacherName: string;
   teacherPhone?: string | null;
+  periodType: "WEEKLY" | "MONTHLY";
   periodStart: Date;
   periodEnd: Date;
   hasPreviousPeriod: boolean;
@@ -230,7 +232,7 @@ async function generateStudentReportPdf({
     doc.text("NOVA ESCOLA POLITÉCNICA DO HUAMBO", 100, 42);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("Rua Vicente Ferreira nº 64, Cidade Baixa - Huambo", 100, 55);
+    doc.text("Rua Vicente Ferreira 60-64, Cidade Baixa, Huambo", 100, 55);
     doc.text("https://www.neph.ao", 100, 67);
   };
 
@@ -245,7 +247,7 @@ async function generateStudentReportPdf({
   const reportHeaderCenterX = pageWidth / 2;
   doc.setFont("times", "bold");
   doc.setFontSize(22);
-  doc.text(periodStart.getMonth() === periodEnd.getMonth() && periodStart.getFullYear() === periodEnd.getFullYear() ? "RELATÓRIO MENSAL" : "RELATÓRIO SEMANAL", reportHeaderCenterX, 112, { align: "center" });
+  doc.text(periodType === "MONTHLY" ? "RELATÓRIO MENSAL" : "RELATÓRIO SEMANAL", reportHeaderCenterX, 112, { align: "center" });
   doc.setFont("times", "normal");
   doc.setFontSize(11);
   doc.text(`${formatPeriodDate(periodStart)} a ${formatPeriodDate(periodEnd)}`, reportHeaderCenterX, 128, { align: "center" });
@@ -268,7 +270,7 @@ async function generateStudentReportPdf({
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.text(`Turma: ${turmaName}`, 135, 190);
-  doc.text("Período semanal", 135, 207);
+  doc.text(`Período ${periodType === "MONTHLY" ? "mensal" : "semanal"}`, 135, 207);
 
   const averageValue = grades.length ? grades.reduce((total, grade) => total + Number(grade.value), 0) / grades.length : 0;
   const average = averageValue.toFixed(1);
@@ -722,6 +724,7 @@ export async function POST(request: Request) {
             gradeScale: turma.gradeScale,
             teacherName: reportTeacherName,
             teacherPhone: reportTeacherPhone,
+            periodType: period.type,
             periodStart: period.start,
             periodEnd: period.end,
             hasPreviousPeriod: Boolean(previousPeriod),
@@ -771,6 +774,7 @@ export async function POST(request: Request) {
           gradeScale: turma.gradeScale,
           teacherName: reportTeacherName,
           teacherPhone: reportTeacherPhone,
+          periodType: period.type,
           periodStart: period.start,
           periodEnd: period.end,
           hasPreviousPeriod: Boolean(previousPeriod),
