@@ -4,6 +4,7 @@ const PLACEHOLDER_DOMAINS = new Set([
   "example.org",
   "example.edu",
   "test.com",
+  "teste.com",
 ]);
 
 const RESERVED_DOMAIN_SUFFIXES = [".example", ".invalid", ".localhost", ".test"];
