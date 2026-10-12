@@ -255,14 +255,16 @@ async function generateStudentReportPdf({
   const photoCenterX = 85;
   const photoCenterY = 185;
   const photoRadius = 38;
-  doc.setFillColor(190, 185, 178);
-  doc.circle(photoCenterX, photoCenterY + 2, photoRadius + 1, "F");
-  doc.setFillColor(220, 238, 224);
-  doc.circle(photoCenterX, photoCenterY, photoRadius, "F");
-  if (avatarDataUrl) doc.addImage(avatarDataUrl.data, avatarDataUrl.format, photoCenterX - 37, photoCenterY - 37, 74, 74);
-  doc.setDrawColor(255, 255, 255);
-  doc.setLineWidth(2.5);
-  doc.circle(photoCenterX, photoCenterY, photoRadius, "S");
+  if (avatarDataUrl) {
+    doc.setFillColor(190, 185, 178);
+    doc.circle(photoCenterX, photoCenterY + 2, photoRadius + 1, "F");
+    doc.setFillColor(220, 238, 224);
+    doc.circle(photoCenterX, photoCenterY, photoRadius, "F");
+    doc.addImage(avatarDataUrl.data, avatarDataUrl.format, photoCenterX - 37, photoCenterY - 37, 74, 74);
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(2.5);
+    doc.circle(photoCenterX, photoCenterY, photoRadius, "S");
+  }
   doc.setTextColor(...ink);
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
@@ -383,14 +385,16 @@ async function generateStudentReportPdf({
   doc.text(`${formatPeriodDate(periodStart)} a ${formatPeriodDate(periodEnd)}`, margin, 146);
   const detailPhotoX = pageWidth - margin - 28;
   const detailPhotoY = 122;
-  doc.setFillColor(190, 185, 178);
-  doc.circle(detailPhotoX, detailPhotoY + 2, 29, "F");
-  doc.setFillColor(220, 238, 224);
-  doc.circle(detailPhotoX, detailPhotoY, 28, "F");
-  if (avatarDataUrl) doc.addImage(avatarDataUrl.data, avatarDataUrl.format, detailPhotoX - 27, detailPhotoY - 27, 54, 54);
-  doc.setDrawColor(255, 255, 255);
-  doc.setLineWidth(2);
-  doc.circle(detailPhotoX, detailPhotoY, 28, "S");
+  if (avatarDataUrl) {
+    doc.setFillColor(190, 185, 178);
+    doc.circle(detailPhotoX, detailPhotoY + 2, 29, "F");
+    doc.setFillColor(220, 238, 224);
+    doc.circle(detailPhotoX, detailPhotoY, 28, "F");
+    doc.addImage(avatarDataUrl.data, avatarDataUrl.format, detailPhotoX - 27, detailPhotoY - 27, 54, 54);
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(2);
+    doc.circle(detailPhotoX, detailPhotoY, 28, "S");
+  }
 
   const pageHeight = doc.internal.pageSize.getHeight();
   const detailBottom = pageHeight - 48;
@@ -413,14 +417,16 @@ async function generateStudentReportPdf({
     doc.text(`${formatPeriodDate(periodStart)} a ${formatPeriodDate(periodEnd)}`, margin, 146);
     const continuationPhotoX = pageWidth - margin - 28;
     const continuationPhotoY = 122;
-    doc.setFillColor(190, 185, 178);
-    doc.circle(continuationPhotoX, continuationPhotoY + 2, 29, "F");
-    doc.setFillColor(220, 238, 224);
-    doc.circle(continuationPhotoX, continuationPhotoY, 28, "F");
-    if (avatarDataUrl) doc.addImage(avatarDataUrl.data, avatarDataUrl.format, continuationPhotoX - 27, continuationPhotoY - 27, 54, 54);
-    doc.setDrawColor(255, 255, 255);
-    doc.setLineWidth(2);
-    doc.circle(continuationPhotoX, continuationPhotoY, 28, "S");
+    if (avatarDataUrl) {
+      doc.setFillColor(190, 185, 178);
+      doc.circle(continuationPhotoX, continuationPhotoY + 2, 29, "F");
+      doc.setFillColor(220, 238, 224);
+      doc.circle(continuationPhotoX, continuationPhotoY, 28, "F");
+      doc.addImage(avatarDataUrl.data, avatarDataUrl.format, continuationPhotoX - 27, continuationPhotoY - 27, 54, 54);
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(2);
+      doc.circle(continuationPhotoX, continuationPhotoY, 28, "S");
+    }
     detailY = 184;
   };
   const ensureDetailSpace = (height: number, continuationColumns?: Array<{ label: string; width: number }>) => {
