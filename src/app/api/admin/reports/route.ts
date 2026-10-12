@@ -68,10 +68,13 @@ async function loadImageDataUrl(url?: string | null) {
       ? await fetch(url)
       : new Response(await readFile(path.join(process.cwd(), "public", "school-logo.png")), { headers: { "Content-Type": "image/png" } });
     if (!response.ok) return null;
-    const contentType = response.headers.get("content-type")?.split(";")[0] ?? "image/png";
     const bytes = Buffer.from(await response.arrayBuffer());
-    const format = contentType === "image/jpeg" ? "JPEG" : contentType === "image/webp" ? "WEBP" : "PNG";
-    return { data: `data:${contentType};base64,${bytes.toString("base64")}`, format };
+    const optimizedLogo = await sharp(bytes)
+      .rotate()
+      .resize(256, 256, { fit: "inside", withoutEnlargement: true })
+      .png({ compressionLevel: 9, palette: true, quality: 90 })
+      .toBuffer();
+    return { data: `data:image/png;base64,${optimizedLogo.toString("base64")}`, format: "PNG" as const };
   } catch {
     return null;
   }
@@ -100,7 +103,7 @@ async function loadMetricCardImage(fileName: string) {
         { input: roundedMask, blend: "dest-in" },
         { input: readabilityGradient, blend: "over" },
       ])
-      .png()
+      .png({ compressionLevel: 9, palette: true, quality: 85 })
       .toBuffer();
     return { data: `data:image/png;base64,${cardImage.toString("base64")}`, format: "PNG" as const };
   } catch {
@@ -114,11 +117,12 @@ async function loadCircularAvatarDataUrl(url?: string | null) {
     const response = await fetch(url);
     if (!response.ok) return null;
     const source = Buffer.from(await response.arrayBuffer());
-    const mask = Buffer.from(`<svg width="160" height="160"><circle cx="80" cy="80" r="80" fill="white"/></svg>`);
+    const mask = Buffer.from(`<svg width="128" height="128"><circle cx="64" cy="64" r="64" fill="white"/></svg>`);
     const circularPng = await sharp(source)
-      .resize(160, 160, { fit: "cover", position: "centre" })
+      .rotate()
+      .resize(128, 128, { fit: "cover", position: "centre" })
       .composite([{ input: mask, blend: "dest-in" }])
-      .png()
+      .png({ compressionLevel: 9 })
       .toBuffer();
     return { data: `data:image/png;base64,${circularPng.toString("base64")}`, format: "PNG" as const };
   } catch {
@@ -194,7 +198,7 @@ async function generateStudentReportPdf({
     loadMetricCardImage("faltas.jpeg"),
     loadMetricCardImage("notas.jpeg"),
   ]);
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const doc = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 40;
         const paper = [246, 229, 219] as const;
