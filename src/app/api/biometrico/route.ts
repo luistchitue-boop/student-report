@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
-import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
+import { isTurmaWeeklyPeriodClosed } from "@/lib/closed-periods";
 import { getTurmaPeriodCompleteness } from "@/lib/turma-completeness";
 
 const prisma = new PrismaClient();
@@ -27,10 +27,6 @@ export async function POST(request: Request) {
     if (!period || period.start > new Date()) {
       return NextResponse.json({ error: "Não é possível preencher um período futuro." }, { status: 400 });
     }
-    if (period && await isWeeklyPeriodClosed(period.start, period.end, prisma)) {
-      return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar o relatório." }, { status: 403 });
-    }
-
     const turma = await prisma.turma.findFirst({
       where: { id: turmaId, teacherAssignments: { some: { isMain: true, teacher: { userId: session.user.id, role: "COORDENADOR" } } } },
       select: { id: true },
@@ -38,6 +34,10 @@ export async function POST(request: Request) {
 
     if (!turma) {
       return NextResponse.json({ error: "Não tem acesso a esta turma." }, { status: 403 });
+    }
+
+    if (period && await isTurmaWeeklyPeriodClosed(turma.id, period.start, period.end, prisma)) {
+      return NextResponse.json({ error: "Este período está fechado para esta turma. Não é possível registar o relatório." }, { status: 403 });
     }
 
     const completeness = await getTurmaPeriodCompleteness(prisma, turma.id, period);

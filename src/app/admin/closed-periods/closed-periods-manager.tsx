@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getWeeklyCoordinationPeriods, formatPeriodDate } from "@/lib/weekly-coordination";
+import { getMonthlyCoordinationPeriods, getWeeklyCoordinationPeriods, formatPeriodDate, getPeriodLabel } from "@/lib/weekly-coordination";
 
 type ClosedPeriod = {
   id: string;
@@ -20,6 +20,26 @@ type WeeklyPeriodWithStatus = {
   closedInfo?: ClosedPeriod;
 };
 
+type Turma = { id: string; name: string };
+type MonthlyClosure = {
+  id: string;
+  turmaId: string;
+  periodStart: string;
+  periodEnd: string;
+  closedAt: string;
+  reason: string | null;
+  turma: Turma;
+  closedBy: { id: string; name: string | null; email: string };
+};
+
+function getAvailableMonthlyPeriods() {
+  const currentYear = new Date().getFullYear();
+  return [currentYear - 2, currentYear - 1, currentYear]
+    .flatMap((year) => getMonthlyCoordinationPeriods(year))
+    .filter((period) => period.start <= new Date())
+    .sort((a, b) => b.start.getTime() - a.start.getTime());
+}
+
 export function ClosedPeriodsManager() {
   const [weeklyPeriods, setWeeklyPeriods] = useState<WeeklyPeriodWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +47,12 @@ export function ClosedPeriodsManager() {
   const [message, setMessage] = useState("");
   const [expandedPeriod, setExpandedPeriod] = useState<string | null>(null);
   const [closeReason, setCloseReason] = useState("");
-  const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
+  const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [monthlyClosures, setMonthlyClosures] = useState<MonthlyClosure[]>([]);
+  const monthlyPeriods = getAvailableMonthlyPeriods();
+  const [selectedMonthKey, setSelectedMonthKey] = useState(() => monthlyPeriods[0]?.key ?? "");
+  const [selectedTurmaId, setSelectedTurmaId] = useState("");
+  const [monthlyCloseReason, setMonthlyCloseReason] = useState("");
 
   async function loadPeriods() {
     setLoading(true);
@@ -35,6 +60,8 @@ export function ClosedPeriodsManager() {
       const response = await fetch("/api/admin/closed-periods");
       if (!response.ok) throw new Error("Não foi possível carregar os períodos.");
       const data = await response.json();
+      setTurmas(data.turmas ?? []);
+      setMonthlyClosures(data.monthlyClosures ?? []);
       
       const closedPeriodsMap = new Map<string, ClosedPeriod>(
         data.closedPeriods.map((p: ClosedPeriod) => [
@@ -64,14 +91,13 @@ export function ClosedPeriodsManager() {
   }
 
   useEffect(() => {
-    loadPeriods();
+    Promise.resolve().then(loadPeriods);
   }, []);
 
   async function handleTogglePeriod(period: WeeklyPeriodWithStatus) {
     if (period.isClosed) {
       await handleOpenPeriod(period);
     } else {
-      setSelectedPeriod(formatPeriodDate(period.start));
       setExpandedPeriod(formatPeriodDate(period.start));
       setCloseReason("");
     }
@@ -102,7 +128,6 @@ export function ClosedPeriodsManager() {
       setAction("success");
       setMessage(`Período de ${formatPeriodDate(period.start)} fechado com sucesso.`);
       setExpandedPeriod(null);
-      setSelectedPeriod(null);
       setCloseReason("");
       loadPeriods();
     } catch (error) {
@@ -135,6 +160,39 @@ export function ClosedPeriodsManager() {
       setAction("success");
       setMessage(`Período de ${formatPeriodDate(period.start)} reaberto com sucesso.`);
       loadPeriods();
+    } catch (error) {
+      setAction("error");
+      setMessage(error instanceof Error ? error.message : "Erro inesperado.");
+    }
+  }
+
+  async function toggleMonthlyClosure(closure?: MonthlyClosure) {
+    const turmaId = closure?.turmaId ?? selectedTurmaId;
+    const periodKey = closure
+      ? `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}`
+      : selectedMonthKey;
+    if (!turmaId || !periodKey) return;
+    setAction("saving");
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/closed-periods", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: closure ? "openTurmaMonth" : "closeTurmaMonth",
+          turmaId,
+          periodKey,
+          reason: closure ? undefined : monthlyCloseReason || null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Não foi possível atualizar o fecho mensal.");
+      const month = monthlyPeriods.find((period) => period.key === periodKey);
+      const turmaName = turmas.find((turma) => turma.id === turmaId)?.name ?? closure?.turma.name ?? "turma";
+      setMessage(closure ? `Período mensal reaberto para ${turmaName}.` : `Período mensal fechado para ${turmaName}.`);
+      setMonthlyCloseReason("");
+      await loadPeriods();
+      if (!month) setSelectedMonthKey(periodKey);
     } catch (error) {
       setAction("error");
       setMessage(error instanceof Error ? error.message : "Erro inesperado.");
@@ -329,6 +387,48 @@ export function ClosedPeriodsManager() {
           );
         })}
       </div>
+
+      <section style={{ marginTop: 36, padding: 20, border: "1px solid #d7e2dc", borderRadius: 12, background: "#fff" }}>
+        <div style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: "0 0 8px" }}>Fecho mensal por turma</h3>
+          <p style={{ color: "#58665f", fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+            Ao fechar um mês para uma turma, os professores deixam de poder alterar faltas e justificações desse mês, nem notas, observações ou relatórios semanais dos períodos semanais inteiramente incluídos no mês.
+          </p>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 12, marginBottom: 18 }}>
+          <label style={{ display: "grid", gap: 6, color: "#334155", fontSize: 13, fontWeight: 700 }}>
+            Mês
+            <select value={selectedMonthKey} onChange={(event) => setSelectedMonthKey(event.target.value)} style={{ minWidth: 210, padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 6, background: "white" }}>
+              {monthlyPeriods.map((period) => <option key={period.key} value={period.key}>{getPeriodLabel(period)}</option>)}
+            </select>
+          </label>
+          <label style={{ display: "grid", gap: 6, color: "#334155", fontSize: 13, fontWeight: 700 }}>
+            Turma
+            <select value={selectedTurmaId} onChange={(event) => setSelectedTurmaId(event.target.value)} style={{ minWidth: 210, padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 6, background: "white" }}>
+              <option value="">Selecione uma turma</option>
+              {turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
+            </select>
+          </label>
+          <button type="button" onClick={() => toggleMonthlyClosure()} disabled={action === "saving" || !selectedTurmaId || !selectedMonthKey || monthlyClosures.some((closure) => closure.turmaId === selectedTurmaId && `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey)} style={{ padding: "10px 16px", border: 0, borderRadius: 6, background: "#b42318", color: "white", fontWeight: 700, cursor: action === "saving" ? "wait" : "pointer", opacity: action === "saving" || !selectedTurmaId ? .6 : 1 }}>
+            Fechar mês para turma
+          </button>
+        </div>
+        <label style={{ display: "grid", gap: 6, marginBottom: 20, color: "#334155", fontSize: 13, fontWeight: 700 }}>
+          Motivo do fecho (opcional)
+          <textarea value={monthlyCloseReason} onChange={(event) => setMonthlyCloseReason(event.target.value)} placeholder="Ex.: Relatórios mensais enviados" rows={2} style={{ width: "100%", maxWidth: 600, padding: 10, border: "1px solid #cbd5e1", borderRadius: 6, resize: "vertical" }} />
+        </label>
+        <h4 style={{ margin: "0 0 10px", color: "#334155" }}>Turmas fechadas no mês selecionado</h4>
+        {monthlyClosures.filter((closure) => `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey).length ? (
+          <div style={{ display: "grid", gap: 8 }}>
+            {monthlyClosures.filter((closure) => `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey).map((closure) => (
+              <div key={closure.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "11px 13px", border: "1px solid #fecaca", borderRadius: 8, background: "#fff7f7" }}>
+                <div><strong>{closure.turma.name}</strong><div style={{ marginTop: 3, color: "#64748b", fontSize: 12 }}>Fechado por {closure.closedBy.name || closure.closedBy.email}{closure.reason ? ` · ${closure.reason}` : ""}</div></div>
+                <button type="button" onClick={() => toggleMonthlyClosure(closure)} disabled={action === "saving"} style={{ padding: "7px 12px", border: "1px solid #b42318", borderRadius: 6, background: "white", color: "#b42318", fontWeight: 700, cursor: "pointer" }}>Reabrir turma</button>
+              </div>
+            ))}
+          </div>
+        ) : <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>Ainda não há turmas fechadas para este mês.</p>}
+      </section>
     </div>
   );
 }

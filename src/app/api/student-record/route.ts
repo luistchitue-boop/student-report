@@ -2,10 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
-import { getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
-import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
+import { isTurmaDateClosed, isTurmaWeeklyPeriodClosed } from "@/lib/closed-periods";
 
 const prisma = new PrismaClient();
+
+async function isGradeTermClosed(turmaId: string, term: string, prismaClient: PrismaClient) {
+  const match = /^Semanal:(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/.exec(term);
+  if (!match) return false;
+  const weekStart = new Date(`${match[1]}T00:00:00.000Z`);
+  const weekEnd = new Date(`${match[2]}T23:59:59.999Z`);
+  if (Number.isNaN(weekStart.getTime()) || Number.isNaN(weekEnd.getTime())) return false;
+  return isTurmaWeeklyPeriodClosed(turmaId, weekStart, weekEnd, prismaClient);
+}
 
 function normalizeDay(dateInput: string) {
   return new Date(`${dateInput}T12:00:00Z`);
@@ -133,7 +141,7 @@ export async function POST(request: NextRequest) {
             id: studentId,
             turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
           },
-      select: { turma: { select: { gradeScale: true, subjects: { select: { name: true } } } } },
+      select: { turma: { select: { id: true, gradeScale: true, subjects: { select: { name: true } } } } },
     });
 
     if (!student) {
@@ -159,7 +167,7 @@ export async function POST(request: NextRequest) {
           if (termParts.length === 3) {
             const weekStart = new Date(`${termParts[1]}T00:00:00Z`);
             const weekEnd = new Date(`${termParts[2]}T23:59:59.999Z`);
-            const periodClosed = await isWeeklyPeriodClosed(weekStart, weekEnd, prisma);
+            const periodClosed = await isTurmaWeeklyPeriodClosed(student.turma.id, weekStart, weekEnd, prisma);
             if (periodClosed) {
               return NextResponse.json({ error: `O período semanal de ${termParts[1]} está fechado. Não é possível registar notas.` }, { status: 403 });
             }
@@ -202,14 +210,7 @@ export async function POST(request: NextRequest) {
         }
 
         const dia = normalizeDay(entry.dia);
-        const weeklyPeriods = getWeeklyCoordinationPeriods(dia.getFullYear());
-        const currentWeekly = weeklyPeriods.find((period) => dia >= period.start && dia <= period.end);
-        if (currentWeekly) {
-          const periodClosed = await isWeeklyPeriodClosed(currentWeekly.start, currentWeekly.end, prisma);
-          if (periodClosed) {
-            return NextResponse.json({ error: "O período semanal desta data está fechado. Não é possível registar faltas." }, { status: 403 });
-          }
-        }
+        if (await isTurmaDateClosed(student.turma.id, dia, prisma)) return NextResponse.json({ error: "O período desta data está fechado para esta turma. Não é possível registar faltas." }, { status: 403 });
 
         const faultType = entry.faultType === "AUSENCIA_NA_SALA" ? "AUSENCIA_NA_SALA" : "FALTA_DE_MATERIAL";
 
@@ -292,13 +293,17 @@ export async function PATCH(request: NextRequest) {
         where: isAdmin
           ? { id }
           : { id, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
-        include: { student: { include: { turma: { select: { gradeScale: true, subjects: { select: { name: true } } } } } } },
+        include: { student: { include: { turma: { select: { id: true, gradeScale: true, subjects: { select: { name: true } } } } } } },
       });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
       if (value > grade.student.turma.gradeScale) return NextResponse.json({ error: `Grade must be between 0 and ${grade.student.turma.gradeScale}` }, { status: 400 });
       const subject = typeof body.subject === "string" ? body.subject : grade.subject;
       if (!grade.student.turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
-      const updated = await prisma.grade.update({ where: { id }, data: { value, subject, term: typeof body.term === "string" ? body.term : grade.term } });
+      const targetTerm = typeof body.term === "string" ? body.term : grade.term;
+      if (await isGradeTermClosed(grade.student.turma.id, grade.term, prisma) || await isGradeTermClosed(grade.student.turma.id, targetTerm, prisma)) {
+        return NextResponse.json({ error: "O período semanal desta nota está fechado para esta turma." }, { status: 403 });
+      }
+      const updated = await prisma.grade.update({ where: { id }, data: { value, subject, term: targetTerm } });
       await createActivityLog({
         actorId: session.user.id,
         actorName: describeActorName(session.user),
@@ -316,12 +321,16 @@ export async function PATCH(request: NextRequest) {
     }
 
       const absence = await prisma.absence.findFirst({
-        where: { id, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+        where: isAdmin ? { id } : { id, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+        include: { student: { select: { turmaId: true } } },
       });
     if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });
     const subject = typeof body.subject === "string" ? body.subject : absence.subject;
     const dia = typeof body.dia === "string" ? normalizeDay(body.dia) : absence.dia;
     const tempo = typeof body.tempo === "string" ? body.tempo : absence.tempo;
+    if (await isTurmaDateClosed(absence.student.turmaId, absence.dia, prisma) || await isTurmaDateClosed(absence.student.turmaId, dia, prisma)) {
+      return NextResponse.json({ error: "O período desta falta está fechado para esta turma." }, { status: 403 });
+    }
     const conflictingAbsence = await prisma.absence.findFirst({
       where: { studentId: absence.studentId, dia, tempo, NOT: { id: absence.id } },
       select: { id: true },
@@ -367,8 +376,10 @@ export async function DELETE(request: NextRequest) {
     if (type === "grade") {
       const grade = await prisma.grade.findFirst({
         where: isAdmin ? { id } : { id, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+        include: { student: { select: { turmaId: true } } },
       });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
+      if (await isGradeTermClosed(grade.student.turmaId, grade.term, prisma)) return NextResponse.json({ error: "O período semanal desta nota está fechado para esta turma." }, { status: 403 });
       await prisma.grade.delete({ where: { id } });
       await createActivityLog({
         actorId: session.user.id,
@@ -386,8 +397,10 @@ export async function DELETE(request: NextRequest) {
     } else {
       const absence = await prisma.absence.findFirst({
         where: isAdmin ? { id } : { id, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+        include: { student: { select: { turmaId: true } } },
       });
       if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });
+      if (await isTurmaDateClosed(absence.student.turmaId, absence.dia, prisma)) return NextResponse.json({ error: "O período desta falta está fechado para esta turma." }, { status: 403 });
       await prisma.absence.delete({ where: { id } });
       await createActivityLog({
         actorId: session.user.id,

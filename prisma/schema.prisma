@@ -53,6 +53,7 @@ model User {
   activityLogs  ActivityLog[]
   weeklyReports WeeklyCoordinationReport[]
   closedPeriods ClosedWeeklyPeriod[]
+  closedTurmaMonthlyPeriods ClosedTurmaMonthlyPeriod[]
 }
 
 enum FaultType {
@@ -103,6 +104,7 @@ model Turma {
   weeklyReports WeeklyCoordinationReport[]
   direccaoAssignments DireccaoTurma[]
   teacherAssignments TeacherTurma[]
+  closedMonthlyPeriods ClosedTurmaMonthlyPeriod[]
 }
 
 model DireccaoTurma {
@@ -303,6 +305,22 @@ model ClosedWeeklyPeriod {
 
   @@unique([weekStart, weekEnd])
   @@index([weekStart])
+}
+
+model ClosedTurmaMonthlyPeriod {
+  id             String   @id @default(cuid())
+  turmaId        String
+  periodStart    DateTime
+  periodEnd      DateTime
+  closedAt       DateTime @default(now())
+  closedByUserId String
+  reason         String?
+
+  turma    Turma @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  closedBy User  @relation(fields: [closedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([turmaId, periodStart])
+  @@index([turmaId, periodStart, periodEnd])
 }
 
 model VerificationToken {

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
-import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
-import { getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { isTurmaDateClosed } from "@/lib/closed-periods";
 
 const prisma = new PrismaClient();
 
@@ -48,20 +47,20 @@ export async function POST(request: NextRequest) {
       where: isAdmin
         ? { id: { in: uniqueAbsenceIds } }
         : { id: { in: uniqueAbsenceIds }, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
-      select: { id: true, dia: true },
+      select: { id: true, dia: true, student: { select: { turmaId: true } } },
     });
 
     if (absences.length !== uniqueAbsenceIds.length) return NextResponse.json({ error: "Uma ou mais faltas não foram encontradas." }, { status: 404 });
 
-    const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
-    const closedPeriodKeys = new Set<string>();
+    let hasClosedPeriod = false;
     for (const absence of absences) {
-      const weeklyPeriod = weeklyPeriods.find((period) => absence.dia >= period.start && absence.dia <= period.end);
-      if (!weeklyPeriod) continue;
-      if (await isWeeklyPeriodClosed(weeklyPeriod.start, weeklyPeriod.end, prisma)) closedPeriodKeys.add(weeklyPeriod.key);
+      if (await isTurmaDateClosed(absence.student.turmaId, absence.dia, prisma)) {
+        hasClosedPeriod = true;
+        break;
+      }
     }
-    if (closedPeriodKeys.size) {
-      return NextResponse.json({ error: "Uma ou mais faltas pertencem a um período semanal fechado pelo administrador." }, { status: 403 });
+    if (hasClosedPeriod) {
+      return NextResponse.json({ error: "Uma ou mais faltas pertencem a um período fechado pelo administrador." }, { status: 403 });
     }
 
     const justifiedAbsences = await prisma.$transaction(

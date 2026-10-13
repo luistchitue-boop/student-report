@@ -17,7 +17,7 @@ export default async function ClosedPeriodsPage() {
         <header className="topbar">
           <div>
             <p className="eyebrow">ADMINISTRAÇÃO</p>
-            <h1>Períodos Semanais</h1>
+            <h1>Fecho de períodos</h1>
           </div>
         </header>
 
@@ -49,7 +49,7 @@ export default async function ClosedPeriodsPage() {
             fontSize: "14px",
             fontWeight: 500
           }}>
-            Períodos Semanais
+            Fecho de períodos
           </Link>
         </nav>
 

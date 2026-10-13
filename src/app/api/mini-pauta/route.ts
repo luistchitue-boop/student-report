@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
-import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
+import { isTurmaWeeklyPeriodClosed } from "@/lib/closed-periods";
 
 const prisma = new PrismaClient();
 
@@ -80,13 +80,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Não é possível registar notas num período semanal futuro." }, { status: 400 });
     }
 
-    const periodClosed = await isWeeklyPeriodClosed(officialPeriod.start, officialPeriod.end, prisma);
+    const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
+    if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
+
+    const periodClosed = await isTurmaWeeklyPeriodClosed(turmaId, officialPeriod.start, officialPeriod.end, prisma);
     if (periodClosed) {
       return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar notas." }, { status: 403 });
     }
 
-    const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
-    if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
     if (!turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
 
     const turmaStudentIds = new Set(turma.students.map((student) => student.id));

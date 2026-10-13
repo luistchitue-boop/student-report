@@ -49,7 +49,7 @@ export default async function AdminPage() {
             fontSize: "14px",
             fontWeight: 500
           }}>
-            Períodos Semanais
+            Fecho de períodos
           </Link>
         </nav>
 

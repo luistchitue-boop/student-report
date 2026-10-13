@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog } from "@/lib/activity-log";
-import { getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
-import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
+import { isTurmaDateClosed } from "@/lib/closed-periods";
 
 const prisma = new PrismaClient();
 
@@ -88,13 +87,8 @@ export async function POST(request: NextRequest) {
     if (!turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
 
     const dia = normalizeDay(date);
-    const weeklyPeriods = getWeeklyCoordinationPeriods(dia.getFullYear());
-    const currentWeekly = weeklyPeriods.find((period) => dia >= period.start && dia <= period.end);
-    if (currentWeekly) {
-      const periodClosed = await isWeeklyPeriodClosed(currentWeekly.start, currentWeekly.end, prisma);
-      if (periodClosed) {
-        return NextResponse.json({ error: "O período semanal desta data está fechado. Não é possível registar faltas." }, { status: 403 });
-      }
+    if (await isTurmaDateClosed(turmaId, dia, prisma)) {
+      return NextResponse.json({ error: "O período desta data está fechado para esta turma. Não é possível registar faltas." }, { status: 403 });
     }
 
     const turmaStudentIds = new Set(turma.students.map((student) => student.id));

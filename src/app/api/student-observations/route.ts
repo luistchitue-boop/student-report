@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
-import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
+import { isTurmaWeeklyPeriodClosed } from "@/lib/closed-periods";
 
 const prisma = new PrismaClient();
 
@@ -19,7 +19,7 @@ async function getAuthorizedStudent(studentId: string, session: { user: { id: st
     where: isAdmin
       ? { id: studentId }
       : { id: studentId, turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } },
-    select: { id: true },
+    select: { id: true, turmaId: true },
   });
 }
 
@@ -65,13 +65,11 @@ export async function PUT(request: NextRequest) {
     }
     if (officialPeriod.start > new Date()) return NextResponse.json({ error: "Não é possível registar observações num período futuro." }, { status: 400 });
 
-    const periodClosed = await isWeeklyPeriodClosed(officialPeriod.start, officialPeriod.end, prisma);
-    if (periodClosed) {
-      return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar observações." }, { status: 403 });
-    }
-
     const student = await getAuthorizedStudent(studentId, session);
     if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 });
+
+    const periodClosed = await isTurmaWeeklyPeriodClosed(student.turmaId, officialPeriod.start, officialPeriod.end, prisma);
+    if (periodClosed) return NextResponse.json({ error: "Este período está fechado para esta turma. Não é possível registar observações." }, { status: 403 });
 
     if (!teacherObservation) {
       await prisma.studentWeeklyObservation.deleteMany({ where: { studentId, weekStart } });
