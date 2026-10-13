@@ -39,6 +39,8 @@ export function DeliveryIssuesClient() {
   const [summary, setSummary] = useState<TurmaSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [retryFeedback, setRetryFeedback] = useState<{ id: string; message: string; success: boolean } | null>(null);
 
   useEffect(() => {
     if (!periodKey) return;
@@ -69,6 +71,30 @@ export function DeliveryIssuesClient() {
   const filteredIssues = turmaId === "all" ? issues : issues.filter((issue) => issue.turmaId === turmaId);
   const counts = filteredIssues.reduce((result, issue) => ({ ...result, [issue.status]: result[issue.status] + 1 }), { FAILED: 0, BOUNCED: 0, DELAYED: 0 });
 
+  async function retryDelivery(issue: DeliveryIssue) {
+    setRetryingId(issue.id);
+    setRetryFeedback(null);
+    try {
+      const response = await fetch("/api/admin/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retryDeliveryId: issue.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.failed > 0 || data.sent !== 1) {
+        const failedResult = Array.isArray(data.results) ? data.results.find((result: { success?: boolean }) => !result.success) : null;
+        throw new Error(data.error || failedResult?.error || "Não foi possível reenviar este e-mail.");
+      }
+
+      setIssues((current) => current.filter((item) => item.id !== issue.id));
+      setRetryFeedback({ id: issue.id, message: `E-mail reenviado para ${issue.recipientEmail}.`, success: true });
+    } catch (reason) {
+      setRetryFeedback({ id: issue.id, message: reason instanceof Error ? reason.message : "Não foi possível reenviar este e-mail.", success: false });
+    } finally {
+      setRetryingId(null);
+    }
+  }
+
   return (
     <section className="delivery-issues-page">
       <div className="delivery-issues-topline"><Link href="/admin/relatorios">← Voltar aos relatórios</Link><span>DETALHE DE ENTREGA</span></div>
@@ -87,15 +113,17 @@ export function DeliveryIssuesClient() {
         <article className="metric-delayed"><span>Atrasados</span><strong>{counts.DELAYED}</strong></article>
       </div>
 
+      {retryFeedback && <p className={`delivery-retry-feedback ${retryFeedback.success ? "success" : "error"}`} role={retryFeedback.success ? "status" : "alert"}>{retryFeedback.message}</p>}
       {error ? <p className="delivery-issues-feedback error" role="alert">{error}</p> : loading ? <p className="delivery-issues-feedback">A carregar o detalhe dos envios...</p> : !filteredIssues.length ? <div className="delivery-issues-empty"><strong>Nenhuma falha encontrada</strong><span>Não há e-mails devolvidos, falhados ou atrasados para este período e filtro.</span></div> : (
         <div className="delivery-issues-table-wrap"><table className="delivery-issues-table">
-          <thead><tr><th>Estado</th><th>Aluno / turma</th><th>Destinatário</th><th>Motivo reportado</th><th>Tentativa</th></tr></thead>
+          <thead><tr><th>Estado</th><th>Aluno / turma</th><th>Destinatário</th><th>Motivo reportado</th><th>Tentativa</th><th>Ação</th></tr></thead>
           <tbody>{filteredIssues.map((issue) => <tr key={issue.id}>
             <td><span className={`delivery-status-badge ${issue.status.toLowerCase()}`}>{statusLabels[issue.status]}</span></td>
             <td><strong>{issue.studentName}</strong><small>{issue.turmaName}</small></td>
             <td><strong>{issue.recipientName || "Encarregado"}</strong><small>{issue.recipientEmail}</small></td>
             <td className="delivery-issue-reason">{issue.error || "O serviço de e-mail não forneceu detalhes adicionais."}</td>
             <td>{new Date(issue.attemptedAt).toLocaleString("pt-AO", { dateStyle: "medium", timeStyle: "short" })}</td>
+            <td className="delivery-retry-action">{issue.status === "FAILED" ? <button type="button" onClick={() => retryDelivery(issue)} disabled={retryingId !== null}>{retryingId === issue.id ? "A reenviar..." : "Reenviar e-mail"}</button> : <span>{issue.status === "BOUNCED" ? "Corrija o endereço antes de reenviar." : "Aguarde a atualização do serviço."}</span>}</td>
           </tr>)}</tbody>
         </table></div>
       )}
@@ -128,6 +156,13 @@ export function DeliveryIssuesClient() {
         .delivery-status-badge.failed { color:#9a3412; background:#ffedd5; }
         .delivery-status-badge.delayed { color:#854d0e; background:#fef3c7; }
         .delivery-issue-reason { min-width:220px; max-width:400px; color:#334155; overflow-wrap:anywhere; }
+        .delivery-retry-action { min-width:145px; }
+        .delivery-retry-action button { padding:.55rem .7rem; border:0; border-radius:8px; background:#1d4ed8; color:#fff; font-size:.75rem; font-weight:800; cursor:pointer; white-space:nowrap; }
+        .delivery-retry-action button:disabled { opacity:.6; cursor:wait; }
+        .delivery-retry-action span { display:block; min-width:145px; color:#64748b; font-size:.73rem; line-height:1.4; }
+        .delivery-retry-feedback { margin:0; padding:.8rem 1rem; border-radius:9px; font-size:.84rem; }
+        .delivery-retry-feedback.success { color:#166534; background:#f0fdf4; border:1px solid #bbf7d0; }
+        .delivery-retry-feedback.error { color:#991b1b; background:#fef2f2; border:1px solid #fecaca; }
         .delivery-issues-empty { display:grid; gap:.35rem; padding:1.5rem; border:1px solid #bbf7d0; border-radius:14px; background:#f0fdf4; color:#166534; }
         .delivery-issues-empty span,.delivery-issues-feedback { color:#64748b; font-size:.86rem; }
         .delivery-issues-feedback.error { color:#b91c1c; }

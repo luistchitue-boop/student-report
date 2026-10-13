@@ -620,17 +620,45 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const preview = body.preview === true;
-    const channel = body.channel === "WHATSAPP" ? "WHATSAPP" : "EMAIL";
+    const retryDeliveryId = typeof body.retryDeliveryId === "string" ? body.retryDeliveryId : "";
+    const retryDelivery = retryDeliveryId ? await prisma.reportDelivery.findUnique({
+      where: { id: retryDeliveryId },
+      select: {
+        turmaId: true,
+        studentId: true,
+        periodStart: true,
+        periodEnd: true,
+        recipientEmail: true,
+        status: true,
+        channel: true,
+        student: { select: { active: true } },
+      },
+    }) : null;
+    if (retryDeliveryId && (!retryDelivery || retryDelivery.status !== "FAILED" || retryDelivery.channel !== "EMAIL" || !retryDelivery.student.active)) {
+      return NextResponse.json({ error: "Este envio não pode ser repetido. Atualize a lista e tente novamente." }, { status: 400 });
+    }
+    if (retryDelivery && !isSendableEmailAddress(retryDelivery.recipientEmail)) {
+      return NextResponse.json({ error: "O endereço de e-mail não é válido para envio. Corrija o contacto do encarregado antes de tentar novamente." }, { status: 400 });
+    }
+
+    const channel = retryDelivery ? "EMAIL" : body.channel === "WHATSAPP" ? "WHATSAPP" : "EMAIL";
     const rawTurmaIds = Array.isArray(body.turmaIds) ? body.turmaIds : [];
-    const turmaIds = rawTurmaIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
+    const turmaIds = retryDelivery ? [retryDelivery.turmaId] : rawTurmaIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
     const rawStudentIds = Array.isArray(body.studentIds) ? body.studentIds : [];
-    const studentIds = rawStudentIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
-    const periodKey = typeof body.periodKey === "string" ? body.periodKey : "";
-    const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
-    const monthlyPeriods = getMonthlyCoordinationPeriods(new Date().getFullYear());
+    const studentIds = retryDelivery ? [retryDelivery.studentId] : rawStudentIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
+    const periodKey = retryDelivery
+      ? `${formatPeriodDate(retryDelivery.periodStart)}|${formatPeriodDate(retryDelivery.periodEnd)}`
+      : typeof body.periodKey === "string" ? body.periodKey : "";
+    const scheduleYear = retryDelivery
+      ? retryDelivery.periodStart.getMonth() >= 8 ? retryDelivery.periodStart.getFullYear() : retryDelivery.periodStart.getFullYear() - 1
+      : new Date().getFullYear();
+    const weeklyPeriods = getWeeklyCoordinationPeriods(scheduleYear);
+    const monthlyPeriods = getMonthlyCoordinationPeriods(scheduleYear);
     const periods = [...weeklyPeriods, ...monthlyPeriods];
     const periodIndex = periods.findIndex((item) => item.key === periodKey);
-    const period = periodIndex >= 0 ? periods[periodIndex] : undefined;
+    const period = retryDelivery
+      ? { type: "MONTHLY" as const, start: retryDelivery.periodStart, end: retryDelivery.periodEnd, key: periodKey }
+      : periodIndex >= 0 ? periods[periodIndex] : undefined;
     const previousPeriod = periodIndex > 0 ? periods[periodIndex - 1] : undefined;
 
     if (!period) {
@@ -757,6 +785,7 @@ export async function POST(request: Request) {
         const approvedParents = new Map<string, { firstName: string; phone: string; email: string }>();
         for (const parent of student.parents) {
           const email = parent.email?.trim().toLowerCase();
+          if (retryDelivery && email !== retryDelivery.recipientEmail.toLowerCase()) continue;
           const phone = parent.phone ? normalizeAngolaPhone(parent.phone) : "";
           const recipient = channel === "EMAIL" ? email : phone;
           if (!recipient || (channel === "EMAIL" ? !isSendableEmailAddress(recipient) : recipient.length < 8)) {
@@ -848,6 +877,9 @@ export async function POST(request: Request) {
     }
 
     if (!recipients.length) {
+      if (retryDelivery) {
+        return NextResponse.json({ error: "O contacto de e-mail associado a este envio já foi alterado ou removido. Atualize o contacto e envie o relatório novamente." }, { status: 409 });
+      }
       return NextResponse.json({ success: true, sent: 0, message: `Nenhum encarregado com ${channel === "EMAIL" ? "email" : "número de WhatsApp"} válido encontrado nas turmas selecionadas.` });
     }
 
