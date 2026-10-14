@@ -13,6 +13,7 @@ type Turma = {
 };
 
 type DeliveryResult = { email: string; studentName: string; success: boolean; error?: string };
+type MonthlyDeliverySummary = { id: string; sentCount: number; studentCount: number; percentage: number };
 type FailedDelivery = { id: string; studentName: string; recipientName?: string | null; recipientEmail: string; error?: string | null; attemptedAt: string };
 type Completeness = { turmaId: string; turmaName: string; subjectCount: number; missingSubjects: string[]; activeStudentCount: number; missingBehaviorStudents: Array<{ id: string; name: string }>; complete: boolean };
 
@@ -36,6 +37,10 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
   const [completeness, setCompleteness] = useState<Completeness[]>([]);
   const [completenessPeriodKey, setCompletenessPeriodKey] = useState("");
   const [completenessLoading, setCompletenessLoading] = useState(false);
+  const [monthlyDeliverySummary, setMonthlyDeliverySummary] = useState<MonthlyDeliverySummary[]>([]);
+  const [deliverySummaryPeriodKey, setDeliverySummaryPeriodKey] = useState("");
+  const [deliverySummaryLoading, setDeliverySummaryLoading] = useState(false);
+  const [deliverySummaryRefresh, setDeliverySummaryRefresh] = useState(0);
   const turmaIdsKey = turmas.map((turma) => turma.id).join("|");
   const monthlyPeriod = reportPeriods.find((period) => period.key === selectedPeriod)?.type === "MONTHLY";
   const studentsForSelection = turmas.flatMap((turma) => turma.roster.filter((student) => student.active).map((student) => ({ ...student, turmaName: turma.name })));
@@ -107,6 +112,29 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
       .finally(() => { if (!cancelled) setCompletenessLoading(false); });
     return () => { cancelled = true; };
   }, [selectedPeriod, turmaIdsKey]);
+
+  useEffect(() => {
+    if (!canSend || channel !== "EMAIL" || !monthlyPeriod || !selectedPeriod) return;
+    let cancelled = false;
+    Promise.resolve().then(() => { if (!cancelled) setDeliverySummaryLoading(true); });
+    fetch(`/api/admin/reports/delivery-status?periodKey=${encodeURIComponent(selectedPeriod)}`)
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Não foi possível consultar os envios do período.");
+        return data as { summary?: Array<{ id: string; sentCount: number; studentCount: number; percentage: number }> };
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setMonthlyDeliverySummary(data.summary ?? []);
+          setDeliverySummaryPeriodKey(selectedPeriod);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setMessage(error instanceof Error ? error.message : "Não foi possível consultar os envios do período.");
+      })
+      .finally(() => { if (!cancelled) setDeliverySummaryLoading(false); });
+    return () => { cancelled = true; };
+  }, [canSend, channel, monthlyPeriod, selectedPeriod, deliverySummaryRefresh]);
 
   async function handlePreview() {
     if (!selectedPeriod || !selectedStudentId) return;
@@ -201,6 +229,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
       setStatus(data.failed ? "error" : "success");
       setMessage(`${data.sent ?? 0} de ${data.total ?? 0} envio(s) concluído(s) por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}. Taxa de sucesso: ${data.successRate ?? 0}%.`);
       setDeliveryResults(data.results ?? []);
+      if (channel === "EMAIL" && monthlyPeriod) setDeliverySummaryRefresh((value) => value + 1);
       if (!studentId) setSelectedTurmas([]);
     } catch (error) {
       setStatus("error");
@@ -209,6 +238,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
   }
 
   const currentCompleteness = completenessPeriodKey === selectedPeriod ? completeness : [];
+  const currentDeliverySummary = deliverySummaryPeriodKey === selectedPeriod ? monthlyDeliverySummary : [];
   const selectedCompleteness = currentCompleteness.filter((item) => selectedTurmas.includes(item.turmaId));
   const completenessReady = selectedCompleteness.length === selectedTurmas.length && selectedTurmas.length > 0;
   const allSelectedTurmasComplete = completenessReady && selectedCompleteness.every((item) => item.complete);
@@ -252,12 +282,15 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
             const completionDenominator = item ? item.subjectCount + item.activeStudentCount : 0;
             const completionNumerator = item ? item.subjectCount - item.missingSubjects.length + item.activeStudentCount - item.missingBehaviorStudents.length : 0;
             const completionPercentage = completionDenominator ? Math.round((completionNumerator / completionDenominator) * 100) : item?.complete ? 100 : 0;
+            const delivery = currentDeliverySummary.find((entry) => entry.id === turma.id);
             return <label key={turma.id} className={`admin-checkbox ${selectedTurmas.includes(turma.id) ? "selected" : ""} ${!selectedPeriod ? "disabled" : ""}`}>
             <input type="checkbox" disabled={!selectedPeriod || status === "sending"} checked={selectedTurmas.includes(turma.id)} onChange={() => toggleTurma(turma.id)} />
+            {monthlyPeriod && channel === "EMAIL" && delivery && delivery.sentCount > 0 && <span className="turma-sent-indicator" title={`${delivery.sentCount} de ${delivery.studentCount} alunos com relatório enviado`} aria-label={`${delivery.sentCount} de ${delivery.studentCount} alunos com relatório enviado`}><span aria-hidden="true">✓</span><small>{delivery.sentCount}/{delivery.studentCount}</small></span>}
             <span className="admin-checkbox-content"><strong>{turma.name}</strong><small>{turma.students} alunos</small>
               {monthlyPeriod && <span className="turma-completion">
                 <span className="turma-completion-label"><span>{completenessLoading && completenessPeriodKey !== selectedPeriod ? "A calcular completude..." : item ? "Completude dos dados" : "A aguardar dados"}</span>{item && <strong>{completionPercentage}%</strong>}</span>
                 <span className="turma-completion-track" role="progressbar" aria-label={`Completude dos dados de ${turma.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={item ? completionPercentage : 0}><span style={{ width: `${item ? completionPercentage : 0}%` }} /></span>
+                {channel === "EMAIL" && (deliverySummaryLoading && deliverySummaryPeriodKey !== selectedPeriod ? <small className="turma-delivery-count">A consultar envios...</small> : delivery && <small className="turma-delivery-count">E-mails enviados: {delivery.sentCount}/{delivery.studentCount}</small>)}
               </span>}
             </span>
           </label>;
@@ -375,17 +408,21 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
         .admin-completeness-missing span { line-height:1.45; }
         .admin-report-period { max-width:520px; }
         .admin-turma-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.9rem; }
-        .admin-checkbox { display:flex; align-items:center; gap:.7rem; background:#fff; border:1px solid #dbe3ec; border-radius:12px; padding:.9rem 1rem; cursor:pointer; }
+        .admin-checkbox { position:relative; display:flex; align-items:center; gap:.7rem; background:#fff; border:1px solid #dbe3ec; border-radius:12px; padding:.9rem 1rem; cursor:pointer; }
         .admin-checkbox.selected { border-color:#1d4ed8; background:#eff6ff; }
         .admin-checkbox.disabled { opacity:.55; cursor:not-allowed; }
         .admin-checkbox input { accent-color:#2563eb; }
         .admin-checkbox span { display:flex; flex-direction:column; gap:.18rem; }
-        .admin-checkbox-content { flex:1; min-width:0; }
+        .admin-checkbox-content { flex:1; min-width:0; padding-right:2rem; }
+        .turma-sent-indicator { position:absolute; top:.62rem; right:.7rem; display:flex!important; flex-direction:row!important; align-items:center; gap:.2rem!important; color:#15803d; }
+        .turma-sent-indicator > span { display:grid!important; place-items:center; width:1.2rem; height:1.2rem; border-radius:999px; background:#dcfce7; font-size:.8rem; font-weight:900; }
+        .turma-sent-indicator small { color:#166534; font-size:.63rem; font-weight:800; }
         .turma-completion { display:grid!important; gap:.35rem!important; width:100%; margin-top:.45rem; }
         .turma-completion-label { display:flex!important; flex-direction:row!important; justify-content:space-between; align-items:center; gap:.5rem!important; color:#64748b; font-size:.68rem; }
         .turma-completion-label strong { color:#334155; font-size:.72rem; }
         .turma-completion-track { display:block!important; width:100%; height:7px; overflow:hidden; border-radius:999px; background:#e2e8f0; }
         .turma-completion-track > span { display:block!important; height:100%; border-radius:inherit; background:linear-gradient(90deg,#0f766e,#34d399); transition:width .25s ease; }
+        .turma-delivery-count { color:#64748b; font-size:.66rem; font-weight:600; }
         .admin-checkbox small { color:#64748b; }
         .admin-actions { display:flex; justify-content:flex-start; }
         .admin-submit, .admin-preview-button, .admin-individual-panel button { background:#1d4ed8; color:#fff; border:0; border-radius:10px; padding:.8rem 1.2rem; font-size:.95rem; font-weight:700; cursor:pointer; }
