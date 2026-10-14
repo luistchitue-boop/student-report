@@ -42,13 +42,13 @@ export async function GET(request: NextRequest) {
     }),
   ]);
 
-  const countsByTurma = new Map<string, { activeStudentIds: Set<string>; sentStudentIds: Set<string>; failed: number; bounced: number; delayed: number }>();
-  for (const turma of turmas) countsByTurma.set(turma.id, { activeStudentIds: new Set(), sentStudentIds: new Set(), failed: 0, bounced: 0, delayed: 0 });
+  const countsByTurma = new Map<string, { activeStudentIds: Set<string>; deliveredStudentIds: Set<string>; failed: number; bounced: number; delayed: number }>();
+  for (const turma of turmas) countsByTurma.set(turma.id, { activeStudentIds: new Set(), deliveredStudentIds: new Set(), failed: 0, bounced: 0, delayed: 0 });
   for (const student of activeStudents) countsByTurma.get(student.turmaId)?.activeStudentIds.add(student.id);
   for (const delivery of deliveries) {
     const counts = countsByTurma.get(delivery.turmaId);
     if (!counts) continue;
-    if (delivery.status === "SENT" || delivery.status === "DELIVERED") counts.sentStudentIds.add(delivery.studentId);
+    if (delivery.status === "DELIVERED") counts.deliveredStudentIds.add(delivery.studentId);
     if (delivery.status === "FAILED") counts.failed += 1;
     if (delivery.status === "BOUNCED") counts.bounced += 1;
     if (delivery.status === "DELAYED") counts.delayed += 1;
@@ -57,13 +57,13 @@ export async function GET(request: NextRequest) {
   const summary = turmas.map((turma) => {
     const counts = countsByTurma.get(turma.id)!;
     const studentCount = counts.activeStudentIds.size;
-    const sentCount = [...counts.sentStudentIds].filter((studentId) => counts.activeStudentIds.has(studentId)).length;
+    const deliveredCount = [...counts.deliveredStudentIds].filter((studentId) => counts.activeStudentIds.has(studentId)).length;
     return {
       id: turma.id,
       name: turma.name,
       studentCount,
-      sentCount,
-      percentage: studentCount ? Math.round((sentCount / studentCount) * 100) : 0,
+      deliveredCount,
+      percentage: studentCount ? Math.round((deliveredCount / studentCount) * 100) : 0,
       failedCount: counts.failed,
       bouncedCount: counts.bounced,
       delayedCount: counts.delayed,

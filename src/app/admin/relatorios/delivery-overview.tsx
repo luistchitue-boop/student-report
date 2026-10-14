@@ -8,7 +8,7 @@ type TurmaDeliverySummary = {
   id: string;
   name: string;
   studentCount: number;
-  sentCount: number;
+  deliveredCount: number;
   percentage: number;
   failedCount: number;
   bouncedCount: number;
@@ -31,10 +31,10 @@ export function DeliveryOverview() {
   const [error, setError] = useState("");
   const totals = summary.reduce((result, turma) => ({
     students: result.students + turma.studentCount,
-    sent: result.sent + turma.sentCount,
+    delivered: result.delivered + turma.deliveredCount,
     issues: result.issues + turma.failedCount + turma.bouncedCount + turma.delayedCount,
-  }), { students: 0, sent: 0, issues: 0 });
-  const totalPercentage = totals.students ? Math.round((totals.sent / totals.students) * 100) : 0;
+  }), { students: 0, delivered: 0, issues: 0 });
+  const totalPercentage = totals.students ? Math.round((totals.delivered / totals.students) * 100) : 0;
 
   useEffect(() => {
     if (!periodKey) return;
@@ -62,8 +62,8 @@ export function DeliveryOverview() {
       <header className="delivery-overview-header">
         <div>
           <p className="eyebrow">ACOMPANHAMENTO DE E-MAILS</p>
-          <h2 id="delivery-overview-title">Relatórios enviados por turma</h2>
-          <p>Percentagem de alunos com pelo menos um relatório aceite pelo serviço de e-mail.</p>
+          <h2 id="delivery-overview-title">Relatórios entregues por turma</h2>
+          <p>Percentagem de alunos cujo e-mail foi confirmado como entregue pelo Resend.</p>
         </div>
         <Link href="/admin/relatorios/envios" className="delivery-details-link">Ver falhas e devoluções <span aria-hidden="true">→</span></Link>
       </header>
@@ -78,25 +78,25 @@ export function DeliveryOverview() {
       {error ? <p className="delivery-overview-message error" role="alert">{error}</p> : loading ? <p className="delivery-overview-message">A carregar dados do período...</p> : (
         <>
           <div className="delivery-summary-cards">
-            <article><span>Relatórios enviados</span><strong>{totals.sent} <small>/ {totals.students} alunos</small></strong></article>
+            <article><span>Relatórios entregues</span><strong>{totals.delivered} <small>/ {totals.students} alunos</small></strong></article>
             <article><span>Percentagem global</span><strong>{totalPercentage}%</strong></article>
             <article><span>Envios com problemas</span><strong>{totals.issues}</strong></article>
           </div>
           {!summary.length ? <p className="delivery-overview-message">Não existem turmas registadas.</p> : <div className="delivery-summary-table-wrap">
             <table className="delivery-summary-table">
-              <thead><tr><th>Turma</th><th>Relatórios enviados</th><th>Percentagem</th><th>Problemas</th></tr></thead>
+              <thead><tr><th>Turma</th><th>Relatórios entregues</th><th>Percentagem</th><th>Problemas</th></tr></thead>
               <tbody>{summary.map((turma) => {
                 const issues = turma.failedCount + turma.bouncedCount + turma.delayedCount;
                 return <tr key={turma.id}>
                   <th scope="row">{turma.name}</th>
-                  <td>{turma.sentCount} / {turma.studentCount}</td>
-                  <td><div className="delivery-progress-cell"><div className="delivery-progress" role="progressbar" aria-label={`Envios de ${turma.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={turma.percentage}><span style={{ width: `${turma.percentage}%` }} /></div><strong>{turma.percentage}%</strong></div></td>
+                  <td>{turma.deliveredCount} / {turma.studentCount}</td>
+                  <td><div className="delivery-progress-cell"><div className="delivery-progress" role="progressbar" aria-label={`E-mails entregues de ${turma.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={turma.percentage}><span style={{ width: `${turma.percentage}%` }} /></div><strong>{turma.percentage}%</strong></div></td>
                   <td>{issues ? <span className="delivery-issue-count">{issues}</span> : <span className="delivery-no-issues">—</span>}</td>
                 </tr>;
               })}</tbody>
             </table>
           </div>}
-          <p className="delivery-overview-footnote">O envio é contado por aluno quando pelo menos um endereço do encarregado foi aceite. Devoluções e falhas aparecem na página de detalhes.</p>
+          <p className="delivery-overview-footnote">Um aluno conta como entregue quando pelo menos um e-mail do encarregado recebe confirmação de entrega do Resend. E-mails aceites para envio, mas ainda sem confirmação, não entram nesta contagem. Configure o webhook do Resend para atualizar os estados.</p>
         </>
       )}
 

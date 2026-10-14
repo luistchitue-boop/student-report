@@ -56,7 +56,11 @@ export async function POST(request: NextRequest) {
     ?? event.data?.error
     ?? null;
   const updated = await prisma.reportDelivery.updateMany({
-    where: { providerEmailId: emailId, channel: "EMAIL" },
+    where: {
+      providerEmailId: emailId,
+      channel: "EMAIL",
+      ...(status === "DELIVERED" ? {} : { status: { not: "DELIVERED" as const } }),
+    },
     data: { status, error: status === "DELIVERED" ? null : reason ?? `Evento Resend: ${event.type}` },
   });
 

@@ -13,7 +13,7 @@ type Turma = {
 };
 
 type DeliveryResult = { email: string; studentName: string; success: boolean; error?: string };
-type MonthlyDeliverySummary = { id: string; sentCount: number; studentCount: number; percentage: number };
+type MonthlyDeliverySummary = { id: string; deliveredCount: number; studentCount: number; percentage: number };
 type FailedDelivery = { id: string; studentName: string; recipientName?: string | null; recipientEmail: string; error?: string | null; attemptedAt: string };
 type Completeness = { turmaId: string; turmaName: string; subjectCount: number; missingSubjects: string[]; activeStudentCount: number; missingBehaviorStudents: Array<{ id: string; name: string }>; complete: boolean };
 
@@ -121,7 +121,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
       .then(async (response) => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Não foi possível consultar os envios do período.");
-        return data as { summary?: Array<{ id: string; sentCount: number; studentCount: number; percentage: number }> };
+        return data as { summary?: Array<{ id: string; deliveredCount: number; studentCount: number; percentage: number }> };
       })
       .then((data) => {
         if (!cancelled) {
@@ -285,12 +285,12 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
             const delivery = currentDeliverySummary.find((entry) => entry.id === turma.id);
             return <label key={turma.id} className={`admin-checkbox ${selectedTurmas.includes(turma.id) ? "selected" : ""} ${!selectedPeriod ? "disabled" : ""}`}>
             <input type="checkbox" disabled={!selectedPeriod || status === "sending"} checked={selectedTurmas.includes(turma.id)} onChange={() => toggleTurma(turma.id)} />
-            {monthlyPeriod && channel === "EMAIL" && delivery && delivery.sentCount > 0 && <span className="turma-sent-indicator" title={`${delivery.sentCount} de ${delivery.studentCount} alunos com relatório enviado`} aria-label={`${delivery.sentCount} de ${delivery.studentCount} alunos com relatório enviado`}><span aria-hidden="true">✓</span><small>{delivery.sentCount}/{delivery.studentCount}</small></span>}
+            {monthlyPeriod && channel === "EMAIL" && delivery && delivery.deliveredCount > 0 && <span className="turma-sent-indicator" title={`${delivery.deliveredCount} de ${delivery.studentCount} alunos com relatório entregue`} aria-label={`${delivery.deliveredCount} de ${delivery.studentCount} alunos com relatório entregue`}><span aria-hidden="true">✓</span><small>{delivery.deliveredCount}/{delivery.studentCount}</small></span>}
             <span className="admin-checkbox-content"><strong>{turma.name}</strong><small>{turma.students} alunos</small>
               {monthlyPeriod && <span className="turma-completion">
                 <span className="turma-completion-label"><span>{completenessLoading && completenessPeriodKey !== selectedPeriod ? "A calcular completude..." : item ? "Completude dos dados" : "A aguardar dados"}</span>{item && <strong>{completionPercentage}%</strong>}</span>
                 <span className="turma-completion-track" role="progressbar" aria-label={`Completude dos dados de ${turma.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={item ? completionPercentage : 0}><span style={{ width: `${item ? completionPercentage : 0}%` }} /></span>
-                {channel === "EMAIL" && (deliverySummaryLoading && deliverySummaryPeriodKey !== selectedPeriod ? <small className="turma-delivery-count">A consultar envios...</small> : delivery && <small className="turma-delivery-count">E-mails enviados: {delivery.sentCount}/{delivery.studentCount}</small>)}
+                {channel === "EMAIL" && (deliverySummaryLoading && deliverySummaryPeriodKey !== selectedPeriod ? <small className="turma-delivery-count">A consultar entregas...</small> : delivery && <small className="turma-delivery-count">E-mails entregues: {delivery.deliveredCount}/{delivery.studentCount}</small>)}
               </span>}
             </span>
           </label>;
