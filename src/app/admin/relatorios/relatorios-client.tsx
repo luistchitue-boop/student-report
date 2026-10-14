@@ -34,6 +34,10 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
   const [auditStatus, setAuditStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [closedPeriods, setClosedPeriods] = useState<Map<string, boolean>>(new Map());
   const [completeness, setCompleteness] = useState<Completeness[]>([]);
+  const [completenessPeriodKey, setCompletenessPeriodKey] = useState("");
+  const [completenessLoading, setCompletenessLoading] = useState(false);
+  const turmaIdsKey = turmas.map((turma) => turma.id).join("|");
+  const monthlyPeriod = reportPeriods.find((period) => period.key === selectedPeriod)?.type === "MONTHLY";
   const studentsForSelection = turmas.flatMap((turma) => turma.roster.filter((student) => student.active).map((student) => ({ ...student, turmaName: turma.name })));
   const filteredStudents = studentsForSelection.filter((student) => student.name.toLocaleLowerCase().includes(studentSearch.trim().toLocaleLowerCase()));
 
@@ -80,21 +84,29 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
   }, [previewUrl]);
 
   useEffect(() => {
-    if (!selectedPeriod || !selectedTurmas.length) {
+    const turmaIds = turmaIdsKey ? turmaIdsKey.split("|") : [];
+    if (!selectedPeriod || !turmaIds.length) {
       return;
     }
     let cancelled = false;
+    Promise.resolve().then(() => { if (!cancelled) setCompletenessLoading(true); });
     const query = new URLSearchParams({ periodKey: selectedPeriod });
-    selectedTurmas.forEach((turmaId) => query.append("turmaId", turmaId));
+    turmaIds.forEach((turmaId) => query.append("turmaId", turmaId));
     fetch(`/api/admin/reports/completeness?${query.toString()}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("Não foi possível verificar a completude dos dados.");
         return response.json() as Promise<{ completeness?: Completeness[] }>;
       })
-      .then((data) => { if (!cancelled) setCompleteness(data.completeness ?? []); })
-      .catch((error: unknown) => { if (!cancelled) setMessage(error instanceof Error ? error.message : "Não foi possível verificar a completude dos dados."); });
+      .then((data) => {
+        if (!cancelled) {
+          setCompleteness(data.completeness ?? []);
+          setCompletenessPeriodKey(selectedPeriod);
+        }
+      })
+      .catch((error: unknown) => { if (!cancelled) setMessage(error instanceof Error ? error.message : "Não foi possível verificar a completude dos dados."); })
+      .finally(() => { if (!cancelled) setCompletenessLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedPeriod, selectedTurmas]);
+  }, [selectedPeriod, turmaIdsKey]);
 
   async function handlePreview() {
     if (!selectedPeriod || !selectedStudentId) return;
@@ -155,7 +167,6 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
   }
 
   function toggleTurma(turmaId: string) {
-    setCompleteness([]);
     setSelectedTurmas((current) => current.includes(turmaId) ? current.filter((value) => value !== turmaId) : [...current, turmaId]);
     resetFeedback();
   }
@@ -203,8 +214,10 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
     }
   }
 
-  const completenessReady = completeness.length === selectedTurmas.length && selectedTurmas.length > 0;
-  const allSelectedTurmasComplete = completenessReady && completeness.every((item) => item.complete);
+  const currentCompleteness = completenessPeriodKey === selectedPeriod ? completeness : [];
+  const selectedCompleteness = currentCompleteness.filter((item) => selectedTurmas.includes(item.turmaId));
+  const completenessReady = selectedCompleteness.length === selectedTurmas.length && selectedTurmas.length > 0;
+  const allSelectedTurmasComplete = completenessReady && selectedCompleteness.every((item) => item.complete);
 
   return (
     <section className="admin-shell workspace">
@@ -240,10 +253,21 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
 
       <div className="admin-turma-panel">
         <div className="admin-turma-grid">
-          {turmas.map((turma) => <label key={turma.id} className={`admin-checkbox ${selectedTurmas.includes(turma.id) ? "selected" : ""} ${!selectedPeriod ? "disabled" : ""}`}>
+          {turmas.map((turma) => {
+            const item = currentCompleteness.find((entry) => entry.turmaId === turma.id);
+            const completionDenominator = item ? item.subjectCount + item.activeStudentCount : 0;
+            const completionNumerator = item ? item.subjectCount - item.missingSubjects.length + item.activeStudentCount - item.missingBehaviorStudents.length : 0;
+            const completionPercentage = completionDenominator ? Math.round((completionNumerator / completionDenominator) * 100) : item?.complete ? 100 : 0;
+            return <label key={turma.id} className={`admin-checkbox ${selectedTurmas.includes(turma.id) ? "selected" : ""} ${!selectedPeriod ? "disabled" : ""}`}>
             <input type="checkbox" disabled={!selectedPeriod || status === "sending"} checked={selectedTurmas.includes(turma.id)} onChange={() => toggleTurma(turma.id)} />
-            <span><strong>{turma.name}</strong><small>{turma.students} alunos</small></span>
-          </label>)}
+            <span className="admin-checkbox-content"><strong>{turma.name}</strong><small>{turma.students} alunos</small>
+              {monthlyPeriod && <span className="turma-completion">
+                <span className="turma-completion-label"><span>{completenessLoading && completenessPeriodKey !== selectedPeriod ? "A calcular completude..." : item ? "Completude dos dados" : "A aguardar dados"}</span>{item && <strong>{completionPercentage}%</strong>}</span>
+                <span className="turma-completion-track" role="progressbar" aria-label={`Completude dos dados de ${turma.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={item ? completionPercentage : 0}><span style={{ width: `${item ? completionPercentage : 0}%` }} /></span>
+              </span>}
+            </span>
+          </label>;
+          })}
         </div>
       </div>
 
@@ -253,7 +277,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
             <div><strong>Completude dos dados</strong><small>Notas por disciplina e comportamento por aluno</small></div>
             <span className={`admin-completeness-status ${!completenessReady ? "checking" : allSelectedTurmasComplete ? "ready" : "blocked"}`}>{!completenessReady ? "A verificar" : allSelectedTurmasComplete ? "Pronto para enviar" : "Envio bloqueado"}</span>
           </div>
-          {completenessReady && completeness.map((item) => (
+          {completenessReady && selectedCompleteness.map((item) => (
             <div key={item.turmaId} className={`admin-completeness-row ${item.complete ? "complete" : "incomplete"}`}>
               <div className="admin-completeness-row-heading"><strong>{item.turmaName}</strong><span>{item.complete ? "Completo" : "Incompleto"}</span></div>
               <div className="admin-completeness-metrics"><span>{item.subjectCount - item.missingSubjects.length}/{item.subjectCount} disciplinas</span><span>{item.activeStudentCount - item.missingBehaviorStudents.length}/{item.activeStudentCount} comportamentos</span></div>
@@ -362,6 +386,12 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
         .admin-checkbox.disabled { opacity:.55; cursor:not-allowed; }
         .admin-checkbox input { accent-color:#2563eb; }
         .admin-checkbox span { display:flex; flex-direction:column; gap:.18rem; }
+        .admin-checkbox-content { flex:1; min-width:0; }
+        .turma-completion { display:grid!important; gap:.35rem!important; width:100%; margin-top:.45rem; }
+        .turma-completion-label { display:flex!important; flex-direction:row!important; justify-content:space-between; align-items:center; gap:.5rem!important; color:#64748b; font-size:.68rem; }
+        .turma-completion-label strong { color:#334155; font-size:.72rem; }
+        .turma-completion-track { display:block!important; width:100%; height:7px; overflow:hidden; border-radius:999px; background:#e2e8f0; }
+        .turma-completion-track > span { display:block!important; height:100%; border-radius:inherit; background:linear-gradient(90deg,#0f766e,#34d399); transition:width .25s ease; }
         .admin-checkbox small { color:#64748b; }
         .admin-actions { display:flex; justify-content:flex-start; }
         .admin-submit, .admin-preview-button, .admin-individual-panel button { background:#1d4ed8; color:#fff; border:0; border-radius:10px; padding:.8rem 1.2rem; font-size:.95rem; font-weight:700; cursor:pointer; }
