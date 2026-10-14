@@ -218,8 +218,11 @@ export async function POST(request: NextRequest) {
           where: { studentId_dia_tempo: { studentId: entry.studentId, dia, tempo: entry.tempo } },
           select: { id: true, subject: true },
         });
-        if (existingSlot && existingSlot.subject !== entry.subject) {
-          return NextResponse.json({ error: "Cada aluno só pode ter uma falta por data e tempo lectivo, independentemente da disciplina." }, { status: 409 });
+        if (existingSlot) {
+          const error = existingSlot.subject === entry.subject
+            ? "Esta falta já está registada para o aluno nesta disciplina, data e tempo lectivo."
+            : "Este aluno já tem uma falta registada neste tempo lectivo noutra disciplina.";
+          return NextResponse.json({ error }, { status: 409 });
         }
 
         const savedAbsence = await prisma.absence.upsert({

@@ -49,14 +49,25 @@ export async function GET(request: NextRequest) {
       studentId: { in: turma.students.map((student) => student.id) },
       dia,
       ...(tempo ? { tempo } : {}),
+      subject,
     },
     select: { studentId: true, subject: true, tempo: true, faultType: true, notes: true },
+  });
+  const otherSubjectAbsences = await prisma.absence.findMany({
+    where: {
+      studentId: { in: turma.students.map((student) => student.id) },
+      dia,
+      ...(tempo ? { tempo } : {}),
+      subject: { not: subject },
+    },
+    select: { studentId: true, subject: true },
   });
 
   return NextResponse.json({
     students: turma.students,
     subjects: turma.subjects.map((entry) => entry.name),
     absences,
+    otherSubjectAbsences,
   });
 }
 
@@ -103,13 +114,22 @@ export async function POST(request: NextRequest) {
       select: { studentId: true, subject: true },
     });
 
-    const savedStudentIds = validStudentIds;
+    const conflictingAbsences = existingAbsences.filter((absence) => absence.subject !== subject);
+    if (conflictingAbsences.length) {
+      return NextResponse.json({
+        error: `Já existem faltas registadas para ${conflictingAbsences.length} aluno(s) neste tempo lectivo, noutra disciplina. Cada aluno só pode ter uma falta por data e tempo.`,
+        conflicts: conflictingAbsences.length,
+      }, { status: 409 });
+    }
+
+    const alreadyRecordedIds = new Set(existingAbsences.map((absence) => absence.studentId));
+    const newStudentIds = validStudentIds.filter((studentId) => !alreadyRecordedIds.has(studentId));
+    const savedStudentIds = newStudentIds;
     if (savedStudentIds.length) {
-      await prisma.$transaction(savedStudentIds.map((studentId) => prisma.absence.upsert({
-        where: { studentId_dia_tempo: { studentId, dia, tempo } },
-        update: { subject, tempo, faultType, notes: "", createdAt: new Date() },
-        create: { studentId, subject, dia, tempo, faultType, notes: "" },
-      })));
+      await prisma.absence.createMany({
+        data: savedStudentIds.map((studentId) => ({ studentId, subject, dia, tempo, faultType, notes: "" })),
+        skipDuplicates: true,
+      });
 
       await createActivityLog({
         actorId: session.user.id,
@@ -129,7 +149,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, saved: savedStudentIds.length, overwritten: existingAbsences.filter((absence) => savedStudentIds.includes(absence.studentId)).length });
+    return NextResponse.json({ success: true, saved: savedStudentIds.length, alreadyRecorded: alreadyRecordedIds.size });
   } catch (error) {
     console.error("Attendance book save error:", error);
     return NextResponse.json({ error: "Não foi possível guardar o livro de ponto" }, { status: 500 });

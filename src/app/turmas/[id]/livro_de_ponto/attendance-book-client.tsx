@@ -43,26 +43,33 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
   const [tempo, setTempo] = useState("1º tempo");
   const [faultType, setFaultType] = useState<(typeof faultTypes)[number]["value"]>("AUSENCIA_NA_SALA");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [otherSubjectAbsences, setOtherSubjectAbsences] = useState<Array<{ studentId: string; subject: string }>>([]);
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!date || !subject) {
-      setSelectedIds([]);
+      Promise.resolve().then(() => {
+        setSelectedIds([]);
+        setOtherSubjectAbsences([]);
+      });
       return;
     }
 
     let cancelled = false;
-    setIsLoading(true);
+    Promise.resolve().then(() => {
+      if (!cancelled) setIsLoading(true);
+    });
     fetch(`/api/attendance-book?turmaId=${encodeURIComponent(turma.id)}&date=${encodeURIComponent(date)}&subject=${encodeURIComponent(subject)}&tempo=${encodeURIComponent(tempo)}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("Não foi possível carregar as faltas.");
         return response.json();
       })
-      .then((data: { absences?: Array<{ studentId: string; tempo: string; faultType: (typeof faultTypes)[number]["value"] }> }) => {
+      .then((data: { absences?: Array<{ studentId: string; tempo: string; faultType: (typeof faultTypes)[number]["value"] }>; otherSubjectAbsences?: Array<{ studentId: string; subject: string }> }) => {
         if (!cancelled) {
           setSelectedIds((data.absences ?? []).map((absence) => absence.studentId));
+          setOtherSubjectAbsences(data.otherSubjectAbsences ?? []);
           const savedFaultType = data.absences?.[0]?.faultType;
           if (savedFaultType) setFaultType(savedFaultType);
         }
@@ -84,7 +91,10 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
   }
 
   function toggleAll() {
-    setSelectedIds((current) => current.length === turma.roster.length ? [] : turma.roster.map((student) => student.id));
+    const availableIds = turma.roster
+      .filter((student) => !otherSubjectAbsences.some((absence) => absence.studentId === student.id))
+      .map((student) => student.id);
+    setSelectedIds((current) => availableIds.every((id) => current.includes(id)) ? [] : availableIds);
   }
 
   async function saveAttendance() {
@@ -103,9 +113,9 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível guardar o livro de ponto.");
-      const savedMessage = `${data.saved ?? 0} falta(s) guardada(s) para ${date}.`;
-      const overwrittenMessage = data.overwritten ? ` ${data.overwritten} registo(s) anterior(es) foram substituído(s).` : "";
-      setStatus(`${savedMessage}${overwrittenMessage}`);
+      const savedMessage = `${data.saved ?? 0} nova(s) falta(s) guardada(s) para ${date}.`;
+      const alreadyRecordedMessage = data.alreadyRecorded ? ` ${data.alreadyRecorded} falta(s) já estavam registadas e não foram alteradas.` : "";
+      setStatus(`${savedMessage}${alreadyRecordedMessage}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível guardar o livro de ponto.");
     } finally {
@@ -155,13 +165,13 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
 
         <div className="attendance-student-list">
           {turma.roster.map((student) => (
-            <label key={student.id} className={`attendance-student-row ${selectedIds.includes(student.id) ? "selected" : ""}`}>
+            <label key={student.id} className={`attendance-student-row ${selectedIds.includes(student.id) ? "selected" : ""} ${otherSubjectAbsences.some((absence) => absence.studentId === student.id) ? "slot-conflict" : ""}`}>
               <span className="attendance-student-avatar">{student.avatarUrl ? <img src={student.avatarUrl} alt={`Fotografia de ${displayName(student.name)}`} /> : displayName(student.name).charAt(0).toUpperCase()}</span>
               <span className="attendance-student-content">
                 <strong className="attendance-student-name">{displayName(student.name)}</strong>
                 <span className="attendance-student-selection">
-                  <input type="checkbox" checked={selectedIds.includes(student.id)} onChange={() => toggleStudent(student.id)} />
-                  <span className="attendance-check">{selectedIds.includes(student.id) ? "Falta" : "Presente"}</span>
+                  <input type="checkbox" checked={selectedIds.includes(student.id)} disabled={otherSubjectAbsences.some((absence) => absence.studentId === student.id)} onChange={() => toggleStudent(student.id)} />
+                  <span className="attendance-check">{selectedIds.includes(student.id) ? "Falta registada" : otherSubjectAbsences.some((absence) => absence.studentId === student.id) ? `Falta registada em ${otherSubjectAbsences.find((absence) => absence.studentId === student.id)?.subject}` : "Presente"}</span>
                 </span>
               </span>
             </label>
