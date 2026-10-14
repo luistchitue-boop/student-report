@@ -185,12 +185,6 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
       setMessage("Selecione pelo menos uma turma ou um aluno antes de enviar.");
       return;
     }
-    if (!studentId && completeness.length === selectedTurmas.length && completeness.some((item) => !item.complete)) {
-      setStatus("error");
-      setMessage("Complete as notas semanais por disciplina e o comportamento de todos os alunos antes de enviar.");
-      return;
-    }
-
     setStatus("sending");
     setMessage("");
     setDeliveryResults([]);
@@ -293,7 +287,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
       <div className="admin-actions">
         <button className="admin-preview-button" type="button" onClick={handleTurmasPreview} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>Pré-visualizar PDF</button>
         {canSend && (
-          <button className="admin-submit" type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0 || !allSelectedTurmasComplete}>{status === "sending" ? "A enviar..." : `Enviar por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
+          <button className="admin-submit" type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>{status === "sending" ? "A enviar..." : `Enviar por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
         )}
       </div>
 
