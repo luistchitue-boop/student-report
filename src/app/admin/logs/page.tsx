@@ -56,29 +56,28 @@ export default async function ActivityLogsPage({
   const toFilter = typeof params.to === "string" ? params.to : "";
   const requestedPage = Number(typeof params.page === "string" ? params.page : "1");
 
-  const logs = await prisma.activityLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 200,
-    include: {
-      actor: { select: { name: true, email: true } },
-    },
-  });
-
-  const filteredLogs = logs.filter((entry) => {
-    const details = entry.details && typeof entry.details === "object" ? (entry.details as Record<string, unknown>) : null;
-    const turmaId = typeof details?.turmaId === "string" ? details.turmaId : "";
-    const createdAt = new Date(entry.createdAt);
-
-    if (turmaFilter && turmaId !== turmaFilter) return false;
-    if (fromFilter && createdAt < new Date(`${fromFilter}T00:00:00Z`)) return false;
-    if (toFilter && createdAt > new Date(`${toFilter}T23:59:59.999Z`)) return false;
-
-    return true;
-  });
-  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
+  const where = {
+    ...(turmaFilter ? { details: { path: ["turmaId"], equals: turmaFilter } } : {}),
+    ...(fromFilter || toFilter ? {
+      createdAt: {
+        ...(fromFilter ? { gte: new Date(`${fromFilter}T00:00:00Z`) } : {}),
+        ...(toFilter ? { lte: new Date(`${toFilter}T23:59:59.999Z`) } : {}),
+      },
+    } : {}),
+  };
+  const totalCount = await prisma.activityLog.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
   const startIndex = (currentPage - 1) * PAGE_SIZE;
-  const visibleLogs = filteredLogs.slice(startIndex, startIndex + PAGE_SIZE);
+  const visibleLogs = await prisma.activityLog.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    skip: startIndex,
+    take: PAGE_SIZE,
+    include: {
+      actor: { select: { name: true, email: true, teacher: { select: { name: true } } } },
+    },
+  });
 
   const buildPageHref = (page: number) => {
     const query = new URLSearchParams();
@@ -101,7 +100,7 @@ export default async function ActivityLogsPage({
 
   const studentIds = new Set<string>();
   const turmaIds = new Set<string>();
-  for (const entry of filteredLogs) {
+  for (const entry of visibleLogs) {
     const details = entry.details && typeof entry.details === "object" ? (entry.details as Record<string, unknown>) : null;
     if (!details) continue;
 
@@ -183,7 +182,7 @@ export default async function ActivityLogsPage({
           </form>
 
           <div className="admin-log-list">
-            {filteredLogs.length === 0 ? (
+            {totalCount === 0 ? (
               <p className="admin-status idle">Ainda não existem registos de atividade para este filtro.</p>
             ) : (
               visibleLogs.map((entry) => {
@@ -197,7 +196,7 @@ export default async function ActivityLogsPage({
                     </div>
                     <div className="admin-log-cell">
                       <span>Utilizador</span>
-                      <strong>{entry.actorName}</strong>
+                      <strong>{entry.actor.teacher?.name || entry.actor.name || entry.actor.email || entry.actorName}</strong>
                     </div>
                     <div className="admin-log-cell">
                       <span>Envolvido</span>
