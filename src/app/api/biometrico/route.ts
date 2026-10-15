@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { isTurmaWeeklyPeriodClosed } from "@/lib/closed-periods";
-import { getTurmaPeriodCompleteness } from "@/lib/turma-completeness";
+import { hasTurmaPeriodActivity } from "@/lib/turma-completeness";
 
 const prisma = new PrismaClient();
 
@@ -40,9 +40,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Este período está fechado para esta turma. Não é possível registar o relatório." }, { status: 403 });
     }
 
-    const completeness = await getTurmaPeriodCompleteness(prisma, turma.id, period);
-    if (!completeness?.complete) {
-      return NextResponse.json({ error: "Não é possível marcar o biométrico enquanto a completude dos dados estiver abaixo de 100%.", completeness }, { status: 409 });
+    const hasActivity = await hasTurmaPeriodActivity(prisma, turma.id, period);
+    if (!hasActivity) {
+      return NextResponse.json({ error: "Registe faltas, notas ou um relatório semanal de aluno antes de marcar o biométrico." }, { status: 409 });
     }
 
     if (!title || !description) {
