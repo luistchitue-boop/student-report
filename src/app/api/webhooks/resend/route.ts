@@ -64,5 +64,21 @@ export async function POST(request: NextRequest) {
     data: { status, error: status === "DELIVERED" ? null : reason ?? `Evento Resend: ${event.type}` },
   });
 
-  return NextResponse.json({ received: true, updated: updated.count });
+  let internshipUpdated = 0;
+  try {
+    const internshipResult = await prisma.internshipReportDelivery.updateMany({
+      where: {
+        providerEmailId: emailId,
+        channel: "EMAIL",
+        ...(status === "DELIVERED" ? {} : { status: { not: "DELIVERED" as const } }),
+      },
+      data: { status, error: status === "DELIVERED" ? null : reason ?? `Evento Resend: ${event.type}` },
+    });
+    internshipUpdated = internshipResult.count;
+  } catch (error) {
+    // Keep school-report webhook processing working if the optional internship table is not deployed yet.
+    console.error("Could not update internship report delivery status:", error);
+  }
+
+  return NextResponse.json({ received: true, updated: updated.count, internshipUpdated });
 }

@@ -195,9 +195,32 @@ model InternshipPerformanceReport {
 
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
   teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  deliveries InternshipReportDelivery[]
 
   @@unique([studentId, teacherId, periodStart])
   @@index([studentId, periodStart])
+}
+
+model InternshipReportDelivery {
+  id                String               @id @default(cuid())
+  reportId          String
+  parentId          String?
+  recipientName     String
+  recipientContact  String
+  channel           ReportDeliveryChannel
+  providerEmailId   String?              @unique
+  providerMessageSid String?             @unique
+  status            ReportDeliveryStatus
+  error             String?              @db.Text
+  attemptedAt       DateTime             @default(now())
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  report InternshipPerformanceReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  parent Parent? @relation(fields: [parentId], references: [id], onDelete: SetNull)
+
+  @@index([reportId, attemptedAt])
+  @@index([parentId])
 }
 
 model Parent {
@@ -209,6 +232,7 @@ model Parent {
   createdAt DateTime @default(now())
 
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  internshipReportDeliveries InternshipReportDelivery[]
 
   @@index([studentId])
 }

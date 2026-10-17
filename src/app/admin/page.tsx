@@ -63,6 +63,18 @@ export default async function AdminPage() {
           }}>
             Turmas de estágio
           </Link>
+          <Link href="/admin/internship-reports" style={{
+            padding: "8px 16px",
+            backgroundColor: "transparent",
+            color: "#176b8b",
+            textDecoration: "none",
+            border: "1px solid #176b8b",
+            borderRadius: "4px",
+            fontSize: "14px",
+            fontWeight: 500
+          }}>
+            Relatórios de estágio
+          </Link>
         </nav>
 
         <AdminClient />
