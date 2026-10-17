@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { jsPDF } from "jspdf";
+import sharp from "sharp";
 
 export type InternshipPdfReport = {
   id: string;
@@ -12,7 +13,7 @@ export type InternshipPdfReport = {
   strengths: string;
   improvementAreas: string;
   comments: string;
-  student: { name: string; turma: { name: string } };
+  student: { name: string; avatarUrl: string | null; turma: { name: string } };
   teacher: { name: string } | null;
 };
 
@@ -29,7 +30,27 @@ function loadPublicPng(fileName: string) {
   }
 }
 
-export function generateInternshipReportPdf(report: InternshipPdfReport) {
+async function loadStudentAvatar(url?: string | null) {
+  if (!url) return null;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const source = Buffer.from(await response.arrayBuffer());
+    const mask = Buffer.from('<svg width="128" height="128"><circle cx="64" cy="64" r="64" fill="white"/></svg>');
+    const circularPng = await sharp(source)
+      .rotate()
+      .resize(128, 128, { fit: "cover", position: "centre" })
+      .composite([{ input: mask, blend: "dest-in" }])
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+    return `data:image/png;base64,${circularPng.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+export async function generateInternshipReportPdf(report: InternshipPdfReport) {
+  const studentAvatar = await loadStudentAvatar(report.student.avatarUrl);
   const document = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const pageWidth = document.internal.pageSize.getWidth();
   const pageHeight = document.internal.pageSize.getHeight();
@@ -144,14 +165,33 @@ export function generateInternshipReportPdf(report: InternshipPdfReport) {
   document.setFontSize(11);
   document.text(`${formatDate(report.periodStart)} a ${formatDate(report.periodEnd)}`, pageWidth / 2, 128, { align: "center" });
 
+  const photoCenterX = margin + 38;
+  const photoCenterY = 180;
+  document.setFillColor(190, 185, 178);
+  document.circle(photoCenterX, photoCenterY + 2, 39, "F");
+  document.setFillColor(220, 238, 224);
+  document.circle(photoCenterX, photoCenterY, 38, "F");
+  if (studentAvatar) {
+    document.addImage(studentAvatar, "PNG", photoCenterX - 37, photoCenterY - 37, 74, 74);
+  } else {
+    document.setFont("helvetica", "bold");
+    document.setFontSize(22);
+    document.setTextColor(...ink);
+    document.text(report.student.name.trim().slice(0, 1).toLocaleUpperCase(), photoCenterX, photoCenterY + 8, { align: "center" });
+  }
+  document.setDrawColor(255, 255, 255);
+  document.setLineWidth(2.5);
+  document.circle(photoCenterX, photoCenterY, 38, "S");
+
+  const studentTextX = margin + 88;
   document.setFont("helvetica", "bold");
   document.setFontSize(18);
   document.setTextColor(...ink);
-  document.text(report.student.name, margin, 172);
+  document.text(document.splitTextToSize(report.student.name, pageWidth - studentTextX - margin) as string[], studentTextX, 172, { maxWidth: pageWidth - studentTextX - margin });
   document.setFont("helvetica", "normal");
   document.setFontSize(11);
-  document.text(`Turma: ${report.student.turma.name}`, margin, 191);
-  document.text("Acompanhamento individual · Estágio profissional", margin, 208);
+  document.text(`Turma: ${report.student.turma.name}`, studentTextX, 196);
+  document.text("Acompanhamento individual · Estágio profissional", studentTextX, 213);
 
   const cards: Array<[string, string]> = [
     ["AVALIAÇÃO GLOBAL", `${report.performanceRating}/5`],

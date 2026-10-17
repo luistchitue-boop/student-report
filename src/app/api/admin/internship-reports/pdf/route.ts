@@ -36,11 +36,11 @@ export async function GET(request: NextRequest) {
   try {
     const report = await prisma.internshipPerformanceReport.findFirst({
       where: { id: reportId, student: { turma: { isInternship: true } } },
-      include: { student: { select: { name: true, turma: { select: { name: true } } } }, teacher: { select: { name: true } } },
+      include: { student: { select: { name: true, avatarUrl: true, turma: { select: { name: true } } } }, teacher: { select: { name: true } } },
     });
     if (!report) return NextResponse.json({ error: "Relatório de estágio não encontrado." }, { status: 404 });
 
-    const pdf = generateInternshipReportPdf(report);
+    const pdf = await generateInternshipReportPdf(report);
     const disposition = searchParams.get("download") === "1" ? "attachment" : "inline";
     const filename = `relatorio-estagio-${safeFileName(report.student.name)}.pdf`;
     return new NextResponse(new Uint8Array(pdf), {

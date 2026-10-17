@@ -51,6 +51,7 @@ export async function POST(request: Request) {
           select: {
             id: true,
             name: true,
+            avatarUrl: true,
             turma: { select: { name: true } },
             parents: { where: { id: parentId }, select: { id: true, name: true, email: true, phone: true } },
           },
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const pdf = generateInternshipReportPdf(report);
+    const pdf = await generateInternshipReportPdf(report);
     let providerEmailId: string | undefined;
     let providerMessageSid: string | undefined;
     let deliveryError: string | undefined;
