@@ -117,7 +117,10 @@ export function InternshipAdminClient() {
                       <article key={student.id} style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) minmax(240px, 2fr) auto", gap: 12, alignItems: "end", borderTop: "1px solid #e5ece5", paddingTop: 14 }}>
                         <div><strong>{student.name}</strong><small style={{ display: "block", color: "#69766f" }}>{student.active ? "Ativo" : "Inativo"}</small></div>
                         <label className="admin-field"><span>Coordenadores com acesso individual</span>
-                          <select multiple size={Math.min(4, Math.max(2, coordinators.length))} value={assignments[student.id] ?? []} onChange={(event) => setAssignments((current) => ({ ...current, [student.id]: Array.from(event.currentTarget.selectedOptions, (option) => option.value) }))}>
+                          <select multiple size={Math.min(4, Math.max(2, coordinators.length))} value={assignments[student.id] ?? []} onChange={(event) => {
+                            const teacherIds = Array.from(event.currentTarget.selectedOptions, (option) => option.value);
+                            setAssignments((current) => ({ ...current, [student.id]: teacherIds }));
+                          }}>
                             {coordinators.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name} · {teacher.user.email}</option>)}
                           </select>
                         </label>
