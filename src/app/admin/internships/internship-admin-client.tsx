@@ -52,17 +52,23 @@ export function InternshipAdminClient() {
     if (!selectedTurma) return;
     setBusy("mode");
     setMessage("");
-    const response = await fetch("/api/admin/internships", {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "setTurmaMode", turmaId: selectedTurma.id, isInternship }),
-    });
-    const data = await response.json();
-    if (!response.ok) setMessage(data.error ?? "Não foi possível atualizar a turma.");
-    else {
+    try {
+      const response = await fetch("/api/admin/internships", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setTurmaMode", turmaId: selectedTurma.id, isInternship }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setMessage(data.error ?? "Não foi possível atualizar a turma.");
+        return;
+      }
       setTurmas((current) => current.map((turma) => turma.id === selectedTurma.id ? { ...turma, isInternship } : turma));
       setMessage(isInternship ? "Turma ativada para relatórios de estágio." : "Modo estágio desativado. As atribuições e relatórios foram preservados.");
+    } catch {
+      setMessage("Não foi possível atualizar a turma. Verifique a ligação ao servidor e tente novamente.");
+    } finally {
+      setBusy("");
     }
-    setBusy("");
   }
 
   async function saveStudent(student: Student) {
@@ -94,9 +100,16 @@ export function InternshipAdminClient() {
               <div className="admin-assignment-card" style={{ marginTop: 20 }}>
                 <div className="admin-assignment-header">
                   <div><strong>{selectedTurma.name}</strong><small>{selectedTurma.students.length} aluno(s)</small></div>
-                  <button type="button" className="admin-submit" disabled={busy === "mode"} onClick={() => updateMode(!selectedTurma.isInternship)}>
-                    {busy === "mode" ? "A guardar..." : selectedTurma.isInternship ? "Desativar modo estágio" : "Marcar como turma de estágio"}
-                  </button>
+                  <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: busy === "mode" ? "wait" : "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedTurma.isInternship}
+                      disabled={busy === "mode"}
+                      onChange={(event) => updateMode(event.target.checked)}
+                      aria-label={`Marcar ${selectedTurma.name} como turma de estágio`}
+                    />
+                    <span>{busy === "mode" ? "A guardar..." : "Turma de estágio"}</span>
+                  </label>
                 </div>
                 {selectedTurma.isInternship && (
                   <div style={{ display: "grid", gap: 14, marginTop: 18 }}>

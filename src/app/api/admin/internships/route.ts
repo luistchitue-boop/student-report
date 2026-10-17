@@ -14,42 +14,47 @@ export async function GET() {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
 
-  const [turmas, coordinators] = await Promise.all([
-    prisma.turma.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        isInternship: true,
-        students: {
-          orderBy: { name: "asc" },
-          select: {
-            id: true,
-            name: true,
-            active: true,
-            internshipAssignments: { select: { teacherId: true } },
+  try {
+    const [turmas, coordinators] = await Promise.all([
+      prisma.turma.findMany({
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          isInternship: true,
+          students: {
+            orderBy: { name: "asc" },
+            select: {
+              id: true,
+              name: true,
+              active: true,
+              internshipAssignments: { select: { teacherId: true } },
+            },
           },
         },
-      },
-    }),
-    prisma.teacher.findMany({
-      where: { role: "COORDENADOR" },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, user: { select: { email: true } } },
-    }),
-  ]);
+      }),
+      prisma.teacher.findMany({
+        where: { role: "COORDENADOR" },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, user: { select: { email: true } } },
+      }),
+    ]);
 
-  return NextResponse.json({
-    turmas: turmas.map((turma) => ({
-      ...turma,
-      students: turma.students.map((student) => ({
-        ...student,
-        teacherIds: student.internshipAssignments.map((assignment) => assignment.teacherId),
-        internshipAssignments: undefined,
+    return NextResponse.json({
+      turmas: turmas.map((turma) => ({
+        ...turma,
+        students: turma.students.map((student) => ({
+          ...student,
+          teacherIds: student.internshipAssignments.map((assignment) => assignment.teacherId),
+          internshipAssignments: undefined,
+        })),
       })),
-    })),
-    coordinators,
-  });
+      coordinators,
+    });
+  } catch (error) {
+    console.error("Internship administration load error:", error);
+    return NextResponse.json({ error: "Não foi possível carregar as turmas. Confirme se as migrações de estágio foram aplicadas à base de dados." }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request) {
@@ -62,7 +67,11 @@ export async function PATCH(request: Request) {
       const turmaId = typeof body.turmaId === "string" ? body.turmaId : "";
       if (!turmaId || typeof body.isInternship !== "boolean") return NextResponse.json({ error: "Turma e estado de estágio são obrigatórios." }, { status: 400 });
       const turma = await prisma.turma.update({ where: { id: turmaId }, data: { isInternship: body.isInternship }, select: { id: true, name: true, isInternship: true } });
-      await createActivityLog({ actorId: session.user.id, actorName: describeActorName(session.user), action: body.isInternship ? "Marcou turma como estágio" : "Removeu turma do modo estágio", entity: "Turma", entityId: turma.id, details: { name: turma.name, isInternship: turma.isInternship } });
+      try {
+        await createActivityLog({ actorId: session.user.id, actorName: describeActorName(session.user), action: body.isInternship ? "Marcou turma como estágio" : "Removeu turma do modo estágio", entity: "Turma", entityId: turma.id, details: { name: turma.name, isInternship: turma.isInternship } });
+      } catch (error) {
+        console.error("Could not record internship turma activity:", error);
+      }
       return NextResponse.json({ success: true, turma });
     }
 
