@@ -51,6 +51,18 @@ export default async function AdminPage() {
           }}>
             Fecho de períodos
           </Link>
+          <Link href="/admin/internships" style={{
+            padding: "8px 16px",
+            backgroundColor: "transparent",
+            color: "#176b8b",
+            textDecoration: "none",
+            border: "1px solid #176b8b",
+            borderRadius: "4px",
+            fontSize: "14px",
+            fontWeight: 500
+          }}>
+            Turmas de estágio
+          </Link>
         </nav>
 
         <AdminClient />

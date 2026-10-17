@@ -17,7 +17,7 @@ import {
   Landmark,
 } from "lucide-react";
 
-export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" | "direccao" | "biometrico" | "controlo" | "relatorios" | "logs" }) {
+export function AppShell({ children, active }: { children: ReactNode; active: "inicio" | "turmas" | "settings" | "admin" | "direccao" | "biometrico" | "controlo" | "relatorios" | "logs" | "internships" }) {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdmin = session?.user?.role === "ADMIN";
@@ -55,9 +55,14 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
             <Building2 size={16} strokeWidth={2.1} /> Turmas
           </Link>
           {session?.user?.role === "COORDENADOR" && (
-            <Link href="/biometrico" className={active === "biometrico" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
-              <Fingerprint size={16} strokeWidth={2.1} /> Biométrico
-            </Link>
+            <>
+              <Link href="/biometrico" className={active === "biometrico" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+                <Fingerprint size={16} strokeWidth={2.1} /> Biométrico
+              </Link>
+              <Link href="/internship-reports" className={active === "internships" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>
+                <FileText size={16} strokeWidth={2.1} /> Estágios
+              </Link>
+            </>
           )}
           {isAdmin && (
             <>

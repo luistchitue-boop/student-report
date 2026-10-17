@@ -86,6 +86,8 @@ model Teacher {
   turmas  Turma[]
   direccaoAssignments DireccaoTurma[]
   turmaAssignments TeacherTurma[]
+  internshipStudentAssignments InternshipStudentAssignment[]
+  internshipPerformanceReports InternshipPerformanceReport[]
 }
 
 model Turma {
@@ -94,6 +96,7 @@ model Turma {
   code         String?  @unique
   schedule     String?
   gradeScale   Int      @default(20)
+  isInternship Boolean  @default(false)
   coordinatorId String?
   createdAt    DateTime @default(now())
 
@@ -159,6 +162,42 @@ model Student {
   parents     Parent[]
   weeklyObservations StudentWeeklyObservation[]
   reportDeliveries ReportDelivery[]
+  internshipAssignments InternshipStudentAssignment[]
+  internshipPerformanceReports InternshipPerformanceReport[]
+}
+
+model InternshipStudentAssignment {
+  teacherId String
+  studentId String
+  assignedAt DateTime @default(now())
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, studentId])
+  @@index([studentId])
+}
+
+model InternshipPerformanceReport {
+  id               String   @id @default(cuid())
+  studentId        String
+  teacherId        String?
+  periodStart      DateTime
+  periodEnd        DateTime
+  companyName      String?
+  position         String?
+  performanceRating Int
+  strengths        String   @db.Text
+  improvementAreas String   @db.Text
+  comments         String   @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, teacherId, periodStart])
+  @@index([studentId, periodStart])
 }
 
 model Parent {
