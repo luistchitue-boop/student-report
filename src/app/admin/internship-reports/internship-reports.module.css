@@ -27,5 +27,15 @@
 .delivery small { display: block; margin-top: 4px; color: #74828a; font-size: 10px; }
 .status { align-self: start; padding: 4px 7px; border-radius: 999px; background: #eef4f6; color: #45606e; font-size: 9px; font-weight: 800; white-space: nowrap; }
 .loading { color: #71818a; padding: 22px 0; font-size: 13px; }
+.bulkCard { display: grid; gap: 16px; margin: 0 0 18px; padding: 20px; border: 1px solid #d9e7e5; border-radius: 14px; background: linear-gradient(135deg, #f3f8f5, #fff 72%); box-shadow: 0 8px 24px rgba(23, 48, 68, .04); }
+.bulkCard h2 { margin: 0; color: #173044; font-size: 17px; }
+.bulkControls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.bulkControls .field { flex: 1 1 190px; }
+.bulkControls .sendButton { flex: 0 0 auto; }
+.bulkSummary { display: grid; gap: 3px; min-width: 165px; color: #45606e; font-size: 11px; }
+.bulkSummary strong { color: #24573f; font-size: 15px; }
+.bulkResults { display: grid; gap: 6px; max-height: 230px; overflow: auto; padding: 10px; border: 1px solid #e8edef; border-radius: 8px; background: #fff; }
+.bulkResults > div { display: grid; gap: 3px; padding: 5px 0; color: #385363; font-size: 11px; }
+.bulkResults small { color: #9b3434; font-size: 10px; }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .preview { height: 68vh; } .toolbarNote { margin-left: 0; } }
-@media (max-width: 560px) { .toolbar, .card { padding: 14px; } .field { width: 100%; } .preview, .emptyPreview { min-height: 340px; } .preview { height: 60vh; } }
+@media (max-width: 560px) { .toolbar, .card, .bulkCard { padding: 14px; } .field { width: 100%; } .preview, .emptyPreview { min-height: 340px; } .preview { height: 60vh; } .bulkControls .sendButton { width: 100%; } }

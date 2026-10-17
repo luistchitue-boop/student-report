@@ -16,28 +16,31 @@ export async function GET() {
   }
 
   try {
-    const students = await prisma.student.findMany({
-      where: { turma: { isInternship: true } },
-      orderBy: [{ turma: { name: "asc" } }, { name: "asc" }],
-      select: {
-        id: true,
-        name: true,
-        active: true,
-        turma: { select: { id: true, name: true } },
-        parents: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true } },
-        internshipPerformanceReports: {
-          orderBy: { periodStart: "desc" },
-          include: {
-            teacher: { select: { name: true } },
-            deliveries: {
-              orderBy: { attemptedAt: "desc" },
-              select: { id: true, recipientName: true, recipientContact: true, channel: true, status: true, error: true, attemptedAt: true },
+    const [turmas, students] = await Promise.all([
+      prisma.turma.findMany({ where: { isInternship: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+      prisma.student.findMany({
+        where: { turma: { isInternship: true } },
+        orderBy: [{ turma: { name: "asc" } }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          active: true,
+          turma: { select: { id: true, name: true } },
+          parents: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true } },
+          internshipPerformanceReports: {
+            orderBy: { periodStart: "desc" },
+            include: {
+              teacher: { select: { name: true } },
+              deliveries: {
+                orderBy: { attemptedAt: "desc" },
+                select: { id: true, recipientName: true, recipientContact: true, channel: true, status: true, error: true, attemptedAt: true },
+              },
             },
           },
         },
-      },
-    });
-    return NextResponse.json({ students });
+      }),
+    ]);
+    return NextResponse.json({ turmas, students });
   } catch (error) {
     console.error("Admin internship reports load error:", error);
     return NextResponse.json({ error: "Não foi possível carregar os relatórios de estágio." }, { status: 500 });
