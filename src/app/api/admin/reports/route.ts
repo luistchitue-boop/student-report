@@ -646,6 +646,12 @@ export async function POST(request: Request) {
     const turmaIds = retryDelivery ? [retryDelivery.turmaId] : rawTurmaIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
     const rawStudentIds = Array.isArray(body.studentIds) ? body.studentIds : [];
     const studentIds = retryDelivery ? [retryDelivery.studentId] : rawStudentIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
+    const rawParentIds = Array.isArray(body.parentIds) ? body.parentIds : [];
+    const individualEmailSend = !preview && !retryDelivery && channel === "EMAIL" && studentIds.length === 1;
+    if (individualEmailSend && (!rawParentIds.length || rawParentIds.some((value: unknown) => typeof value !== "string" || !value.trim()))) {
+      return NextResponse.json({ error: "Selecione pelo menos um encarregado para o envio individual." }, { status: 400 });
+    }
+    const selectedParentIds = new Set<string>(rawParentIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value.trim())));
     const periodKey = retryDelivery
       ? `${formatPeriodDate(retryDelivery.periodStart)}|${formatPeriodDate(retryDelivery.periodEnd)}`
       : typeof body.periodKey === "string" ? body.periodKey : "";
@@ -721,6 +727,17 @@ export async function POST(request: Request) {
       },
     });
 
+    if (individualEmailSend) {
+      const selectedStudent = turmas.flatMap((turma) => turma.students).find((student) => student.id === studentIds[0]);
+      if (!selectedStudent) {
+        return NextResponse.json({ error: "O aluno selecionado não pertence à turma indicada ou não está ativo." }, { status: 400 });
+      }
+      const studentParentIds = new Set(selectedStudent.parents.map((parent) => parent.id));
+      if ([...selectedParentIds].some((parentId) => !studentParentIds.has(parentId))) {
+        return NextResponse.json({ error: "Um ou mais encarregados selecionados não pertencem ao aluno." }, { status: 400 });
+      }
+    }
+
     const recipients: Array<{ email: string; phone: string; reportUrl: string; studentName: string; firstName: string; studentId: string; turmaId: string; recipientName: string; pdfBuffer?: Buffer }> = [];
     const previewPdfs: Buffer[] = [];
     const saveDelivery = (data: { turmaId: string; studentId: string; recipientName?: string; recipientEmail: string; reportUrl?: string; providerEmailId?: string; status: "SENT" | "FAILED"; error?: string }) => prisma.reportDelivery.upsert({
@@ -784,6 +801,7 @@ export async function POST(request: Request) {
 
         const approvedParents = new Map<string, { firstName: string; phone: string; email: string }>();
         for (const parent of student.parents) {
+          if (individualEmailSend && !selectedParentIds.has(parent.id)) continue;
           const email = parent.email?.trim().toLowerCase();
           if (retryDelivery && email !== retryDelivery.recipientEmail.toLowerCase()) continue;
           const phone = parent.phone ? normalizeAngolaPhone(parent.phone) : "";

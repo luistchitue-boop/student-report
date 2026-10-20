@@ -9,7 +9,7 @@ type Turma = {
   name: string;
   students: number;
   subjects: string[];
-  roster: Array<{ id: string; name: string; active: boolean; parents: Array<{ name: string; email: string; phone: string }> }>;
+  roster: Array<{ id: string; name: string; active: boolean; parents: Array<{ id: string; name: string; email: string; phone: string }> }>;
 };
 
 type DeliveryResult = { email: string; studentName: string; success: boolean; error?: string };
@@ -24,6 +24,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
   const [channel, setChannel] = useState<"EMAIL" | "WHATSAPP">("EMAIL");
   const [selectedTurmas, setSelectedTurmas] = useState<string[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [selectedParentIds, setSelectedParentIds] = useState<string[]>([]);
   const [studentSearch, setStudentSearch] = useState("");
   const [showStudentSuggestions, setShowStudentSuggestions] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
@@ -69,8 +70,18 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
 
   function selectStudent(student: (typeof studentsForSelection)[number]) {
     setSelectedStudentId(student.id);
+    setSelectedParentIds([]);
     setStudentSearch(`${student.name} · ${student.turmaName}`);
     setShowStudentSuggestions(false);
+    resetFeedback();
+  }
+
+  const selectedStudent = studentsForSelection.find((student) => student.id === selectedStudentId);
+
+  function toggleParent(parentId: string) {
+    setSelectedParentIds((current) => current.includes(parentId)
+      ? current.filter((id) => id !== parentId)
+      : [...current, parentId]);
     resetFeedback();
   }
 
@@ -218,10 +229,14 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
     setDeliveryResults([]);
 
     try {
+      if (studentId && channel === "EMAIL" && selectedParentIds.length === 0) {
+        throw new Error("Selecione pelo menos um encarregado para receber o relatório.");
+      }
+
       const response = await fetch("/api/admin/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turmaIds, periodKey: selectedPeriod, channel, ...(studentId ? { studentIds: [studentId] } : {}) }),
+        body: JSON.stringify({ turmaIds, periodKey: selectedPeriod, channel, ...(studentId ? { studentIds: [studentId] } : {}), ...(studentId && channel === "EMAIL" ? { parentIds: selectedParentIds } : {}) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível enviar os relatórios.");
@@ -262,7 +277,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
 
       <div className="weekly-period-selector admin-report-period">
         <label>Período de relatório
-          <select value={selectedPeriod} onChange={(event) => { setSelectedPeriod(event.target.value); setSelectedTurmas([]); setCompleteness([]); setSelectedStudentId(""); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>
+          <select value={selectedPeriod} onChange={(event) => { setSelectedPeriod(event.target.value); setSelectedTurmas([]); setCompleteness([]); setSelectedStudentId(""); setSelectedParentIds([]); setStudentSearch(""); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>
             <option value="">Selecione um período</option>
             {reportPeriods.map((period) => {
               const isClosed = closedPeriods.has(period.key);
@@ -337,7 +352,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
               placeholder="Pesquisar aluno..."
               disabled={!selectedPeriod || status === "sending"}
               onFocus={() => setShowStudentSuggestions(true)}
-              onChange={(event) => { setStudentSearch(event.target.value); setSelectedStudentId(""); setShowStudentSuggestions(true); resetFeedback(); }}
+              onChange={(event) => { setStudentSearch(event.target.value); setSelectedStudentId(""); setSelectedParentIds([]); setShowStudentSuggestions(true); resetFeedback(); }}
             />
             {showStudentSuggestions && selectedPeriod && status !== "sending" && <div id="admin-student-suggestions" className="admin-student-suggestions" role="listbox">
               {filteredStudents.length ? filteredStudents.slice(0, 12).map((student) => <button key={student.id} type="button" role="option" aria-selected={selectedStudentId === student.id} onMouseDown={(event) => event.preventDefault()} onClick={() => selectStudent(student)}>
@@ -346,9 +361,21 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
             </div>}
           </div>
         </label>
+        {canSend && channel === "EMAIL" && selectedStudent && (
+          <fieldset className="admin-parent-selector" disabled={status === "sending"}>
+            <legend>Destinatários do relatório {monthlyPeriod ? "mensal" : "selecionado"}</legend>
+            {selectedStudent.parents.length ? selectedStudent.parents.map((parent) => (
+              <label key={parent.id} className="admin-parent-option">
+                <input type="checkbox" checked={selectedParentIds.includes(parent.id)} onChange={() => toggleParent(parent.id)} />
+                <span><strong>{parent.name}</strong><small>{parent.email || "Sem e-mail registado"}</small></span>
+              </label>
+            )) : <p className="admin-parent-empty">Este aluno não tem encarregados registados.</p>}
+            <small className="admin-parent-help">Selecione um ou mais encarregados. O relatório será enviado apenas para os contactos selecionados.</small>
+          </fieldset>
+        )}
         <button type="button" onClick={handlePreview} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>Pré-visualizar PDF</button>
         {canSend && (
-          <button type="button" onClick={() => handleSendReports(selectedStudentId)} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>{status === "sending" ? "A enviar..." : `Enviar caso individual por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
+          <button type="button" onClick={() => handleSendReports(selectedStudentId)} disabled={status === "sending" || !selectedPeriod || !selectedStudentId || (channel === "EMAIL" && selectedParentIds.length === 0)}>{status === "sending" ? "A enviar..." : `Enviar caso individual por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
         )}
       </div>
 
@@ -439,6 +466,13 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
         .admin-student-suggestions small { margin-top:.15rem; color:#64748b; font-size:.75rem; font-weight:500; }
         .admin-student-empty { display:block; padding:.7rem; color:#64748b; font-size:.82rem; font-weight:500; }
         .admin-individual-panel select { width:100%; padding:.7rem; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
+        .admin-parent-selector { display:grid; gap:.55rem; flex:1 1 100%; min-width:240px; margin:0; padding:.85rem; border:1px solid #cbd5e1; border-radius:10px; background:#fff; }
+        .admin-parent-selector legend { padding:0 .35rem; color:#334155; font-weight:800; }
+        .admin-parent-option { display:flex; align-items:center; gap:.6rem; padding:.55rem .65rem; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; }
+        .admin-parent-option input { accent-color:#2563eb; }
+        .admin-parent-option span { display:grid; gap:.15rem; }
+        .admin-parent-option small, .admin-parent-help { color:#64748b; font-size:.78rem; font-weight:500; }
+        .admin-parent-empty { margin:0; color:#9f1239; font-size:.84rem; }
         .admin-preview-panel { display:grid; gap:.8rem; background:#fff; border:1px solid #dbe3ec; border-radius:18px; padding:1.2rem; }
         .admin-preview-panel iframe { width:100%; min-height:760px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; }
         .admin-status { margin:0; padding:.85rem 1rem; border-radius:10px; font-size:.92rem; }
