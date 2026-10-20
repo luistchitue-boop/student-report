@@ -18,7 +18,7 @@ function getShortStudentName(name: string) {
   return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
-export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: string; name: string; schedule: string; students: number; gradeScale: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; avatarUrl?: string | null; parents: Array<{ id: string; name: string; phone: string; email: string }> }; canEdit: boolean }) {
+export function StudentRecordClient({ turma, student, canEdit, canAddParent }: { turma: { id: string; name: string; schedule: string; students: number; gradeScale: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; avatarUrl?: string | null; parents: Array<{ id: string; name: string; phone: string; email: string }> }; canEdit: boolean; canAddParent: boolean }) {
   const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -565,7 +565,7 @@ export function StudentRecordClient({ turma, student, canEdit }: { turma: { id: 
             )}
 
             {tab === "contactos" && (
-              <ContactosTab parents={student.parents} />
+              <ContactosTab parents={student.parents} turmaId={turma.id} studentId={student.id} canAddParent={canAddParent} />
             )}
           </section>
           {showJustificationModal ? (

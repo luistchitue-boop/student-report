@@ -83,6 +83,15 @@ export async function getCoordinatorTurmas(userId: string) {
     return (await prisma.turma.findMany({ orderBy: { name: "asc" }, select: turmaSelect })).map(mapTurmaForCoordinator);
   }
 
+  if (teacher?.role === "DIRECCAO") {
+    const turmas = await prisma.turma.findMany({
+      where: { direccaoAssignments: { some: { teacher: { userId } } } },
+      orderBy: { name: "asc" },
+      select: turmaSelect,
+    });
+    return turmas.map(mapTurmaForCoordinator);
+  }
+
   const coordinator = await prisma.teacher.findUnique({
     where: { userId },
     include: { turmaAssignments: { include: { turma: { select: turmaSelect } } } },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 type Parent = {
   id: string;
@@ -9,7 +9,7 @@ type Parent = {
   email: string;
 };
 
-export function ContactosTab({ parents }: { parents: Parent[] }) {
+export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { parents: Parent[]; turmaId: string; studentId: string; canAddParent: boolean }) {
   const [editingParentId, setEditingParentId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -18,6 +18,49 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [parentList, setParentList] = useState<Parent[]>(parents);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addName, setAddName] = useState("");
+  const [addPhone, setAddPhone] = useState("");
+  const [addEmail, setAddEmail] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+
+  const handleAddParent = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!addName.trim() || !addPhone.trim()) {
+      setAddError("Nome e telefone são obrigatórios");
+      return;
+    }
+
+    setIsAdding(true);
+    setAddError(null);
+    try {
+      const response = await fetch(`/api/turmas/${turmaId}/students/${studentId}/parents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: addName.trim(), phone: addPhone.trim(), email: addEmail.trim() }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        setAddError(result.message || "Erro ao adicionar encarregado");
+        return;
+      }
+
+      setParentList((current) => [...current, result as Parent]);
+      setAddName("");
+      setAddPhone("");
+      setAddEmail("");
+      setShowAddForm(false);
+      setSuccess("Encarregado adicionado com sucesso");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Failed to add parent:", err);
+      setAddError("Erro ao conectar ao servidor");
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   const handleEditClick = (parent: Parent) => {
     setEditingParentId(parent.id);
@@ -81,6 +124,41 @@ export function ContactosTab({ parents }: { parents: Parent[] }) {
       <div style={{ color: "var(--muted)", fontSize: "0.92rem", fontWeight: 600, letterSpacing: "0.05em" }}>
         Contactos dos encarregados de educação
       </div>
+
+      {canAddParent && (
+        <div style={{ display: "grid", gap: "0.75rem" }}>
+          {!showAddForm ? (
+            <button
+              type="button"
+              onClick={() => { setShowAddForm(true); setAddError(null); }}
+              style={{ minHeight: "2.5rem", padding: "0.55rem 1rem", border: "0", borderRadius: "9px", background: "var(--green)", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+            >
+              + Adicionar encarregado
+            </button>
+          ) : (
+            <form onSubmit={handleAddParent} style={{ display: "grid", gap: "0.75rem", background: "#fff", border: "1.5px solid var(--green)", padding: "1rem", borderRadius: "14px" }}>
+              <h3 style={{ margin: 0, color: "var(--navy)", fontSize: "0.95rem", fontWeight: 700 }}>Novo encarregado</h3>
+              <label style={{ display: "grid", gap: "0.35rem", color: "#53645b", fontSize: "0.75rem", fontWeight: 700 }}>
+                Nome *
+                <input required value={addName} onChange={(event) => setAddName(event.target.value)} autoComplete="name" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid #ccd9ce", borderRadius: "9px", fontSize: "0.9rem" }} />
+              </label>
+              <label style={{ display: "grid", gap: "0.35rem", color: "#53645b", fontSize: "0.75rem", fontWeight: 700 }}>
+                Telefone *
+                <input required type="tel" value={addPhone} onChange={(event) => setAddPhone(event.target.value)} autoComplete="tel" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid #ccd9ce", borderRadius: "9px", fontSize: "0.9rem" }} />
+              </label>
+              <label style={{ display: "grid", gap: "0.35rem", color: "#53645b", fontSize: "0.75rem", fontWeight: 700 }}>
+                E-mail
+                <input type="email" value={addEmail} onChange={(event) => setAddEmail(event.target.value)} autoComplete="email" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid #ccd9ce", borderRadius: "9px", fontSize: "0.9rem" }} />
+              </label>
+              {addError && <div role="alert" style={{ color: "#8b3a3a", fontSize: "0.8rem", fontWeight: 600 }}>{addError}</div>}
+              <div style={{ display: "flex", gap: "0.7rem", justifyContent: "flex-end" }}>
+                <button type="button" disabled={isAdding} onClick={() => { setShowAddForm(false); setAddError(null); }} style={{ minHeight: "2.45rem", padding: "0.5rem 1rem", border: "1px solid #ccd7cc", borderRadius: "9px", background: "#fbfcf8", color: "var(--ink)", fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
+                <button type="submit" disabled={isAdding} style={{ minHeight: "2.45rem", padding: "0.5rem 1rem", border: "0", borderRadius: "9px", background: "var(--green)", color: "#fff", fontWeight: 700, cursor: isAdding ? "not-allowed" : "pointer", opacity: isAdding ? 0.55 : 1 }}>{isAdding ? "A adicionar..." : "Adicionar"}</button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
 
       {success && (
         <div
