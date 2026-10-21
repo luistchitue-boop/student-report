@@ -32,7 +32,13 @@ export async function POST(
       where: role === "ADMIN"
         ? { id: turmaId }
         : role === "DIRECCAO"
-          ? { id: turmaId, direccaoAssignments: { some: { teacher: { userId: session.user.id } } } }
+          ? {
+              id: turmaId,
+              OR: [
+                { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+                { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } },
+              ],
+            }
           : { id: turmaId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
       select: { id: true },
     });

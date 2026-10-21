@@ -85,7 +85,12 @@ export async function getCoordinatorTurmas(userId: string) {
 
   if (teacher?.role === "DIRECCAO") {
     const turmas = await prisma.turma.findMany({
-      where: { direccaoAssignments: { some: { teacher: { userId } } } },
+      where: {
+        OR: [
+          { teacherAssignments: { some: { teacher: { userId } } } },
+          { direccaoAssignments: { some: { teacher: { userId } } } },
+        ],
+      },
       orderBy: { name: "asc" },
       select: turmaSelect,
     });
