@@ -124,6 +124,16 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .summary-card { background:linear-gradient(180deg, #ffffff 0%, #f5f9f6 100%); border:1px solid #dde5df; border-radius:18px; padding:1rem 1.1rem; box-shadow:0 12px 28px rgba(27,52,41,0.04); }
 .summary-label { display:block; color:#64716a; font-size:0.74rem; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.4rem; }
 .summary-card strong { font-size:1.85rem; letter-spacing:-0.06em; color:var(--navy); }
+.student-global-search { display:grid; gap:.75rem; margin-bottom:1.5rem; }
+.student-global-search-form { display:grid; gap:.45rem; width:100%; padding:.85rem 1rem; border:1px solid #d8e4da; border-radius:14px; background:linear-gradient(135deg,#f8fbf8 0%,#eef6ef 100%); }
+.student-global-search-form > label { color:#53645b; font-size:.7rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.student-global-search-form > small { color:#64716a; font-size:.75rem; }
+.global-student-results { display:grid; gap:.6rem; padding:1rem; border:1px solid #dfe7df; border-radius:14px; background:#fff; }
+.global-student-results > strong { color:var(--navy); font-size:.9rem; }
+.global-student-results ul { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:.55rem; margin:0; padding:0; list-style:none; }
+.global-student-results li a { display:grid; gap:.2rem; height:100%; padding:.7rem .8rem; border:1px solid #e2e9e2; border-radius:10px; color:var(--navy); text-decoration:none; }
+.global-student-results li a:hover { border-color:#b9cdbd; background:#f5faf6; }
+.global-student-results li span { color:#64716a; font-size:.76rem; }
 .turma-toolbar { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1rem; margin-bottom:1rem; }
 .turma-toolbar > div:first-child { grid-column:1; grid-row:1; }
 .turma-search-form { grid-column:1 / -1; grid-row:2; }

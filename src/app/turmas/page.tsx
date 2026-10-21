@@ -11,7 +11,7 @@ const PAGE_SIZE = 6;
 export default async function TurmasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string | string[] | undefined; q?: string | string[] | undefined }>;
+  searchParams: Promise<{ page?: string | string[] | undefined; q?: string | string[] | undefined; student?: string | string[] | undefined }>;
 }) {
   const session = await auth();
 
@@ -23,7 +23,16 @@ export default async function TurmasPage({
   const params = await searchParams;
   const rawPage = params?.page;
   const rawQuery = params?.q;
+  const rawStudentQuery = params?.student;
   const query = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery ?? "").trim();
+  const studentQuery = (Array.isArray(rawStudentQuery) ? rawStudentQuery[0] : rawStudentQuery ?? "").trim();
+  const normalizeSearch = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+  const normalizedStudentQuery = normalizeSearch(studentQuery);
+  const matchingStudents = studentQuery.length >= 2
+    ? allTurmas.flatMap((turma) => turma.roster
+      .filter((student) => normalizeSearch(student.name).includes(normalizedStudentQuery))
+      .map((student) => ({ ...student, turmaId: turma.id, turmaName: turma.name })))
+    : [];
   const turmas = query
     ? allTurmas.filter((turma) => turma.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     : allTurmas;
@@ -104,6 +113,35 @@ export default async function TurmasPage({
             <span className="summary-label">Média por turma</span>
             <strong>{averageStudents}</strong>
           </div>
+        </section>
+
+        <section className="student-global-search" aria-label="Pesquisar aluno em todas as turmas">
+          <form method="get" className="student-global-search-form">
+            <label htmlFor="global-student-search">Pesquisar aluno em todas as turmas supervisionadas</label>
+            <div className="turma-search-controls">
+              <input id="global-student-search" name="student" type="search" minLength={2} defaultValue={studentQuery} placeholder="Introduza o nome do aluno..." />
+              {query && <input type="hidden" name="q" value={query} />}
+              <button type="submit" className="turma-search-button">Pesquisar aluno</button>
+              {studentQuery && <Link href={query ? `/turmas?q=${encodeURIComponent(query)}` : "/turmas"} className="turma-search-clear">Limpar</Link>}
+            </div>
+            {studentQuery.length === 1 && <small>Introduza pelo menos 2 caracteres para pesquisar.</small>}
+          </form>
+          {studentQuery.length >= 2 && (
+            <div className="global-student-results" aria-live="polite">
+              <strong>{matchingStudents.length ? `${matchingStudents.length} aluno(s) encontrado(s)` : "Nenhum aluno encontrado"}</strong>
+              {matchingStudents.length > 0 && (
+                <ul>
+                  {matchingStudents.map((student) => (
+                    <li key={`${student.turmaId}-${student.id}`}>
+                      <Link href={`/turmas/${student.turmaId}/${encodeURIComponent(student.id)}`}>
+                        <strong>{student.name}</strong><span>{student.turmaName}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="turma-toolbar" aria-label="Navegação de turmas">
