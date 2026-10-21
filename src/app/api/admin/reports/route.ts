@@ -568,42 +568,62 @@ async function generateStudentReportPdf({
     .sort((first, second) => first.weekStart.getTime() - second.weekStart.getTime());
   const observationWidth = tableWidth - 70;
   const observationX = margin + 18;
-  const observationFontSize = 14;
-  const observationLineHeight = 17;
+  const observationFontSize = 10;
+  const observationLineHeight = 14;
   const signatureName = teacherName.trim() || "Professor(a)";
   const signaturePhone = teacherPhone?.trim() ?? "";
   if (monthlyObservations.length) {
+    ensureDetailSpace(36);
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     detailY += 30;
-    ensureDetailSpace(20 + monthlyObservations.length * 62);
     doc.text("Observações das semanas", margin, detailY);
     detailY += 18;
     monthlyObservations.forEach((observation) => {
       const observationText = observation.teacherObservation?.trim() ?? "";
-      const observationLines = doc.splitTextToSize(observationText, observationWidth);
+      const observationLines = doc.splitTextToSize(observationText, observationWidth) as string[];
       const intervalLabel = `${formatPeriodDate(observation.weekStart)} a ${formatPeriodDate(observation.weekEnd)}`;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(...ink);
-      doc.text(intervalLabel, margin, detailY + 12);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(observationLines, observationX, detailY + 24, { lineHeightFactor: observationLineHeight / observationFontSize, maxWidth: observationWidth });
-      detailY += 18 + observationLines.length * observationLineHeight + 14;
+      let lineIndex = 0;
+      let isContinuation = false;
+
+      while (lineIndex < observationLines.length) {
+        ensureDetailSpace(36);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(...ink);
+        doc.text(`${intervalLabel}${isContinuation ? " (continuação)" : ""}`, margin, detailY + 11);
+        detailY += 16;
+
+        const availableLines = Math.max(1, Math.floor((detailBottom - detailY - 12) / observationLineHeight));
+        const chunk = observationLines.slice(lineIndex, lineIndex + availableLines);
+        const cardHeight = chunk.length * observationLineHeight + 12;
+        doc.setFillColor(252, 241, 235);
+        doc.setDrawColor(225, 172, 149);
+        doc.roundedRect(margin, detailY, tableWidth, cardHeight, 7, 7, "FD");
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(observationFontSize);
+        doc.setTextColor(...ink);
+        doc.text(chunk, observationX, detailY + 12, { lineHeightFactor: 1.4, maxWidth: observationWidth });
+        detailY += cardHeight + 8;
+        lineIndex += chunk.length;
+        isContinuation = lineIndex < observationLines.length;
+      }
     });
   }
   if (monthlyObservations.length && (signatureName || signaturePhone)) {
+    ensureDetailSpace(signaturePhone ? 46 : 32);
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "italic");
     doc.setFontSize(11);
-    doc.text(signatureName, pageWidth - margin - 12, detailY + 24, { align: "right" });
+    detailY += 12;
+    doc.text(signatureName, pageWidth - margin - 12, detailY + 11, { align: "right" });
     if (signaturePhone) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
-      doc.text(signaturePhone, pageWidth - margin - 12, detailY + 38, { align: "right" });
+      doc.text(signaturePhone, pageWidth - margin - 12, detailY + 26, { align: "right" });
     }
+    detailY += signaturePhone ? 34 : 20;
   }
 
   return Buffer.from(doc.output("arraybuffer"));
