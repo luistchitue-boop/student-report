@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
-import { isTurmaWeeklyPeriodClosed } from "@/lib/closed-periods";
+import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
 import { hasTurmaPeriodActivity } from "@/lib/turma-completeness";
 
 const prisma = new PrismaClient();
@@ -36,8 +36,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Não tem acesso a esta turma." }, { status: 403 });
     }
 
-    if (period && await isTurmaWeeklyPeriodClosed(turma.id, period.start, period.end, prisma)) {
-      return NextResponse.json({ error: "Este período está fechado para esta turma. Não é possível registar o relatório." }, { status: 403 });
+    if (await isWeeklyPeriodClosed(period.start, period.end, prisma)) {
+      return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar o relatório." }, { status: 403 });
     }
 
     const hasActivity = await hasTurmaPeriodActivity(prisma, turma.id, period);
