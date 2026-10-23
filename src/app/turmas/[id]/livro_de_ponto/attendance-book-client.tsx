@@ -10,6 +10,7 @@ type Turma = {
   subjects: string[];
   roster: Array<{ id: string; name: string; age: number; avatarUrl?: string | null }>;
 };
+type LastRegisteredAbsence = { date: string; subject: string; tempo: string } | null;
 
 const tempos = Array.from({ length: 8 }, (_, index) => `${index + 1}º tempo`);
 const faultTypes = [
@@ -27,7 +28,7 @@ function isWeekend(dateValue: string) {
   return day === 0 || day === 6;
 }
 
-export function AttendanceBookClient({ turma }: { turma: Turma }) {
+export function AttendanceBookClient({ turma, lastRegisteredAbsence: initialLastRegisteredAbsence }: { turma: Turma; lastRegisteredAbsence: LastRegisteredAbsence }) {
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   
@@ -45,6 +46,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [otherSubjectAbsences, setOtherSubjectAbsences] = useState<Array<{ studentId: string; subject: string }>>([]);
   const [status, setStatus] = useState("");
+  const [lastRegisteredAbsence, setLastRegisteredAbsence] = useState(initialLastRegisteredAbsence);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -115,6 +117,7 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
       if (!response.ok) throw new Error(data.error || "Não foi possível guardar o livro de ponto.");
       const savedMessage = `${data.saved ?? 0} nova(s) falta(s) guardada(s) para ${date}.`;
       const alreadyRecordedMessage = data.alreadyRecorded ? ` ${data.alreadyRecorded} falta(s) já estavam registadas e não foram alteradas.` : "";
+      if (data.saved > 0) setLastRegisteredAbsence({ date, subject, tempo });
       setStatus(`${savedMessage}${alreadyRecordedMessage}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível guardar o livro de ponto.");
@@ -135,6 +138,14 @@ export function AttendanceBookClient({ turma }: { turma: Turma }) {
       </header>
 
       <section className="attendance-book-panel">
+        <aside className="attendance-last-absence" aria-live="polite">
+          <strong>Última falta registada por si</strong>
+          {lastRegisteredAbsence ? (
+            <span>{lastRegisteredAbsence.date.split("-").reverse().join("/")} · {lastRegisteredAbsence.subject} · {lastRegisteredAbsence.tempo}</span>
+          ) : (
+            <span>Ainda não registou faltas no sistema.</span>
+          )}
+        </aside>
         <div className="attendance-book-toolbar">
           <label>Data<input type="date" min={datePickerMin} max={datePickerMax} value={date} onChange={(event) => { const nextDate = event.target.value; if (nextDate && isWeekend(nextDate)) { setDate(""); setSelectedIds([]); setStatus("A escola não oferece aulas aos fins de semana."); return; } setStatus(""); setDate(nextDate); }} /></label>
           <label>Disciplina<select value={subject} onChange={(event) => setSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
