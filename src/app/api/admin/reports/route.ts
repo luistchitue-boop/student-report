@@ -633,13 +633,13 @@ export async function POST(request: Request) {
   const session = await auth();
   const userRole = session?.user?.role ?? "COORDENADOR";
 
-  if (!session?.user || userRole !== "ADMIN") {
-    return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
-  }
-
   try {
     const body = await request.json();
     const preview = body.preview === true;
+    if (!session?.user || (userRole !== "ADMIN" && !(userRole === "DIRECCAO" && preview))) {
+      return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+    }
+
     const retryDeliveryId = typeof body.retryDeliveryId === "string" ? body.retryDeliveryId : "";
     const retryDelivery = retryDeliveryId ? await prisma.reportDelivery.findUnique({
       where: { id: retryDeliveryId },
@@ -699,6 +699,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Selecione pelo menos uma turma ou um aluno" }, { status: 400 });
     }
     if (preview && studentIds.length > 1) return NextResponse.json({ error: "Selecione no máximo um aluno para pré-visualizar o relatório." }, { status: 400 });
+
+    if (userRole === "DIRECCAO") {
+      const assignedTurmas = await prisma.turma.findMany({
+        where: {
+          id: { in: turmaIds },
+          OR: [
+            { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+            { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (assignedTurmas.length !== new Set(turmaIds).size) {
+        return NextResponse.json({ error: "Não tem acesso a uma ou mais turmas selecionadas." }, { status: 403 });
+      }
+    }
 
     const { RESEND_API_KEY, RESEND_FROM_EMAIL, BLOB_READ_WRITE_TOKEN, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM } = process.env;
     if (!preview && channel === "EMAIL" && (!RESEND_API_KEY || !RESEND_FROM_EMAIL)) {

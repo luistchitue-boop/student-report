@@ -380,7 +380,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
       </div>
 
       {previewUrl && <div className="admin-preview-panel">
-        <strong>Pré-visualização do relatório</strong>
+        <div className="admin-preview-heading"><strong>Pré-visualização do relatório</strong><a href={previewUrl} download="relatorios-preview.pdf">Descarregar PDF</a></div>
         <iframe title="Pré-visualização do relatório PDF" src={previewUrl} />
       </div>}
 
@@ -434,6 +434,9 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
         .admin-completeness-missing strong { font-size:.75rem; }
         .admin-completeness-missing span { line-height:1.45; }
         .admin-report-period { max-width:520px; }
+        .admin-preview-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+        .admin-preview-heading a { color:#1d4ed8; font-size:.85rem; font-weight:800; text-decoration:none; }
+        .admin-preview-heading a:hover { text-decoration:underline; }
         .admin-turma-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.9rem; }
         .admin-checkbox { position:relative; display:flex; align-items:center; gap:.7rem; background:#fff; border:1px solid #dbe3ec; border-radius:12px; padding:.9rem 1rem; cursor:pointer; }
         .admin-checkbox.selected { border-color:#1d4ed8; background:#eff6ff; }
