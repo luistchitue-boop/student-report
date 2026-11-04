@@ -314,7 +314,6 @@ async function generateStudentReportPdf({
   const chartWidth = pageWidth - margin * 2;
   const passThreshold = gradeScale * 0.5;
   const highThreshold = gradeScale * 0.7;
-  const lightenColor = (color: [number, number, number]): [number, number, number] => color.map((channel) => Math.round(channel + (255 - channel) * 0.55)) as [number, number, number];
   const getGradeColor = (value: number): [number, number, number] => value >= highThreshold ? [57, 117, 93] : value >= passThreshold ? [215, 139, 48] : [194, 74, 67];
   subjectAverages.forEach((item) => {
     const label = item.subject.length > 18 ? `${item.subject.slice(0, 17)}...` : item.subject;
@@ -325,19 +324,18 @@ async function generateStudentReportPdf({
     doc.roundedRect(margin + 105, y, chartWidth - 145, 14, 4, 4, "F");
     const gradeColor = getGradeColor(item.value);
     const previousValue = previousSubjectAverages.get(item.subject);
-    if (hasPreviousPeriod && previousValue !== undefined) {
-      const previousColor = lightenColor(getGradeColor(previousValue));
-      doc.setFillColor(...previousColor);
-      doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, previousValue / gradeScale), 14, 4, 4, "F");
-    }
     doc.setFillColor(...gradeColor);
     doc.roundedRect(margin + 105, y, (chartWidth - 145) * Math.min(1, item.value / gradeScale), 14, 4, 4, "F");
     if (hasPreviousPeriod && previousValue !== undefined) {
       const previousX = margin + 105 + (chartWidth - 145) * Math.min(1, previousValue / gradeScale);
+      doc.setFillColor(...getGradeColor(previousValue));
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(1.5);
+      doc.circle(previousX, y + 7, 5, "FD");
       doc.setTextColor(...ink);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(6.5);
-      doc.text(previousValue.toFixed(1), Math.min(previousX + 3, pageWidth - margin - 45), y + 10);
+      doc.text(previousValue.toFixed(1), Math.min(previousX + 7, pageWidth - margin - 45), y + 10);
     }
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
@@ -363,9 +361,12 @@ async function generateStudentReportPdf({
   const highGrades = grades.filter((grade) => Number(grade.value) >= highThreshold).length;
   doc.text(`Notas: ${lowGrades} abaixo de ${passThreshold.toFixed(0)} · ${middleGrades} entre ${passThreshold.toFixed(0)}-${Math.max(0, highThreshold - 1).toFixed(0)} · ${highGrades} entre ${highThreshold.toFixed(0)}-${gradeScale}`, margin + 180, y + 7);
   if (hasPreviousPeriod) {
-    doc.setFillColor(190, 190, 190);
-    doc.roundedRect(margin, y + 17, 12, 6, 2, 2, "F");
-    doc.text("barra clara = período anterior", margin + 18, y + 23);
+    doc.setFillColor(120, 120, 120);
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(1.5);
+    doc.circle(margin + 5, y + 21, 5, "FD");
+    doc.setTextColor(...ink);
+    doc.text("círculo com contorno branco = classificação do período anterior", margin + 16, y + 24);
     y += 17;
   }
   y += 22;
