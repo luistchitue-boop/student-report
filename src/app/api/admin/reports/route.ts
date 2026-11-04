@@ -330,12 +330,12 @@ async function generateStudentReportPdf({
       const previousX = margin + 105 + (chartWidth - 145) * Math.min(1, previousValue / gradeScale);
       doc.setFillColor(...getGradeColor(previousValue));
       doc.setDrawColor(255, 255, 255);
-      doc.setLineWidth(1.5);
-      doc.circle(previousX, y + 7, 5, "FD");
-      doc.setTextColor(...ink);
+      doc.setLineWidth(1.2);
+      doc.circle(previousX, y + 7, 8, "FD");
+      doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
-      doc.text(previousValue.toFixed(1), Math.min(previousX + 7, pageWidth - margin - 45), y + 10);
+      doc.setFontSize(5.5);
+      doc.text(previousValue.toFixed(1), previousX, y + 9, { align: "center" });
     }
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
