@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { jsPDF } from "jspdf";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
 
 type DeliveryIssue = {
@@ -9,6 +10,7 @@ type DeliveryIssue = {
   turmaId: string;
   turmaName: string;
   studentName: string;
+  parents: Array<{ name: string; phone: string }>;
   recipientName: string | null;
   recipientEmail: string;
   status: "FAILED" | "BOUNCED" | "DELAYED";
@@ -30,6 +32,99 @@ const statusLabels: Record<DeliveryIssue["status"], string> = {
   FAILED: "Falhou / não enviado",
   DELAYED: "Atrasado / não entregue",
 };
+
+const pdfColumns = [
+  { label: "Aluno", width: 124 },
+  { label: "Turma", width: 62 },
+  { label: "Encarregado(s)", width: 142 },
+  { label: "Telefone(s)", width: 98 },
+  { label: "Estado", width: 97 },
+];
+
+function exportIssuesPdf(issues: DeliveryIssue[], periodLabel: string, turmaName: string) {
+  const document = new jsPDF({ unit: "pt", format: "a4", compress: true });
+  const pageHeight = document.internal.pageSize.getHeight();
+  const margin = 36;
+  const tableWidth = pdfColumns.reduce((total, column) => total + column.width, 0);
+  let pageNumber = 1;
+  let y = 0;
+
+  const drawTableHeader = (top: number) => {
+    document.setFillColor(23, 48, 68);
+    document.rect(margin, top, tableWidth, 25, "F");
+    document.setFont("helvetica", "bold");
+    document.setFontSize(8);
+    document.setTextColor(255, 255, 255);
+    let x = margin;
+    for (const column of pdfColumns) {
+      document.text(column.label, x + 7, top + 16);
+      x += column.width;
+    }
+    return top + 25;
+  };
+
+  const drawPageHeading = (continuation = false) => {
+    document.setTextColor(23, 48, 68);
+    document.setFont("helvetica", "bold");
+    document.setFontSize(16);
+    document.text(continuation ? "RELATÓRIO DE ENVIOS · CONTINUAÇÃO" : "RELATÓRIO DE ESTADO DE ENVIO", margin, 42);
+    if (!continuation) {
+      document.setFont("helvetica", "normal");
+      document.setFontSize(9);
+      document.setTextColor(71, 85, 105);
+      document.text(`Período: ${periodLabel}   ·   Turma: ${turmaName}`, margin, 61);
+      document.text(`Registos: ${issues.length}   ·   Gerado em: ${new Date().toLocaleDateString("pt-AO")}`, margin, 76);
+    }
+    y = drawTableHeader(continuation ? 64 : 94);
+  };
+
+  drawPageHeading();
+  document.setFont("helvetica", "normal");
+  document.setFontSize(8);
+
+  for (const issue of issues) {
+    const parents = issue.parents.length ? issue.parents : [{ name: issue.recipientName || "Encarregado", phone: "" }];
+    const values = [
+      issue.studentName,
+      issue.turmaName,
+      parents.map((parent) => parent.name).join("\n"),
+      parents.map((parent) => parent.phone || "—").join("\n"),
+      statusLabels[issue.status],
+    ];
+    const lines = values.map((value, index) => document.splitTextToSize(value || "—", pdfColumns[index].width - 14) as string[]);
+    const lineCount = Math.max(...lines.map((cellLines) => cellLines.length));
+    const rowHeight = Math.max(30, lineCount * 11 + 12);
+
+    if (y + rowHeight > pageHeight - 42) {
+      document.addPage();
+      pageNumber += 1;
+      drawPageHeading(true);
+    }
+
+    document.setFillColor(pageNumber % 2 ? 248 : 241, pageNumber % 2 ? 250 : 245, pageNumber % 2 ? 252 : 249);
+    document.rect(margin, y, tableWidth, rowHeight, "F");
+    let x = margin;
+    for (let index = 0; index < values.length; index += 1) {
+      document.setTextColor(51, 65, 85);
+      document.text(lines[index], x + 7, y + 15, { lineHeightFactor: 1.25 });
+      x += pdfColumns[index].width;
+    }
+    document.setDrawColor(226, 232, 240);
+    document.line(margin, y + rowHeight, margin + tableWidth, y + rowHeight);
+    y += rowHeight;
+  }
+
+  for (let page = 1; page <= document.getNumberOfPages(); page += 1) {
+    document.setPage(page);
+    document.setFont("helvetica", "normal");
+    document.setFontSize(8);
+    document.setTextColor(100, 116, 139);
+    document.text(`Documento confidencial · ${page}/${document.getNumberOfPages()}`, margin, pageHeight - 20);
+  }
+
+  const periodStart = periodLabel.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  document.save(`relatorio-envios-${periodStart || "periodo"}.pdf`);
+}
 
 export function DeliveryIssuesClient() {
   const months = useMemo(() => getAvailableMonths(), []);
@@ -69,6 +164,8 @@ export function DeliveryIssuesClient() {
   }, [periodKey]);
 
   const filteredIssues = turmaId === "all" ? issues : issues.filter((issue) => issue.turmaId === turmaId);
+  const selectedTurmaName = turmaId === "all" ? "Todas as turmas" : summary.find((turma) => turma.id === turmaId)?.name ?? "Turma";
+  const selectedPeriodLabel = getPeriodLabel(months.find((month) => month.key === periodKey) ?? months[0]);
   const counts = filteredIssues.reduce((result, issue) => ({ ...result, [issue.status]: result[issue.status] + 1 }), { FAILED: 0, BOUNCED: 0, DELAYED: 0 });
 
   async function retryDelivery(issue: DeliveryIssue) {
@@ -100,6 +197,7 @@ export function DeliveryIssuesClient() {
       <div className="delivery-issues-topline"><Link href="/admin/relatorios">← Voltar aos relatórios</Link><span>DETALHE DE ENTREGA</span></div>
       <header className="delivery-issues-heading">
         <div><p className="eyebrow">AUDITORIA DE E-MAIL</p><h2>Falhas e e-mails devolvidos</h2><p>Consulte destinatários com falhas de envio, devoluções ou notificações de atraso do serviço de e-mail.</p></div>
+        <button type="button" className="delivery-export-button" onClick={() => exportIssuesPdf(filteredIssues, selectedPeriodLabel, selectedTurmaName)} disabled={loading || error !== "" || filteredIssues.length === 0}>Exportar PDF</button>
       </header>
 
       <div className="delivery-issues-filters">
@@ -134,6 +232,9 @@ export function DeliveryIssuesClient() {
         .delivery-issues-topline { display:flex; justify-content:space-between; align-items:center; color:#64748b; font-size:.72rem; font-weight:800; letter-spacing:.08em; }
         .delivery-issues-topline a { color:#1d4ed8; text-decoration:none; letter-spacing:normal; font-size:.82rem; }
         .delivery-issues-heading h2 { margin:.2rem 0 .4rem; color:#173044; font-size:1.65rem; }
+        .delivery-issues-heading { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
+        .delivery-export-button { flex:0 0 auto; padding:.7rem 1rem; border:0; border-radius:9px; background:#173044; color:#fff; font-size:.82rem; font-weight:800; cursor:pointer; }
+        .delivery-export-button:disabled { opacity:.5; cursor:not-allowed; }
         .delivery-issues-heading p:not(.eyebrow) { margin:0; color:#64748b; font-size:.9rem; }
         .delivery-issues-filters { display:flex; gap:.8rem; flex-wrap:wrap; }
         .delivery-issues-filters label { display:grid; gap:.4rem; min-width:220px; color:#334155; font-size:.8rem; font-weight:800; }
@@ -167,7 +268,7 @@ export function DeliveryIssuesClient() {
         .delivery-issues-empty span,.delivery-issues-feedback { color:#64748b; font-size:.86rem; }
         .delivery-issues-feedback.error { color:#b91c1c; }
         .delivery-issues-note { margin:0; padding:.9rem 1rem; border-radius:10px; background:#f1f5f9; color:#64748b; font-size:.78rem; line-height:1.55; }
-        @media (max-width:700px) { .delivery-issue-metrics { grid-template-columns:1fr; } }
+        @media (max-width:700px) { .delivery-issue-metrics { grid-template-columns:1fr; } .delivery-issues-heading { align-items:flex-start; flex-direction:column; } }
       `}</style>
     </section>
   );

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     prisma.student.findMany({ where: { active: true }, select: { id: true, turmaId: true } }),
     prisma.reportDelivery.findMany({
       where: { periodStart: period.start, channel: "EMAIL" },
-      select: { id: true, turmaId: true, studentId: true, recipientName: true, recipientEmail: true, status: true, error: true, attemptedAt: true, student: { select: { name: true } }, turma: { select: { name: true } } },
+      select: { id: true, turmaId: true, studentId: true, recipientName: true, recipientEmail: true, status: true, error: true, attemptedAt: true, student: { select: { name: true, parents: { orderBy: { name: "asc" }, select: { name: true, phone: true } } } }, turma: { select: { name: true } } },
     }),
   ]);
 
@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
       turmaId: delivery.turmaId,
       turmaName: delivery.turma.name,
       studentName: delivery.student.name,
+      parents: delivery.student.parents,
       recipientName: delivery.recipientName,
       recipientEmail: delivery.recipientEmail,
       status: delivery.status,
