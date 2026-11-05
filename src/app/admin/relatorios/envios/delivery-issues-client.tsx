@@ -37,6 +37,8 @@ const statusLabels: Record<DeliveryIssue["status"], string> = {
   NOT_SENT: "Ainda não enviado",
 };
 type DeliveryStatusFilter = "ALL" | DeliveryIssue["status"];
+const RECIPIENTS_PER_BATCH = 5;
+const MAX_PARALLEL_BATCHES = 2;
 
 const pdfColumns = [
   { label: "Aluno", width: 124 },
@@ -148,6 +150,9 @@ export function DeliveryIssuesClient() {
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ completed: number; total: number; sent: number; failed: number } | null>(null);
+  const [bulkResult, setBulkResult] = useState("");
   const [retryFeedback, setRetryFeedback] = useState<{ id: string; message: string; success: boolean } | null>(null);
 
   useEffect(() => {
@@ -183,6 +188,11 @@ export function DeliveryIssuesClient() {
   const selectedTurmaName = turmaId === "all" ? "Todas as turmas" : summary.find((turma) => turma.id === turmaId)?.name ?? "Turma";
   const selectedPeriodLabel = getPeriodLabel(months.find((month) => month.key === periodKey) ?? months[0]);
   const counts = filteredIssues.reduce((result, issue) => ({ ...result, [issue.status]: result[issue.status] + 1 }), { FAILED: 0, BOUNCED: 0, DELAYED: 0, NOT_SENT: 0 });
+  const eligibleUnsentIssues = issues.filter((issue) =>
+    issue.status === "NOT_SENT"
+    && issue.parentId !== null
+    && isSendableEmailAddress(issue.recipientEmail)
+    && (turmaId === "all" || issue.turmaId === turmaId));
 
   async function refreshDeliveryStatus() {
     if (!periodKey) return null;
@@ -234,6 +244,72 @@ export function DeliveryIssuesClient() {
     }
   }
 
+  async function sendAllUnsentReports() {
+    if (bulkSending || !periodKey) return;
+    setBulkSending(true);
+    setBulkResult("");
+    setError("");
+    try {
+      const currentIssues = await refreshDeliveryStatus();
+      if (!currentIssues) return;
+      const candidates = currentIssues.filter((issue) =>
+        issue.status === "NOT_SENT"
+        && issue.parentId !== null
+        && isSendableEmailAddress(issue.recipientEmail)
+        && (turmaId === "all" || issue.turmaId === turmaId));
+      if (!candidates.length) {
+        setBulkResult("Não há e-mails válidos ainda não enviados para o período e turma selecionados.");
+        return;
+      }
+      if (!window.confirm(`Enviar os relatórios para ${candidates.length} destinatário(s) válido(s) ainda não enviado(s)?`)) return;
+
+      const batches: DeliveryIssue[][] = [];
+      for (let index = 0; index < candidates.length; index += RECIPIENTS_PER_BATCH) {
+        batches.push(candidates.slice(index, index + RECIPIENTS_PER_BATCH));
+      }
+      let nextBatchIndex = 0;
+      let completed = 0;
+      let sent = 0;
+      let failed = 0;
+      setBulkProgress({ completed, total: candidates.length, sent, failed });
+
+      const processNextBatch = async () => {
+        while (nextBatchIndex < batches.length) {
+          const batch = batches[nextBatchIndex++];
+          try {
+            const response = await fetch("/api/admin/reports", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                channel: "EMAIL",
+                periodKey,
+                turmaIds: [...new Set(batch.map((issue) => issue.turmaId))],
+                studentIds: [...new Set(batch.map((issue) => issue.studentId))],
+                deliveryRecipients: batch.map((issue) => ({ studentId: issue.studentId, parentId: issue.parentId })),
+              }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Não foi possível enviar este lote.");
+            sent += Number(data.sent) || 0;
+            failed += Number(data.failed) || 0;
+          } catch {
+            failed += batch.length;
+          } finally {
+            completed += batch.length;
+            setBulkProgress({ completed, total: candidates.length, sent, failed });
+          }
+        }
+      };
+
+      await Promise.all(Array.from({ length: Math.min(MAX_PARALLEL_BATCHES, batches.length) }, () => processNextBatch()));
+      await refreshDeliveryStatus();
+      setBulkResult(`Envios concluídos: ${sent} enviado(s), ${failed} falhou/falharam.`);
+    } finally {
+      setBulkSending(false);
+      setBulkProgress(null);
+    }
+  }
+
   async function exportLatestIssuesPdf() {
     if (!periodKey) return;
     setExporting(true);
@@ -255,15 +331,19 @@ export function DeliveryIssuesClient() {
       <div className="delivery-issues-topline"><Link href="/admin/relatorios">← Voltar aos relatórios</Link><span>DETALHE DE ENTREGA</span></div>
       <header className="delivery-issues-heading">
         <div><p className="eyebrow">AUDITORIA DE E-MAIL</p><h2>Falhas e e-mails devolvidos</h2><p>Consulte destinatários com falhas de envio, devoluções ou notificações de atraso do serviço de e-mail.</p></div>
-        <div className="delivery-issues-heading-actions"><button type="button" className="delivery-refresh-button" onClick={refreshDeliveryStatus} disabled={loading || refreshing || exporting}>{refreshing ? "A atualizar..." : "Atualizar lista"}</button><button type="button" className="delivery-export-button" onClick={exportLatestIssuesPdf} disabled={loading || refreshing || exporting}>{exporting ? "A atualizar e exportar..." : "Exportar PDF"}</button></div>
+        <div className="delivery-issues-heading-actions"><button type="button" className="delivery-refresh-button" onClick={refreshDeliveryStatus} disabled={loading || refreshing || exporting || bulkSending}>{refreshing ? "A atualizar..." : "Atualizar lista"}</button><button type="button" className="delivery-export-button" onClick={exportLatestIssuesPdf} disabled={loading || refreshing || exporting || bulkSending}>{exporting ? "A atualizar e exportar..." : "Exportar PDF"}</button></div>
       </header>
 
       <div className="delivery-issues-filters">
-        <label>Período mensal<select value={periodKey} onChange={(event) => setPeriodKey(event.target.value)}>{months.map((month) => <option key={month.key} value={month.key}>{getPeriodLabel(month)}</option>)}</select></label>
-        <label>Turma<select value={turmaId} onChange={(event) => setTurmaId(event.target.value)}><option value="all">Todas as turmas</option>{summary.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}</select></label>
-        <label>Estado<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as DeliveryStatusFilter)}><option value="ALL">Todos os estados</option><option value="NOT_SENT">Ainda não enviado</option><option value="FAILED">Falhou / não enviado</option><option value="BOUNCED">Devolvido (bounce)</option><option value="DELAYED">Atrasado / não entregue</option></select></label>
-        <label className="delivery-valid-email-filter"><input type="checkbox" checked={validEmailOnly} onChange={(event) => setValidEmailOnly(event.target.checked)} /> Apenas e-mails válidos</label>
+        <label>Período mensal<select value={periodKey} disabled={bulkSending} onChange={(event) => setPeriodKey(event.target.value)}>{months.map((month) => <option key={month.key} value={month.key}>{getPeriodLabel(month)}</option>)}</select></label>
+        <label>Turma<select value={turmaId} disabled={bulkSending} onChange={(event) => setTurmaId(event.target.value)}><option value="all">Todas as turmas</option>{summary.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}</select></label>
+        <label>Estado<select value={statusFilter} disabled={bulkSending} onChange={(event) => setStatusFilter(event.target.value as DeliveryStatusFilter)}><option value="ALL">Todos os estados</option><option value="NOT_SENT">Ainda não enviado</option><option value="FAILED">Falhou / não enviado</option><option value="BOUNCED">Devolvido (bounce)</option><option value="DELAYED">Atrasado / não entregue</option></select></label>
+        <label className="delivery-valid-email-filter"><input type="checkbox" checked={validEmailOnly} disabled={bulkSending} onChange={(event) => setValidEmailOnly(event.target.checked)} /> Apenas e-mails válidos</label>
       </div>
+
+      <div className="delivery-bulk-send"><button type="button" onClick={sendAllUnsentReports} disabled={loading || refreshing || exporting || bulkSending}>{bulkSending ? `A enviar ${bulkProgress?.completed ?? 0}/${bulkProgress?.total ?? eligibleUnsentIssues.length}...` : `Enviar relatórios não enviados (${eligibleUnsentIssues.length})`}</button><span>Envia apenas para e-mails válidos sem registo de envio no período selecionado, em lotes controlados.</span></div>
+      {bulkProgress && <div className="delivery-bulk-progress" role="status"><span>{bulkProgress.completed} de {bulkProgress.total} processados · {bulkProgress.sent} enviado(s) · {bulkProgress.failed} falhou/falharam</span><progress value={bulkProgress.completed} max={bulkProgress.total} /></div>}
+      {bulkResult && <p className="delivery-retry-feedback success" role="status">{bulkResult}</p>}
 
       <div className="delivery-issue-metrics">
         <article className="metric-bounced"><span>Devolvidos</span><strong>{counts.BOUNCED}</strong></article>
@@ -282,7 +362,7 @@ export function DeliveryIssuesClient() {
             <td><strong>{issue.recipientName || "Encarregado"}</strong><small>{issue.recipientEmail}</small></td>
             <td className="delivery-issue-reason">{issue.error || "O serviço de e-mail não forneceu detalhes adicionais."}</td>
             <td>{issue.attemptedAt ? new Date(issue.attemptedAt).toLocaleString("pt-AO", { dateStyle: "medium", timeStyle: "short" }) : "—"}</td>
-            <td className="delivery-retry-action">{issue.status === "FAILED" || issue.status === "NOT_SENT" ? <button type="button" onClick={() => retryDelivery(issue)} disabled={retryingId !== null}>{retryingId === issue.id ? "A enviar..." : issue.status === "NOT_SENT" ? "Enviar relatório" : "Reenviar e-mail"}</button> : <span>{issue.status === "BOUNCED" ? "Corrija o endereço antes de reenviar." : "Aguarde a atualização do serviço."}</span>}</td>
+            <td className="delivery-retry-action">{issue.status === "FAILED" || issue.status === "NOT_SENT" ? <button type="button" onClick={() => retryDelivery(issue)} disabled={retryingId !== null || bulkSending}>{retryingId === issue.id ? "A enviar..." : issue.status === "NOT_SENT" ? "Enviar relatório" : "Reenviar e-mail"}</button> : <span>{issue.status === "BOUNCED" ? "Corrija o endereço antes de reenviar." : "Aguarde a atualização do serviço."}</span>}</td>
           </tr>)}</tbody>
         </table></div>
       )}
@@ -305,6 +385,12 @@ export function DeliveryIssuesClient() {
         .delivery-issues-filters select { min-width:240px; padding:.7rem .8rem; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#1e293b; }
         .delivery-issues-filters .delivery-valid-email-filter { display:flex; align-items:center; gap:.55rem; min-width:0; align-self:end; min-height:40px; cursor:pointer; }
         .delivery-valid-email-filter input { width:16px; height:16px; accent-color:#1d4ed8; }
+        .delivery-bulk-send { display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; }
+        .delivery-bulk-send button { padding:.7rem 1rem; border:0; border-radius:9px; background:#0f766e; color:#fff; font-size:.82rem; font-weight:800; cursor:pointer; }
+        .delivery-bulk-send button:disabled { opacity:.5; cursor:not-allowed; }
+        .delivery-bulk-send span { color:#64748b; font-size:.78rem; }
+        .delivery-bulk-progress { display:grid; gap:.4rem; color:#334155; font-size:.82rem; }
+        .delivery-bulk-progress progress { width:100%; height:10px; accent-color:#0f766e; }
         .delivery-issue-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; }
         .delivery-issue-metrics article { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.1rem; border-radius:12px; border:1px solid #e2e8f0; background:#fff; }
         .delivery-issue-metrics span { color:#475569; font-size:.83rem; font-weight:700; }

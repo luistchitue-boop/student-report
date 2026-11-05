@@ -668,7 +668,21 @@ export async function POST(request: Request) {
     const rawStudentIds = Array.isArray(body.studentIds) ? body.studentIds : [];
     const studentIds = retryDelivery ? [retryDelivery.studentId] : rawStudentIds.filter((value: unknown): value is string => typeof value === "string" && Boolean(value));
     const rawParentIds = Array.isArray(body.parentIds) ? body.parentIds : [];
-    const individualEmailSend = !preview && !retryDelivery && channel === "EMAIL" && studentIds.length === 1;
+    const hasDeliveryRecipients = Object.prototype.hasOwnProperty.call(body, "deliveryRecipients");
+    if (hasDeliveryRecipients && !Array.isArray(body.deliveryRecipients)) {
+      return NextResponse.json({ error: "A lista de destinatários do envio em lote é inválida." }, { status: 400 });
+    }
+    const rawDeliveryRecipients: unknown[] | null = hasDeliveryRecipients ? body.deliveryRecipients : null;
+    const deliveryRecipients: Array<{ studentId: string; parentId: string } | null> | null = rawDeliveryRecipients?.map((value: unknown) => {
+      if (!value || typeof value !== "object" || typeof (value as { studentId?: unknown }).studentId !== "string" || typeof (value as { parentId?: unknown }).parentId !== "string") return null;
+      const { studentId, parentId } = value as { studentId: string; parentId: string };
+      return studentId.trim() && parentId.trim() ? { studentId: studentId.trim(), parentId: parentId.trim() } : null;
+    }) ?? null;
+    if (deliveryRecipients && (deliveryRecipients.length === 0 || deliveryRecipients.some((recipient) => recipient === null) || deliveryRecipients.length > 10 || channel !== "EMAIL" || preview || retryDelivery)) {
+      return NextResponse.json({ error: "Selecione até 10 destinatários válidos para o envio em lote." }, { status: 400 });
+    }
+    const selectedDeliveryRecipients = deliveryRecipients?.filter((recipient): recipient is { studentId: string; parentId: string } => recipient !== null) ?? null;
+    const individualEmailSend = !preview && !retryDelivery && !selectedDeliveryRecipients && channel === "EMAIL" && studentIds.length === 1;
     if (individualEmailSend && (!rawParentIds.length || rawParentIds.some((value: unknown) => typeof value !== "string" || !value.trim()))) {
       return NextResponse.json({ error: "Selecione pelo menos um encarregado para o envio individual." }, { status: 400 });
     }
@@ -774,6 +788,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Um ou mais encarregados selecionados não pertencem ao aluno." }, { status: 400 });
       }
     }
+    if (selectedDeliveryRecipients) {
+      const selectedStudents = new Map(turmas.flatMap((turma) => turma.students).map((student) => [student.id, student]));
+      const validPairs = selectedDeliveryRecipients.every(({ studentId, parentId }) => selectedStudents.get(studentId)?.parents.some((parent) => parent.id === parentId));
+      if (!validPairs || selectedDeliveryRecipients.some(({ studentId }) => !studentIds.includes(studentId))) {
+        return NextResponse.json({ error: "Um ou mais destinatários não pertencem aos alunos selecionados." }, { status: 400 });
+      }
+    }
 
     const recipients: Array<{ email: string; phone: string; reportUrl: string; studentName: string; firstName: string; studentId: string; turmaId: string; recipientName: string; pdfBuffer?: Buffer }> = [];
     const previewPdfs: Buffer[] = [];
@@ -839,6 +860,7 @@ export async function POST(request: Request) {
         const approvedParents = new Map<string, { firstName: string; phone: string; email: string }>();
         for (const parent of student.parents) {
           if (individualEmailSend && !selectedParentIds.has(parent.id)) continue;
+          if (selectedDeliveryRecipients && !selectedDeliveryRecipients.some((recipient) => recipient.studentId === student.id && recipient.parentId === parent.id)) continue;
           const email = parent.email?.trim().toLowerCase();
           if (retryDelivery && email !== retryDelivery.recipientEmail.toLowerCase()) continue;
           const phone = parent.phone ? normalizeAngolaPhone(parent.phone) : "";
