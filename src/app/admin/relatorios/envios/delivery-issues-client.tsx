@@ -10,7 +10,7 @@ type DeliveryIssue = {
   turmaId: string;
   turmaName: string;
   studentName: string;
-  parents: Array<{ name: string; phone: string }>;
+  parents: Array<{ name: string; email: string; phone: string }>;
   recipientName: string | null;
   recipientEmail: string;
   status: "FAILED" | "BOUNCED" | "DELAYED";
@@ -83,12 +83,16 @@ function exportIssuesPdf(issues: DeliveryIssue[], periodLabel: string, turmaName
   document.setFontSize(8);
 
   for (const issue of issues) {
-    const parents = issue.parents.length ? issue.parents : [{ name: issue.recipientName || "Encarregado", phone: "" }];
+    const recipientName = issue.recipientName?.trim();
+    const normalizedEmail = issue.recipientEmail.trim().toLowerCase();
+    const recipientParent = issue.parents.find((parent) => recipientName && parent.name.trim().toLowerCase() === recipientName.toLowerCase())
+      ?? issue.parents.find((parent) => parent.email.trim().toLowerCase() === normalizedEmail);
+    const parentName = recipientName || recipientParent?.name || "Encarregado";
     const values = [
       issue.studentName,
       issue.turmaName,
-      parents.map((parent) => parent.name).join("\n"),
-      parents.map((parent) => parent.phone || "—").join("\n"),
+      parentName,
+      recipientParent?.phone || "—",
       statusLabels[issue.status],
     ];
     const lines = values.map((value, index) => document.splitTextToSize(value || "—", pdfColumns[index].width - 14) as string[]);
@@ -135,6 +139,7 @@ export function DeliveryIssuesClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [retryFeedback, setRetryFeedback] = useState<{ id: string; message: string; success: boolean } | null>(null);
 
   useEffect(() => {
@@ -192,12 +197,32 @@ export function DeliveryIssuesClient() {
     }
   }
 
+  async function exportLatestIssuesPdf() {
+    if (!periodKey) return;
+    setExporting(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/reports/delivery-status?periodKey=${encodeURIComponent(periodKey)}`, { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Não foi possível atualizar o estado dos envios.");
+      const latestIssues = (data.issues ?? []) as DeliveryIssue[];
+      setIssues(latestIssues);
+      setSummary(data.summary ?? []);
+      const latestFilteredIssues = turmaId === "all" ? latestIssues : latestIssues.filter((issue) => issue.turmaId === turmaId);
+      exportIssuesPdf(latestFilteredIssues, selectedPeriodLabel, selectedTurmaName);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível atualizar o estado dos envios.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <section className="delivery-issues-page">
       <div className="delivery-issues-topline"><Link href="/admin/relatorios">← Voltar aos relatórios</Link><span>DETALHE DE ENTREGA</span></div>
       <header className="delivery-issues-heading">
         <div><p className="eyebrow">AUDITORIA DE E-MAIL</p><h2>Falhas e e-mails devolvidos</h2><p>Consulte destinatários com falhas de envio, devoluções ou notificações de atraso do serviço de e-mail.</p></div>
-        <button type="button" className="delivery-export-button" onClick={() => exportIssuesPdf(filteredIssues, selectedPeriodLabel, selectedTurmaName)} disabled={loading || error !== "" || filteredIssues.length === 0}>Exportar PDF</button>
+        <button type="button" className="delivery-export-button" onClick={exportLatestIssuesPdf} disabled={loading || exporting}>{exporting ? "A atualizar e exportar..." : "Exportar PDF"}</button>
       </header>
 
       <div className="delivery-issues-filters">
