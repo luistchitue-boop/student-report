@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { isSendableEmailAddress } from "@/lib/email-address";
 import { formatPeriodDate, type MonthlyPeriod } from "@/lib/weekly-coordination";
 
 declare global {
@@ -9,6 +10,21 @@ declare global {
 
 const prisma = globalThis.prismaAdminDeliveryStatus ?? new PrismaClient();
 if (process.env.NODE_ENV !== "production") globalThis.prismaAdminDeliveryStatus = prisma;
+
+type DeliveryStatusIssue = {
+  id: string;
+  turmaId: string;
+  studentId: string;
+  turmaName: string;
+  studentName: string;
+  parents: Array<{ id: string; name: string; email: string; phone: string }>;
+  parentId: string | null;
+  recipientName: string | null;
+  recipientEmail: string;
+  status: "FAILED" | "BOUNCED" | "DELAYED" | "NOT_SENT";
+  error: string | null;
+  attemptedAt: string | null;
+};
 
 function parseMonthlyPeriod(periodKey: string): MonthlyPeriod | null {
   const [startKey, endKey, ...extra] = periodKey.split("|");
@@ -35,10 +51,10 @@ export async function GET(request: NextRequest) {
 
   const [turmas, activeStudents, deliveries] = await Promise.all([
     prisma.turma.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.student.findMany({ where: { active: true }, select: { id: true, turmaId: true } }),
+    prisma.student.findMany({ where: { active: true }, select: { id: true, name: true, turmaId: true, parents: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true } } } }),
     prisma.reportDelivery.findMany({
       where: { periodStart: period.start, channel: "EMAIL" },
-      select: { id: true, turmaId: true, studentId: true, recipientName: true, recipientEmail: true, status: true, error: true, attemptedAt: true, student: { select: { name: true, parents: { orderBy: { name: "asc" }, select: { name: true, email: true, phone: true } } } }, turma: { select: { name: true } } },
+      select: { id: true, turmaId: true, studentId: true, recipientName: true, recipientEmail: true, status: true, error: true, attemptedAt: true, student: { select: { name: true, parents: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true } } } }, turma: { select: { name: true } } },
     }),
   ]);
 
@@ -70,21 +86,57 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  const issues = deliveries
-    .filter((delivery) => delivery.status === "FAILED" || delivery.status === "BOUNCED" || delivery.status === "DELAYED")
+  const issues: DeliveryStatusIssue[] = deliveries
+    .filter((delivery): delivery is typeof delivery & { status: "FAILED" | "BOUNCED" | "DELAYED" } => delivery.status === "FAILED" || delivery.status === "BOUNCED" || delivery.status === "DELAYED")
+    .filter((delivery) => !delivery.student.parents.some((parent) =>
+      parent.name.trim().toLowerCase() === delivery.recipientName?.trim().toLowerCase()
+      && isSendableEmailAddress(parent.email)
+      && parent.email.trim().toLowerCase() !== delivery.recipientEmail.trim().toLowerCase()))
     .sort((a, b) => b.attemptedAt.getTime() - a.attemptedAt.getTime())
     .map((delivery) => ({
       id: delivery.id,
       turmaId: delivery.turmaId,
+      studentId: delivery.studentId,
       turmaName: delivery.turma.name,
       studentName: delivery.student.name,
       parents: delivery.student.parents,
+      parentId: delivery.student.parents.find((parent) => parent.email.trim().toLowerCase() === delivery.recipientEmail.trim().toLowerCase())?.id
+        ?? delivery.student.parents.find((parent) => parent.name.trim().toLowerCase() === delivery.recipientName?.trim().toLowerCase())?.id
+        ?? null,
       recipientName: delivery.recipientName,
       recipientEmail: delivery.recipientEmail,
       status: delivery.status,
       error: delivery.error,
       attemptedAt: delivery.attemptedAt.toISOString(),
     }));
+
+  const turmaNames = new Map(turmas.map((turma) => [turma.id, turma.name]));
+  const trackedEmails = new Set(deliveries.map((delivery) => `${delivery.studentId}:${delivery.recipientEmail.trim().toLowerCase()}`));
+  const untrackedIssues = activeStudents.flatMap((student) => {
+    const turmaName = turmaNames.get(student.turmaId);
+    if (!turmaName) return [];
+    return student.parents.flatMap((parent) => {
+      const email = parent.email.trim().toLowerCase();
+      if (!isSendableEmailAddress(email) || trackedEmails.has(`${student.id}:${email}`)) return [];
+      trackedEmails.add(`${student.id}:${email}`);
+      return [{
+        id: `not-sent:${student.id}:${parent.id}`,
+        turmaId: student.turmaId,
+        studentId: student.id,
+        turmaName,
+        studentName: student.name,
+        parents: student.parents,
+        parentId: parent.id,
+        recipientName: parent.name,
+        recipientEmail: email,
+        status: "NOT_SENT" as const,
+        error: "Este endereço de e-mail ainda não tem um envio registado para o período selecionado.",
+        attemptedAt: null,
+      }];
+    });
+  });
+  issues.push(...untrackedIssues);
+  issues.sort((a, b) => (b.attemptedAt ? new Date(b.attemptedAt).getTime() : 0) - (a.attemptedAt ? new Date(a.attemptedAt).getTime() : 0));
 
   return NextResponse.json({ summary, issues });
 }

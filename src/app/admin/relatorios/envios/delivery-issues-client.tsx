@@ -8,14 +8,16 @@ import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coor
 type DeliveryIssue = {
   id: string;
   turmaId: string;
+  studentId: string;
   turmaName: string;
   studentName: string;
-  parents: Array<{ name: string; email: string; phone: string }>;
+  parents: Array<{ id: string; name: string; email: string; phone: string }>;
   recipientName: string | null;
   recipientEmail: string;
-  status: "FAILED" | "BOUNCED" | "DELAYED";
+  parentId: string | null;
+  status: "FAILED" | "BOUNCED" | "DELAYED" | "NOT_SENT";
   error: string | null;
-  attemptedAt: string;
+  attemptedAt: string | null;
 };
 type TurmaSummary = { id: string; name: string; studentCount: number; sentCount: number; percentage: number; failedCount: number; bouncedCount: number; delayedCount: number };
 
@@ -31,6 +33,7 @@ const statusLabels: Record<DeliveryIssue["status"], string> = {
   BOUNCED: "Devolvido (bounce)",
   FAILED: "Falhou / não enviado",
   DELAYED: "Atrasado / não entregue",
+  NOT_SENT: "Ainda não enviado",
 };
 
 const pdfColumns = [
@@ -85,8 +88,8 @@ function exportIssuesPdf(issues: DeliveryIssue[], periodLabel: string, turmaName
   for (const issue of issues) {
     const recipientName = issue.recipientName?.trim();
     const normalizedEmail = issue.recipientEmail.trim().toLowerCase();
-    const recipientParent = issue.parents.find((parent) => recipientName && parent.name.trim().toLowerCase() === recipientName.toLowerCase())
-      ?? issue.parents.find((parent) => parent.email.trim().toLowerCase() === normalizedEmail);
+    const recipientParent = issue.parents.find((parent) => parent.email.trim().toLowerCase() === normalizedEmail)
+      ?? issue.parents.find((parent) => recipientName && parent.name.trim().toLowerCase() === recipientName.toLowerCase());
     const parentName = recipientName || recipientParent?.name || "Encarregado";
     const values = [
       issue.studentName,
@@ -140,6 +143,7 @@ export function DeliveryIssuesClient() {
   const [error, setError] = useState("");
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [retryFeedback, setRetryFeedback] = useState<{ id: string; message: string; success: boolean } | null>(null);
 
   useEffect(() => {
@@ -171,16 +175,42 @@ export function DeliveryIssuesClient() {
   const filteredIssues = turmaId === "all" ? issues : issues.filter((issue) => issue.turmaId === turmaId);
   const selectedTurmaName = turmaId === "all" ? "Todas as turmas" : summary.find((turma) => turma.id === turmaId)?.name ?? "Turma";
   const selectedPeriodLabel = getPeriodLabel(months.find((month) => month.key === periodKey) ?? months[0]);
-  const counts = filteredIssues.reduce((result, issue) => ({ ...result, [issue.status]: result[issue.status] + 1 }), { FAILED: 0, BOUNCED: 0, DELAYED: 0 });
+  const counts = filteredIssues.reduce((result, issue) => ({ ...result, [issue.status]: result[issue.status] + 1 }), { FAILED: 0, BOUNCED: 0, DELAYED: 0, NOT_SENT: 0 });
+
+  async function refreshDeliveryStatus() {
+    if (!periodKey) return null;
+    setRefreshing(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/reports/delivery-status?periodKey=${encodeURIComponent(periodKey)}`, { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Não foi possível atualizar o estado dos envios.");
+      const latestIssues = (data.issues ?? []) as DeliveryIssue[];
+      setIssues(latestIssues);
+      setSummary(data.summary ?? []);
+      return latestIssues;
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível atualizar o estado dos envios.");
+      return null;
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function retryDelivery(issue: DeliveryIssue) {
     setRetryingId(issue.id);
     setRetryFeedback(null);
     try {
+      const currentParent = issue.parentId ? issue.parents.find((parent) => parent.id === issue.parentId) : undefined;
+      const contactChanged = issue.status !== "NOT_SENT"
+        && currentParent
+        && currentParent.email.trim().toLowerCase() !== issue.recipientEmail.trim().toLowerCase();
       const response = await fetch("/api/admin/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ retryDeliveryId: issue.id }),
+        body: JSON.stringify(issue.status === "NOT_SENT" || contactChanged
+          ? { turmaIds: [issue.turmaId], studentIds: [issue.studentId], parentIds: issue.parentId ? [issue.parentId] : [], periodKey, channel: "EMAIL" }
+          : { retryDeliveryId: issue.id }),
       });
       const data = await response.json();
       if (!response.ok || data.failed > 0 || data.sent !== 1) {
@@ -188,7 +218,7 @@ export function DeliveryIssuesClient() {
         throw new Error(data.error || failedResult?.error || "Não foi possível reenviar este e-mail.");
       }
 
-      setIssues((current) => current.filter((item) => item.id !== issue.id));
+      await refreshDeliveryStatus();
       setRetryFeedback({ id: issue.id, message: `E-mail reenviado para ${issue.recipientEmail}.`, success: true });
     } catch (reason) {
       setRetryFeedback({ id: issue.id, message: reason instanceof Error ? reason.message : "Não foi possível reenviar este e-mail.", success: false });
@@ -200,18 +230,11 @@ export function DeliveryIssuesClient() {
   async function exportLatestIssuesPdf() {
     if (!periodKey) return;
     setExporting(true);
-    setError("");
     try {
-      const response = await fetch(`/api/admin/reports/delivery-status?periodKey=${encodeURIComponent(periodKey)}`, { cache: "no-store" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Não foi possível atualizar o estado dos envios.");
-      const latestIssues = (data.issues ?? []) as DeliveryIssue[];
-      setIssues(latestIssues);
-      setSummary(data.summary ?? []);
+      const latestIssues = await refreshDeliveryStatus();
+      if (!latestIssues) return;
       const latestFilteredIssues = turmaId === "all" ? latestIssues : latestIssues.filter((issue) => issue.turmaId === turmaId);
       exportIssuesPdf(latestFilteredIssues, selectedPeriodLabel, selectedTurmaName);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Não foi possível atualizar o estado dos envios.");
     } finally {
       setExporting(false);
     }
@@ -222,7 +245,7 @@ export function DeliveryIssuesClient() {
       <div className="delivery-issues-topline"><Link href="/admin/relatorios">← Voltar aos relatórios</Link><span>DETALHE DE ENTREGA</span></div>
       <header className="delivery-issues-heading">
         <div><p className="eyebrow">AUDITORIA DE E-MAIL</p><h2>Falhas e e-mails devolvidos</h2><p>Consulte destinatários com falhas de envio, devoluções ou notificações de atraso do serviço de e-mail.</p></div>
-        <button type="button" className="delivery-export-button" onClick={exportLatestIssuesPdf} disabled={loading || exporting}>{exporting ? "A atualizar e exportar..." : "Exportar PDF"}</button>
+        <div className="delivery-issues-heading-actions"><button type="button" className="delivery-refresh-button" onClick={refreshDeliveryStatus} disabled={loading || refreshing || exporting}>{refreshing ? "A atualizar..." : "Atualizar lista"}</button><button type="button" className="delivery-export-button" onClick={exportLatestIssuesPdf} disabled={loading || refreshing || exporting}>{exporting ? "A atualizar e exportar..." : "Exportar PDF"}</button></div>
       </header>
 
       <div className="delivery-issues-filters">
@@ -234,6 +257,7 @@ export function DeliveryIssuesClient() {
         <article className="metric-bounced"><span>Devolvidos</span><strong>{counts.BOUNCED}</strong></article>
         <article className="metric-failed"><span>Falhas de envio</span><strong>{counts.FAILED}</strong></article>
         <article className="metric-delayed"><span>Atrasados</span><strong>{counts.DELAYED}</strong></article>
+        <article className="metric-not-sent"><span>Ainda não enviados</span><strong>{counts.NOT_SENT}</strong></article>
       </div>
 
       {retryFeedback && <p className={`delivery-retry-feedback ${retryFeedback.success ? "success" : "error"}`} role={retryFeedback.success ? "status" : "alert"}>{retryFeedback.message}</p>}
@@ -245,8 +269,8 @@ export function DeliveryIssuesClient() {
             <td><strong>{issue.studentName}</strong><small>{issue.turmaName}</small></td>
             <td><strong>{issue.recipientName || "Encarregado"}</strong><small>{issue.recipientEmail}</small></td>
             <td className="delivery-issue-reason">{issue.error || "O serviço de e-mail não forneceu detalhes adicionais."}</td>
-            <td>{new Date(issue.attemptedAt).toLocaleString("pt-AO", { dateStyle: "medium", timeStyle: "short" })}</td>
-            <td className="delivery-retry-action">{issue.status === "FAILED" ? <button type="button" onClick={() => retryDelivery(issue)} disabled={retryingId !== null}>{retryingId === issue.id ? "A reenviar..." : "Reenviar e-mail"}</button> : <span>{issue.status === "BOUNCED" ? "Corrija o endereço antes de reenviar." : "Aguarde a atualização do serviço."}</span>}</td>
+            <td>{issue.attemptedAt ? new Date(issue.attemptedAt).toLocaleString("pt-AO", { dateStyle: "medium", timeStyle: "short" }) : "—"}</td>
+            <td className="delivery-retry-action">{issue.status === "FAILED" || issue.status === "NOT_SENT" ? <button type="button" onClick={() => retryDelivery(issue)} disabled={retryingId !== null}>{retryingId === issue.id ? "A enviar..." : issue.status === "NOT_SENT" ? "Enviar relatório" : "Reenviar e-mail"}</button> : <span>{issue.status === "BOUNCED" ? "Corrija o endereço antes de reenviar." : "Aguarde a atualização do serviço."}</span>}</td>
           </tr>)}</tbody>
         </table></div>
       )}
@@ -258,19 +282,23 @@ export function DeliveryIssuesClient() {
         .delivery-issues-topline a { color:#1d4ed8; text-decoration:none; letter-spacing:normal; font-size:.82rem; }
         .delivery-issues-heading h2 { margin:.2rem 0 .4rem; color:#173044; font-size:1.65rem; }
         .delivery-issues-heading { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
+        .delivery-issues-heading-actions { display:flex; flex:0 0 auto; gap:.5rem; }
+        .delivery-refresh-button { padding:.7rem 1rem; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#334155; font-size:.82rem; font-weight:800; cursor:pointer; }
+        .delivery-refresh-button:disabled { opacity:.5; cursor:wait; }
         .delivery-export-button { flex:0 0 auto; padding:.7rem 1rem; border:0; border-radius:9px; background:#173044; color:#fff; font-size:.82rem; font-weight:800; cursor:pointer; }
         .delivery-export-button:disabled { opacity:.5; cursor:not-allowed; }
         .delivery-issues-heading p:not(.eyebrow) { margin:0; color:#64748b; font-size:.9rem; }
         .delivery-issues-filters { display:flex; gap:.8rem; flex-wrap:wrap; }
         .delivery-issues-filters label { display:grid; gap:.4rem; min-width:220px; color:#334155; font-size:.8rem; font-weight:800; }
         .delivery-issues-filters select { min-width:240px; padding:.7rem .8rem; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#1e293b; }
-        .delivery-issue-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem; }
+        .delivery-issue-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; }
         .delivery-issue-metrics article { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.1rem; border-radius:12px; border:1px solid #e2e8f0; background:#fff; }
         .delivery-issue-metrics span { color:#475569; font-size:.83rem; font-weight:700; }
         .delivery-issue-metrics strong { font-size:1.35rem; color:#173044; }
         .delivery-issue-metrics .metric-bounced { background:#fff1f2; border-color:#fecdd3; }
         .delivery-issue-metrics .metric-failed { background:#fff7ed; border-color:#fed7aa; }
         .delivery-issue-metrics .metric-delayed { background:#fffbeb; border-color:#fde68a; }
+        .delivery-issue-metrics .metric-not-sent { background:#f1f5f9; border-color:#cbd5e1; }
         .delivery-issues-table-wrap { overflow:auto; border:1px solid #e2e8f0; border-radius:14px; background:#fff; }
         .delivery-issues-table { width:100%; border-collapse:collapse; text-align:left; font-size:.82rem; }
         .delivery-issues-table th,.delivery-issues-table td { padding:.8rem .75rem; border-bottom:1px solid #e2e8f0; vertical-align:top; }
@@ -281,6 +309,7 @@ export function DeliveryIssuesClient() {
         .delivery-status-badge.bounced { color:#9f1239; background:#ffe4e6; }
         .delivery-status-badge.failed { color:#9a3412; background:#ffedd5; }
         .delivery-status-badge.delayed { color:#854d0e; background:#fef3c7; }
+        .delivery-status-badge.not_sent { color:#334155; background:#e2e8f0; }
         .delivery-issue-reason { min-width:220px; max-width:400px; color:#334155; overflow-wrap:anywhere; }
         .delivery-retry-action { min-width:145px; }
         .delivery-retry-action button { padding:.55rem .7rem; border:0; border-radius:8px; background:#1d4ed8; color:#fff; font-size:.75rem; font-weight:800; cursor:pointer; white-space:nowrap; }
@@ -293,7 +322,8 @@ export function DeliveryIssuesClient() {
         .delivery-issues-empty span,.delivery-issues-feedback { color:#64748b; font-size:.86rem; }
         .delivery-issues-feedback.error { color:#b91c1c; }
         .delivery-issues-note { margin:0; padding:.9rem 1rem; border-radius:10px; background:#f1f5f9; color:#64748b; font-size:.78rem; line-height:1.55; }
-        @media (max-width:700px) { .delivery-issue-metrics { grid-template-columns:1fr; } .delivery-issues-heading { align-items:flex-start; flex-direction:column; } }
+        @media (max-width:900px) { .delivery-issue-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media (max-width:700px) { .delivery-issue-metrics { grid-template-columns:1fr; } .delivery-issues-heading { align-items:flex-start; flex-direction:column; } .delivery-issues-heading-actions { flex-wrap:wrap; } }
       `}</style>
     </section>
   );
