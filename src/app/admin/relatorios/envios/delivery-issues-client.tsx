@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
+import { isSendableEmailAddress } from "@/lib/email-address";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
 
 type DeliveryIssue = {
@@ -35,6 +36,7 @@ const statusLabels: Record<DeliveryIssue["status"], string> = {
   DELAYED: "Atrasado / não entregue",
   NOT_SENT: "Ainda não enviado",
 };
+type DeliveryStatusFilter = "ALL" | DeliveryIssue["status"];
 
 const pdfColumns = [
   { label: "Aluno", width: 124 },
@@ -137,6 +139,8 @@ export function DeliveryIssuesClient() {
   const months = useMemo(() => getAvailableMonths(), []);
   const [periodKey, setPeriodKey] = useState(() => months[0]?.key ?? "");
   const [turmaId, setTurmaId] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<DeliveryStatusFilter>("ALL");
+  const [validEmailOnly, setValidEmailOnly] = useState(false);
   const [issues, setIssues] = useState<DeliveryIssue[]>([]);
   const [summary, setSummary] = useState<TurmaSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -172,7 +176,10 @@ export function DeliveryIssuesClient() {
     return () => { cancelled = true; };
   }, [periodKey]);
 
-  const filteredIssues = turmaId === "all" ? issues : issues.filter((issue) => issue.turmaId === turmaId);
+  const filteredIssues = issues.filter((issue) =>
+    (turmaId === "all" || issue.turmaId === turmaId)
+    && (statusFilter === "ALL" || issue.status === statusFilter)
+    && (!validEmailOnly || isSendableEmailAddress(issue.recipientEmail)));
   const selectedTurmaName = turmaId === "all" ? "Todas as turmas" : summary.find((turma) => turma.id === turmaId)?.name ?? "Turma";
   const selectedPeriodLabel = getPeriodLabel(months.find((month) => month.key === periodKey) ?? months[0]);
   const counts = filteredIssues.reduce((result, issue) => ({ ...result, [issue.status]: result[issue.status] + 1 }), { FAILED: 0, BOUNCED: 0, DELAYED: 0, NOT_SENT: 0 });
@@ -233,7 +240,10 @@ export function DeliveryIssuesClient() {
     try {
       const latestIssues = await refreshDeliveryStatus();
       if (!latestIssues) return;
-      const latestFilteredIssues = turmaId === "all" ? latestIssues : latestIssues.filter((issue) => issue.turmaId === turmaId);
+      const latestFilteredIssues = latestIssues.filter((issue) =>
+        (turmaId === "all" || issue.turmaId === turmaId)
+        && (statusFilter === "ALL" || issue.status === statusFilter)
+        && (!validEmailOnly || isSendableEmailAddress(issue.recipientEmail)));
       exportIssuesPdf(latestFilteredIssues, selectedPeriodLabel, selectedTurmaName);
     } finally {
       setExporting(false);
@@ -251,6 +261,8 @@ export function DeliveryIssuesClient() {
       <div className="delivery-issues-filters">
         <label>Período mensal<select value={periodKey} onChange={(event) => setPeriodKey(event.target.value)}>{months.map((month) => <option key={month.key} value={month.key}>{getPeriodLabel(month)}</option>)}</select></label>
         <label>Turma<select value={turmaId} onChange={(event) => setTurmaId(event.target.value)}><option value="all">Todas as turmas</option>{summary.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}</select></label>
+        <label>Estado<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as DeliveryStatusFilter)}><option value="ALL">Todos os estados</option><option value="NOT_SENT">Ainda não enviado</option><option value="FAILED">Falhou / não enviado</option><option value="BOUNCED">Devolvido (bounce)</option><option value="DELAYED">Atrasado / não entregue</option></select></label>
+        <label className="delivery-valid-email-filter"><input type="checkbox" checked={validEmailOnly} onChange={(event) => setValidEmailOnly(event.target.checked)} /> Apenas e-mails válidos</label>
       </div>
 
       <div className="delivery-issue-metrics">
@@ -261,7 +273,7 @@ export function DeliveryIssuesClient() {
       </div>
 
       {retryFeedback && <p className={`delivery-retry-feedback ${retryFeedback.success ? "success" : "error"}`} role={retryFeedback.success ? "status" : "alert"}>{retryFeedback.message}</p>}
-      {error ? <p className="delivery-issues-feedback error" role="alert">{error}</p> : loading ? <p className="delivery-issues-feedback">A carregar o detalhe dos envios...</p> : !filteredIssues.length ? <div className="delivery-issues-empty"><strong>Nenhuma falha encontrada</strong><span>Não há e-mails devolvidos, falhados ou atrasados para este período e filtro.</span></div> : (
+      {error ? <p className="delivery-issues-feedback error" role="alert">{error}</p> : loading ? <p className="delivery-issues-feedback">A carregar o detalhe dos envios...</p> : !filteredIssues.length ? <div className="delivery-issues-empty"><strong>Nenhum registo encontrado</strong><span>Não há envios que correspondam ao período, turma, estado e filtro de e-mail selecionados.</span></div> : (
         <div className="delivery-issues-table-wrap"><table className="delivery-issues-table">
           <thead><tr><th>Estado</th><th>Aluno / turma</th><th>Destinatário</th><th>Motivo reportado</th><th>Tentativa</th><th>Ação</th></tr></thead>
           <tbody>{filteredIssues.map((issue) => <tr key={issue.id}>
@@ -291,6 +303,8 @@ export function DeliveryIssuesClient() {
         .delivery-issues-filters { display:flex; gap:.8rem; flex-wrap:wrap; }
         .delivery-issues-filters label { display:grid; gap:.4rem; min-width:220px; color:#334155; font-size:.8rem; font-weight:800; }
         .delivery-issues-filters select { min-width:240px; padding:.7rem .8rem; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#1e293b; }
+        .delivery-issues-filters .delivery-valid-email-filter { display:flex; align-items:center; gap:.55rem; min-width:0; align-self:end; min-height:40px; cursor:pointer; }
+        .delivery-valid-email-filter input { width:16px; height:16px; accent-color:#1d4ed8; }
         .delivery-issue-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; }
         .delivery-issue-metrics article { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.1rem; border-radius:12px; border:1px solid #e2e8f0; background:#fff; }
         .delivery-issue-metrics span { color:#475569; font-size:.83rem; font-weight:700; }
