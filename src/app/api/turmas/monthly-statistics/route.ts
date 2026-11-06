@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
+            avatarUrl: true,
             grades: { where: { term: { startsWith: `Semanal:${monthKey}` } }, select: { subject: true, value: true, term: true } },
             absences: { where: { dia: { gte: monthStart, lt: nextMonthStart } }, select: { justified: true } },
           },
@@ -66,6 +67,7 @@ export async function GET(request: NextRequest) {
       return {
         id: student.id,
         name: student.name,
+        avatarUrl: student.avatarUrl,
         gradeAverage: gradeAverage === null ? null : Math.round(gradeAverage * 10) / 10,
         gradeCount: monthGrades.length,
         absenceCount: student.absences.length,
@@ -79,12 +81,12 @@ export async function GET(request: NextRequest) {
       ? assessedStudents.reduce((sum, student) => sum + (student.gradeAverage ?? 0), 0) / assessedStudents.length
       : null;
     const compareTop = (a: typeof students[number], b: typeof students[number]) =>
-      a.absenceCount - b.absenceCount
-      || (b.gradeAverage ?? 0) - (a.gradeAverage ?? 0)
+      (b.gradeAverage ?? 0) - (a.gradeAverage ?? 0)
+      || a.absenceCount - b.absenceCount
       || a.name.localeCompare(b.name, "pt");
     const compareBottom = (a: typeof students[number], b: typeof students[number]) =>
-      b.absenceCount - a.absenceCount
-      || (a.gradeAverage ?? 0) - (b.gradeAverage ?? 0)
+      (a.gradeAverage ?? 0) - (b.gradeAverage ?? 0)
+      || b.absenceCount - a.absenceCount
       || a.name.localeCompare(b.name, "pt");
     const rankedStudents = assessedStudents;
 

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
 
 type RankedStudent = {
   id: string;
   name: string;
+  avatarUrl: string | null;
   gradeAverage: number | null;
   gradeCount: number;
   absenceCount: number;
@@ -42,10 +44,8 @@ function StudentRanking({ title, students, emptyText }: { title: string; student
       <h3>{title}</h3>
       {students.length ? <ol>{students.map((student) => (
         <li key={student.id}>
-          <span className="turma-monthly-student-name">{student.name}</span>
-          <span className="turma-monthly-student-stats">
-            {student.gradeAverage?.toFixed(1) ?? "—"} valores · {student.absenceCount} falta(s)
-          </span>
+          {student.avatarUrl ? <Image className="turma-monthly-avatar" src={student.avatarUrl} width={42} height={42} unoptimized alt={`Fotografia de ${student.name}`} /> : <span className="turma-monthly-avatar turma-monthly-avatar-fallback" aria-hidden="true">{student.name.trim().slice(0, 1).toLocaleUpperCase()}</span>}
+          <span className="turma-monthly-student-details"><span className="turma-monthly-student-name">{student.name}</span><span className="turma-monthly-student-stats">{student.gradeAverage?.toFixed(1) ?? "—"} valores · {student.absenceCount} falta(s)</span></span>
         </li>
       ))}</ol> : <p>{emptyText}</p>}
     </article>
@@ -101,7 +101,7 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
             <article><span>Média geral</span><strong>{statistics.classAverage?.toFixed(1) ?? "—"}<small> / {statistics.gradeScale}</small></strong><small>{statistics.assessedStudentCount} de {statistics.studentCount} aluno(s) avaliados</small></article>
             <article><span>Total de faltas</span><strong>{statistics.absenceCount}</strong><small>{statistics.unjustifiedAbsenceCount} injustificada(s) · {statistics.justifiedAbsenceCount} justificada(s)</small></article>
           </div>
-          <p className="turma-monthly-ranking-note">Os dados incluem alunos ativos; o total de faltas inclui justificadas e injustificadas. Os melhores são ordenados por menos faltas e, em caso de empate, maior média. Os que precisam de mais apoio são ordenados por mais faltas e, em caso de empate, menor média. Alunos sem notas no mês não entram na classificação.</p>
+          <p className="turma-monthly-ranking-note">Os dados incluem alunos ativos; o total de faltas inclui justificadas e injustificadas. A média é o critério principal: maior média primeiro no Top 4 e menor média primeiro na lista de acompanhamento. As faltas servem como desempate (menos faltas no Top 4, mais faltas na lista de acompanhamento). Alunos sem notas no mês não entram na classificação.</p>
           <div className="turma-monthly-rankings">
             <StudentRanking title="Top 4 · melhor desempenho" students={statistics.topStudents} emptyText="Ainda não há alunos avaliados neste mês." />
             <StudentRanking title="4 a acompanhar · maior necessidade de apoio" students={statistics.bottomStudents} emptyText="Ainda não há alunos avaliados neste mês." />
@@ -126,7 +126,10 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
         .turma-monthly-ranking { min-width:0; padding:.9rem; border:1px solid #e2e8f0; border-radius:12px; }
         .turma-monthly-ranking h3 { margin:0 0 .65rem; color:#173044; font-size:.9rem; }
         .turma-monthly-ranking ol { display:grid; gap:.5rem; margin:0; padding-left:1.4rem; }
-        .turma-monthly-ranking li { padding:.35rem 0; color:#176b8b; }
+        .turma-monthly-ranking li { display:flex; align-items:center; gap:.65rem; padding:.35rem 0; color:#176b8b; }
+        .turma-monthly-avatar { display:block; flex:0 0 42px; width:42px; height:42px; border:2px solid #dbe3ec; border-radius:50%; object-fit:cover; background:#e2e8f0; }
+        .turma-monthly-avatar-fallback { display:grid; place-items:center; color:#176b8b; font-size:.95rem; font-weight:800; }
+        .turma-monthly-student-details { min-width:0; }
         .turma-monthly-student-name,.turma-monthly-student-stats { display:block; }
         .turma-monthly-student-name { color:#1e293b; font-size:.82rem; font-weight:800; }
         .turma-monthly-student-stats,.turma-monthly-ranking > p,.turma-monthly-message { color:#64748b; font-size:.75rem; }
