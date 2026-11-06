@@ -44,6 +44,7 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
   const [observationLoading, setObservationLoading] = useState(Boolean(initialReportPeriod));
   const [reportSaved, setReportSaved] = useState(false);
   const [monthlySummary, setMonthlySummary] = useState<MonthlyStudentSummary | null>(null);
+  const [previousMonthlySummary, setPreviousMonthlySummary] = useState<MonthlyStudentSummary | null>(null);
   const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(false);
   const [monthlySummaryError, setMonthlySummaryError] = useState("");
   const [statusMessage, setStatusMessage] = useState<string>("");
@@ -184,22 +185,31 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
     if (tab !== "relatorio" || !reportStart) return;
     let cancelled = false;
     const month = reportStart.slice(0, 7);
+    const [year, monthNumber] = month.split("-").map(Number);
+    const previousMonth = new Date(Date.UTC(year, monthNumber - 2, 1)).toISOString().slice(0, 7);
     Promise.resolve().then(() => {
       if (!cancelled) {
         setMonthlySummaryLoading(true);
         setMonthlySummaryError("");
       }
     });
-    fetch(`/api/student-monthly-summary?studentId=${encodeURIComponent(student.id)}&month=${encodeURIComponent(month)}`, { cache: "no-store" })
-      .then(async (response) => {
+    const fetchMonthSummary = async (monthKey: string) => {
+      const response = await fetch(`/api/student-monthly-summary?studentId=${encodeURIComponent(student.id)}&month=${encodeURIComponent(monthKey)}`, { cache: "no-store" });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Não foi possível carregar o resumo mensal.");
         return data as MonthlyStudentSummary;
+    };
+    Promise.all([fetchMonthSummary(month), fetchMonthSummary(previousMonth)])
+      .then(([current, previous]) => {
+        if (!cancelled) {
+          setMonthlySummary(current);
+          setPreviousMonthlySummary(previous);
+        }
       })
-      .then((data) => { if (!cancelled) setMonthlySummary(data); })
       .catch((error: unknown) => {
         if (!cancelled) {
           setMonthlySummary(null);
+          setPreviousMonthlySummary(null);
           setMonthlySummaryError(error instanceof Error ? error.message : "Não foi possível carregar o resumo mensal.");
         }
       })
@@ -575,20 +585,30 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
                 {reportStart && (
                   <section className="student-monthly-summary" aria-live="polite">
                     <header>
-                      <p className="eyebrow">CONTEXTO DO MÊS</p>
-                      <h2>Resumo de {new Date(`${reportStart.slice(0, 7)}-01T12:00:00Z`).toLocaleDateString("pt-AO", { month: "long", year: "numeric", timeZone: "UTC" })}</h2>
-                      <p>Notas negativas das semanas iniciadas neste mês e faltas registadas durante o mês.</p>
+                      <p className="eyebrow">COMPARAÇÃO MENSAL</p>
+                      <h2>Resultados do mês e do mês anterior</h2>
+                      <p>Notas negativas das semanas iniciadas em cada mês e faltas registadas durante o mês.</p>
                     </header>
-                    {monthlySummaryLoading || (monthlySummary && monthlySummary.month !== reportStart.slice(0, 7)) ? <p>A carregar resumo mensal...</p> : monthlySummaryError ? <p className="student-monthly-summary-error" role="alert">{monthlySummaryError}</p> : monthlySummary ? (
-                      <div className="student-monthly-summary-grid">
-                        <article>
-                          <h3>Notas negativas <small>(abaixo de {monthlySummary.negativeThreshold} valores)</small></h3>
-                          {monthlySummary.negativeGradesBySubject.length ? <ul>{monthlySummary.negativeGradesBySubject.map((entry) => <li key={entry.subject}><strong>{entry.subject}</strong><span>{entry.grades.map((grade) => `${grade.value} (${grade.weekStart.slice(8, 10)}/${grade.weekStart.slice(5, 7)}–${grade.weekEnd.slice(8, 10)}/${grade.weekEnd.slice(5, 7)})`).join(", ")}</span></li>)}</ul> : <p>Nenhuma nota negativa registada neste mês.</p>}
-                        </article>
-                        <article>
-                          <h3>Faltas por disciplina</h3>
-                          {monthlySummary.absencesBySubject.length ? <ul>{monthlySummary.absencesBySubject.map((entry) => <li key={entry.subject}><strong>{entry.subject}</strong><span>{entry.total} falta(s) · {entry.unjustified} injustificada(s) · {entry.justified} justificada(s)</span></li>)}</ul> : <p>Nenhuma falta registada neste mês.</p>}
-                        </article>
+                    {monthlySummaryLoading || (monthlySummary && monthlySummary.month !== reportStart.slice(0, 7)) ? <p>A carregar resumo mensal...</p> : monthlySummaryError ? <p className="student-monthly-summary-error" role="alert">{monthlySummaryError}</p> : monthlySummary && previousMonthlySummary ? (
+                      <div className="student-monthly-comparison">
+                        {[
+                          { summary: previousMonthlySummary, role: "Mês anterior" },
+                          { summary: monthlySummary, role: "Mês selecionado" },
+                        ].map(({ summary, role }) => (
+                          <article className="student-monthly-card" key={summary.month}>
+                            <h3><span>{role}</span><strong>{new Date(`${summary.month}-01T12:00:00Z`).toLocaleDateString("pt-AO", { month: "long", year: "numeric", timeZone: "UTC" })}</strong></h3>
+                            <div className="student-monthly-summary-grid">
+                              <section>
+                                <h4>Notas negativas <small>(abaixo de {summary.negativeThreshold})</small></h4>
+                                {summary.negativeGradesBySubject.length ? <ul>{summary.negativeGradesBySubject.map((entry) => <li key={entry.subject}><strong>{entry.subject}</strong><span>{entry.grades.map((grade) => `${grade.value} (${grade.weekStart.slice(8, 10)}/${grade.weekStart.slice(5, 7)}–${grade.weekEnd.slice(8, 10)}/${grade.weekEnd.slice(5, 7)})`).join(", ")}</span></li>)}</ul> : <p>Nenhuma nota negativa registada.</p>}
+                              </section>
+                              <section>
+                                <h4>Faltas por disciplina</h4>
+                                {summary.absencesBySubject.length ? <ul>{summary.absencesBySubject.map((entry) => <li key={entry.subject}><strong>{entry.subject}</strong><span>{entry.total} falta(s) · {entry.unjustified} injustificada(s) · {entry.justified} justificada(s)</span></li>)}</ul> : <p>Nenhuma falta registada.</p>}
+                              </section>
+                            </div>
+                          </article>
+                        ))}
                       </div>
                     ) : null}
                   </section>

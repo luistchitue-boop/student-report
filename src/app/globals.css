@@ -455,10 +455,15 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .student-monthly-summary { display:grid; gap:0.9rem; padding:1rem; border:1px solid #dbe7dc; border-radius:15px; background:#fff; }
 .student-monthly-summary > header h2 { margin:.15rem 0 .3rem; color:var(--navy); font-size:1.05rem; text-transform:capitalize; }
 .student-monthly-summary > header p:not(.eyebrow) { margin:0; color:#64756c; font-size:.8rem; }
-.student-monthly-summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; }
-.student-monthly-summary-grid article { min-width:0; padding:.85rem; border:1px solid #e5ece5; border-radius:12px; background:#f8fbf8; }
-.student-monthly-summary-grid h3 { margin:0 0 .6rem; color:#31413d; font-size:.86rem; }
-.student-monthly-summary-grid h3 small { color:#64756c; font-size:.72rem; font-weight:600; }
+.student-monthly-comparison { display:grid; grid-template-columns:minmax(0,1fr); gap:.8rem; }
+.student-monthly-card { min-width:0; padding:.9rem; border:1px solid #e5ece5; border-radius:12px; background:#f8fbf8; }
+.student-monthly-card > h3 { display:flex; flex-wrap:wrap; align-items:baseline; gap:.3rem .6rem; margin:0 0 .75rem; color:#31413d; font-size:.92rem; text-transform:capitalize; }
+.student-monthly-card > h3 span { color:#176b8b; font-size:.72rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.student-monthly-card > h3 strong { font:inherit; }
+.student-monthly-summary-grid { display:grid; gap:.8rem; }
+.student-monthly-summary-grid section { min-width:0; }
+.student-monthly-summary-grid h4 { margin:0 0 .55rem; color:#31413d; font-size:.82rem; }
+.student-monthly-summary-grid h4 small { color:#64756c; font-size:.72rem; font-weight:600; }
 .student-monthly-summary-grid ul { display:grid; gap:.55rem; margin:0; padding:0; list-style:none; }
 .student-monthly-summary-grid li { display:grid; gap:.15rem; padding-bottom:.5rem; border-bottom:1px solid #e5ece5; font-size:.78rem; }
 .student-monthly-summary-grid li:last-child { padding-bottom:0; border-bottom:0; }
@@ -612,7 +617,6 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
   .student-record-panel button { width:100%; min-height:44px; }
   .student-record-list-heading { align-items:flex-start; flex-direction:column; }
   .weekly-period-selector { grid-template-columns:1fr; }
-  .student-monthly-summary-grid { grid-template-columns:1fr; }
   .student-record-row, .student-record-row.absence { grid-template-columns:1fr 1fr; align-items:stretch; }
   .student-record-row label:first-child { grid-column:1 / -1; }
   .student-record-actions { grid-column:1 / -1; }
