@@ -47,7 +47,7 @@ function StudentRanking({ title, students, emptyText, criterion }: { title: stri
       {students.length ? <ol>{students.map((student) => (
         <li key={student.id}>
           {student.avatarUrl ? <Image className="turma-monthly-avatar" src={student.avatarUrl} width={42} height={42} unoptimized alt={`Fotografia de ${student.name}`} /> : <span className="turma-monthly-avatar turma-monthly-avatar-fallback" aria-hidden="true">{student.name.trim().slice(0, 1).toLocaleUpperCase()}</span>}
-          <span className="turma-monthly-student-details"><span className="turma-monthly-student-name">{student.name}</span><span className="turma-monthly-student-stats">{criterion === "grades" ? `${student.gradeAverage?.toFixed(1) ?? "—"} valores` : `${student.absenceCount} falta(s)`}</span></span>
+          <span className="turma-monthly-student-details"><span className="turma-monthly-student-name">{student.name}</span><span className="turma-monthly-student-stats">{criterion === "grades" ? <>{student.gradeAverage?.toFixed(1) ?? "—"} valores <span className="turma-monthly-secondary-stat">({student.absenceCount} falta(s))</span></> : <>{student.absenceCount} falta(s) <span className="turma-monthly-secondary-stat">({student.gradeAverage === null ? "sem média" : `${student.gradeAverage.toFixed(1)} valores`})</span></>}</span></span>
         </li>
       ))}</ol> : <p>{emptyText}</p>}
     </article>
@@ -148,6 +148,7 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
         .turma-monthly-student-name,.turma-monthly-student-stats { display:block; }
         .turma-monthly-student-name { color:#1e293b; font-size:.82rem; font-weight:800; }
         .turma-monthly-student-stats,.turma-monthly-ranking > p,.turma-monthly-message { color:#64748b; font-size:.75rem; }
+        .turma-monthly-secondary-stat { color:#64748b; font-size:.72rem; }
         .turma-monthly-message { margin:0; }
         .turma-monthly-message.error { color:#b91c1c; }
         @media (max-width:700px) { .turma-monthly-statistics-header { flex-direction:column; } .turma-monthly-statistics-header label { width:100%; } .turma-monthly-metrics,.turma-monthly-rankings { grid-template-columns:1fr; } }
