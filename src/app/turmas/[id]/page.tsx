@@ -8,6 +8,7 @@ import { StudentCardClient } from "./student-card-client";
 import { StudentImportClient } from "./student-import-client";
 import { GradeScaleClient } from "./grade-scale-client";
 import { TurmaDisciplinasClient } from "./disciplinas-client";
+import { TurmaMonthlyStatistics } from "./turma-monthly-statistics";
 
 const PAGE_SIZE = 10;
 
@@ -123,6 +124,8 @@ export default async function TurmaDetailPage({
               {session.user.role === "ADMIN" && <GradeScaleClient turmaId={turma.id} initialScale={turma.gradeScale} />}
             </div>
           </div>
+
+          <TurmaMonthlyStatistics turmaId={turma.id} />
 
           <form method="get" className="student-search-form">
             <label htmlFor="student-search">Pesquisar aluno</label>
