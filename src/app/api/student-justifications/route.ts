@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
-import { isTurmaDateClosed } from "@/lib/closed-periods";
 
 const prisma = new PrismaClient();
 
@@ -51,17 +50,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (absences.length !== uniqueAbsenceIds.length) return NextResponse.json({ error: "Uma ou mais faltas não foram encontradas." }, { status: 404 });
-
-    let hasClosedPeriod = false;
-    for (const absence of absences) {
-      if (await isTurmaDateClosed(absence.student.turmaId, absence.dia, prisma)) {
-        hasClosedPeriod = true;
-        break;
-      }
-    }
-    if (hasClosedPeriod) {
-      return NextResponse.json({ error: "Uma ou mais faltas pertencem a um período fechado pelo administrador." }, { status: 403 });
-    }
 
     const justifiedAbsences = await prisma.$transaction(
       absences.map((absence) => prisma.absence.update({
