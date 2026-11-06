@@ -99,10 +99,10 @@ export async function GET(request: NextRequest) {
       absenceCount: students.reduce((sum, student) => sum + student.absenceCount, 0),
       justifiedAbsenceCount: students.reduce((sum, student) => sum + student.justifiedAbsenceCount, 0),
       unjustifiedAbsenceCount: students.reduce((sum, student) => sum + student.unjustifiedAbsenceCount, 0),
-      bestGradeStudents: [...assessedStudents].sort(compareBestGrades).slice(0, 4),
-      worstGradeStudents: [...assessedStudents].sort(compareWorstGrades).slice(0, 4),
-      fewestAbsenceStudents: [...students].sort(compareFewestAbsences).slice(0, 4),
-      mostAbsenceStudents: [...students].sort(compareMostAbsences).slice(0, 4),
+      bestGradeStudents: [...assessedStudents].sort(compareBestGrades).slice(0, 5),
+      worstGradeStudents: [...assessedStudents].sort(compareWorstGrades).slice(0, 5),
+      fewestAbsenceStudents: [...students].sort(compareFewestAbsences).slice(0, 5),
+      mostAbsenceStudents: [...students].sort(compareMostAbsences).slice(0, 5),
     });
   } catch (error) {
     console.error("Turma monthly statistics error:", error);

@@ -111,11 +111,11 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
           <p className="turma-monthly-ranking-note">{classification === "grades" ? "Classificação baseada exclusivamente na média mensal: melhor média primeiro e pior média primeiro. Alunos sem notas no mês não entram nestas listas." : "Classificação baseada exclusivamente no número de faltas do mês: menos faltas primeiro e mais faltas primeiro. Inclui todos os alunos ativos; faltas justificadas e injustificadas contam igualmente."}</p>
           <div className="turma-monthly-rankings">
             {classification === "grades" ? <>
-              <StudentRanking title="Top 4 · melhores notas" students={statistics.bestGradeStudents} emptyText="Ainda não há alunos avaliados neste mês." criterion="grades" />
-              <StudentRanking title="Bottom 4 · piores notas" students={statistics.worstGradeStudents} emptyText="Ainda não há alunos avaliados neste mês." criterion="grades" />
+              <StudentRanking title="Top 5 · melhores notas" students={statistics.bestGradeStudents} emptyText="Ainda não há alunos avaliados neste mês." criterion="grades" />
+              <StudentRanking title="Bottom 5 · piores notas" students={statistics.worstGradeStudents} emptyText="Ainda não há alunos avaliados neste mês." criterion="grades" />
             </> : <>
-              <StudentRanking title="Top 4 · menos faltas" students={statistics.fewestAbsenceStudents} emptyText="Não há alunos ativos nesta turma." criterion="absences" />
-              <StudentRanking title="Bottom 4 · mais faltas" students={statistics.mostAbsenceStudents} emptyText="Não há alunos ativos nesta turma." criterion="absences" />
+              <StudentRanking title="Top 5 · menos faltas" students={statistics.fewestAbsenceStudents} emptyText="Não há alunos ativos nesta turma." criterion="absences" />
+              <StudentRanking title="Bottom 5 · mais faltas" students={statistics.mostAbsenceStudents} emptyText="Não há alunos ativos nesta turma." criterion="absences" />
             </>}
           </div>
         </>
