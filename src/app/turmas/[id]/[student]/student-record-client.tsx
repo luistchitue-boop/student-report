@@ -42,6 +42,8 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
   const [absenceEnd, setAbsenceEnd] = useState("");
   const [reportNote, setReportNote] = useState<string>("");
   const [observationLoading, setObservationLoading] = useState(Boolean(initialReportPeriod));
+  const [proofreading, setProofreading] = useState(false);
+  const [improvedReportNote, setImprovedReportNote] = useState<string | null>(null);
   const [reportSaved, setReportSaved] = useState(false);
   const [monthlySummary, setMonthlySummary] = useState<MonthlyStudentSummary | null>(null);
   const [previousMonthlySummary, setPreviousMonthlySummary] = useState<MonthlyStudentSummary | null>(null);
@@ -82,6 +84,7 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
     const period = weeklyPeriods.find((item) => item.key === value);
     setReportStart(value);
     setReportEnd(period?.end.toISOString().slice(0, 10) ?? "");
+    setImprovedReportNote(null);
     setReportSaved(false);
     setObservationLoading(Boolean(value));
     if (!value) {
@@ -168,6 +171,7 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
       .then((data) => {
         if (!cancelled) {
           setReportNote(data.observation?.teacherObservation ?? "");
+          setImprovedReportNote(null);
           setBehavior(data.observation?.behavior ?? "");
           setReportSaved(Boolean(data.observation));
         }
@@ -277,6 +281,30 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
     if (!response.ok) throw new Error(result.error ?? "Não foi possível guardar a observação.");
     setReportSaved(Boolean(result.saved));
     setStatusMessage(result.saved ? "Observação semanal guardada." : "Observação semanal removida.");
+  }
+
+  async function improveWeeklyObservation() {
+    if (!reportStart || !reportEnd || !reportNote.trim()) {
+      setStatusMessage("Escreva uma observação semanal antes de melhorar o texto.");
+      return;
+    }
+    setProofreading(true);
+    setStatusMessage("");
+    try {
+      const response = await fetch("/api/student-observations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: student.id, weekStart: reportStart, weekEnd: reportEnd, text: reportNote }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível melhorar o texto.");
+      setImprovedReportNote(typeof result.text === "string" ? result.text : null);
+      setStatusMessage("Sugestão pronta. Reveja-a antes de a aplicar ao relatório.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Não foi possível melhorar o texto.");
+    } finally {
+      setProofreading(false);
+    }
   }
 
   async function deleteRecord(type: "grade" | "absence", id: string) {
@@ -620,9 +648,9 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
                     <textarea
                       rows={4}
                       maxLength={300}
-                      disabled={!canEdit || observationLoading}
+                      disabled={!canEdit || observationLoading || proofreading}
                       value={reportNote}
-                      onChange={(event) => { setReportNote(event.target.value.slice(0, 300)); setReportSaved(false); }}
+                      onChange={(event) => { setReportNote(event.target.value.slice(0, 300)); setReportSaved(false); setImprovedReportNote(null); }}
                       placeholder="Escreva uma observação de até 300 caracteres"
                       style={{ padding: "0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8", resize: "vertical" }}
                     />
@@ -644,9 +672,13 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
                 </label>
 
                 <div style={{ display: "grid", gap: "0.75rem" }}>
-                  <button type="button" onClick={async () => { try { await saveWeeklyObservation(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível guardar a observação."); } }} disabled={!canEdit || !reportStart || !reportEnd || observationLoading} style={{ padding: "0.9rem 1.2rem", background: !canEdit || !reportStart || !reportEnd || observationLoading ? "#a7b7af" : "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: !canEdit || !reportStart || !reportEnd || observationLoading ? "not-allowed" : "pointer" }}>
-                    {observationLoading ? "A carregar..." : "Guardar observação semanal"}
-                  </button>
+                  <div className="weekly-report-actions">
+                    <button type="button" className="weekly-report-improve-button" onClick={improveWeeklyObservation} disabled={!canEdit || !reportStart || !reportEnd || !reportNote.trim() || observationLoading || proofreading}>{proofreading ? "A melhorar..." : "Melhorar o texto"}</button>
+                    <button type="button" onClick={async () => { try { await saveWeeklyObservation(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível guardar a observação."); } }} disabled={!canEdit || !reportStart || !reportEnd || observationLoading || proofreading} style={{ padding: "0.9rem 1.2rem", background: !canEdit || !reportStart || !reportEnd || observationLoading || proofreading ? "#a7b7af" : "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: !canEdit || !reportStart || !reportEnd || observationLoading || proofreading ? "not-allowed" : "pointer" }}>
+                      {observationLoading ? "A carregar..." : "Guardar observação semanal"}
+                    </button>
+                  </div>
+                  {improvedReportNote !== null && <div className="weekly-report-suggestion"><strong>Sugestão revista</strong><p>{improvedReportNote}</p><div><button type="button" onClick={() => { setReportNote(improvedReportNote); setImprovedReportNote(null); setReportSaved(false); setStatusMessage("Sugestão aplicada. Guarde a observação para a guardar."); }}>Aplicar sugestão</button><button type="button" onClick={() => setImprovedReportNote(null)}>Descartar</button></div></div>}
                   {reportSaved && nextStudent && <Link className="student-next-button" href={`/turmas/${turma.id}/${encodeURIComponent(nextStudent.id)}?week=${encodeURIComponent(reportStart)}`}>Próximo estudante: {nextStudent.name} →</Link>}
                   {statusMessage ? (
                     <div style={{ color: "#244d3d", fontWeight: 700 }}>{statusMessage}</div>

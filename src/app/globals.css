@@ -472,6 +472,14 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .student-monthly-summary-error { margin:0; color:#b91c1c; font-size:.82rem; }
 .student-next-button { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; width:fit-content; padding:.85rem 1.1rem; border-radius:9px; background:#176b8b; color:#fff; font-size:.86rem; font-weight:800; text-decoration:none; }
 .student-next-button:hover { background:#125a75; }
+.weekly-report-actions { display:flex; flex-wrap:wrap; gap:.6rem; }
+.weekly-report-improve-button { padding:.9rem 1.2rem; border:1px solid #176b8b; border-radius:8px; background:#fff; color:#176b8b; font-weight:800; cursor:pointer; }
+.weekly-report-improve-button:disabled { opacity:.55; cursor:not-allowed; }
+.weekly-report-suggestion { display:grid; gap:.55rem; padding:.9rem 1rem; border:1px solid #bfdbfe; border-radius:10px; background:#eff6ff; color:#1e3a5f; }
+.weekly-report-suggestion > p { margin:0; font-size:.88rem; line-height:1.55; white-space:pre-wrap; }
+.weekly-report-suggestion > div { display:flex; flex-wrap:wrap; gap:.5rem; }
+.weekly-report-suggestion button { padding:.55rem .75rem; border:1px solid #176b8b; border-radius:8px; background:#176b8b; color:#fff; font-size:.78rem; font-weight:800; cursor:pointer; }
+.weekly-report-suggestion button + button { border-color:#cbd5e1; background:#fff; color:#475569; }
 .report-behavior-field { display:grid; gap:0.45rem; color:#31413d; font-size:0.8rem; font-weight:700; }
 .report-behavior-field select { width:100%; min-height:2.7rem; padding:0.65rem 0.8rem; border:1px solid #bfd2c3; border-radius:10px; background:#fff; color:var(--navy); font-size:0.82rem; font-weight:700; cursor:pointer; }
 .report-behavior-field select:hover { border-color:#8fb59a; }

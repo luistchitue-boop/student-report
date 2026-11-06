@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { isTurmaWeeklyPeriodClosed } from "@/lib/closed-periods";
+import { proofreadCoordinatorObservation } from "@/lib/proofread-observation";
 
 const prisma = new PrismaClient();
 
@@ -42,6 +43,46 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Student observation fetch error:", error);
     return NextResponse.json({ error: "Não foi possível carregar a observação." }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  if (session.user.role !== "ADMIN" && session.user.role !== "COORDENADOR") {
+    return NextResponse.json({ error: "Sem permissão para melhorar observações." }, { status: 403 });
+  }
+
+  try {
+    const body = await request.json();
+    const studentId = typeof body.studentId === "string" ? body.studentId : "";
+    const weekStart = parseDate(body.weekStart);
+    const weekEnd = parseDate(body.weekEnd);
+    const text = typeof body.text === "string" ? body.text.trim() : "";
+    if (!studentId || !weekStart || !weekEnd) return NextResponse.json({ error: "Aluno e período semanal são obrigatórios." }, { status: 400 });
+    if (!text) return NextResponse.json({ error: "Escreva uma observação antes de a melhorar." }, { status: 400 });
+    if (text.length > 300) return NextResponse.json({ error: "A observação não pode exceder 300 caracteres." }, { status: 400 });
+
+    const officialPeriod = getWeeklyCoordinationPeriods(weekStart.getUTCFullYear()).find((period) => formatPeriodDate(period.start) === weekStart.toISOString().slice(0, 10));
+    if (!officialPeriod || formatPeriodDate(officialPeriod.end) !== weekEnd.toISOString().slice(0, 10)) {
+      return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
+    }
+    if (officialPeriod.start > new Date()) return NextResponse.json({ error: "Não é possível melhorar uma observação de um período futuro." }, { status: 400 });
+
+    const student = await getAuthorizedStudent(studentId, session);
+    if (!student) return NextResponse.json({ error: "Aluno não encontrado." }, { status: 404 });
+    if (await isTurmaWeeklyPeriodClosed(student.turmaId, officialPeriod.start, officialPeriod.end, prisma)) {
+      return NextResponse.json({ error: "Este período está fechado para esta turma." }, { status: 403 });
+    }
+
+    const improvedText = await proofreadCoordinatorObservation(text);
+    if (!improvedText || improvedText.length > 300) {
+      return NextResponse.json({ error: "O texto melhorado excede o limite de 300 caracteres. Reduza o texto e tente novamente." }, { status: 422 });
+    }
+    return NextResponse.json({ text: improvedText });
+  } catch (error) {
+    console.error("Student observation proofreading error:", error);
+    return NextResponse.json({ error: "Não foi possível melhorar o texto." }, { status: 500 });
   }
 }
 

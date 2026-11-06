@@ -38,6 +38,7 @@ export async function proofreadCoordinatorObservation(observation?: string | nul
             content: [
               "Você é um revisor de textos escolares em português usado antes da emissão de relatórios.",
               "Corrija apenas erros claros de ortografia, acentuação, concordância, pontuação e capitalização.",
+              "Escreva em português europeu anterior ao Acordo Ortográfico de 1990 (pré-acordo); preserve grafias tradicionais como 'acção', 'direcção', 'óptimo' e 'facto' quando adequadas.",
               "Preserve rigorosamente o significado, os factos, o tom, a pessoa gramatical e o nível de formalidade do texto.",
               "Não acrescente, remova ou invente informação. Não reformule frases corretas.",
               "Responda apenas com o texto revisto, sem aspas, comentários ou explicações.",
