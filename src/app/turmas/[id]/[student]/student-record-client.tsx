@@ -25,22 +25,24 @@ function getShortStudentName(name: string) {
   return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
-export function StudentRecordClient({ turma, student, canEdit, canAddParent }: { turma: { id: string; name: string; schedule: string; students: number; gradeScale: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; avatarUrl?: string | null; parents: Array<{ id: string; name: string; phone: string; email: string }> }; canEdit: boolean; canAddParent: boolean }) {
+export function StudentRecordClient({ turma, student, nextStudent, initialWeek, canEdit, canAddParent }: { turma: { id: string; name: string; schedule: string; students: number; gradeScale: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; avatarUrl?: string | null; parents: Array<{ id: string; name: string; phone: string; email: string }> }; nextStudent: { id: string; name: string } | null; initialWeek: string; canEdit: boolean; canAddParent: boolean }) {
   const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
+  const initialReportPeriod = weeklyPeriods.find((period) => period.key === initialWeek);
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const [tab, setTab] = useState<"resumo" | "notas" | "faltas" | "justificativos" | "relatorio" | "contactos">("resumo");
+  const [tab, setTab] = useState<"resumo" | "notas" | "faltas" | "justificativos" | "relatorio" | "contactos">(initialReportPeriod ? "relatorio" : "resumo");
   const [gradeStart, setGradeStart] = useState("");
   const [gradeEnd, setGradeEnd] = useState("");
   const [summaryStart, setSummaryStart] = useState("");
   const [summaryEnd, setSummaryEnd] = useState("");
-  const [reportStart, setReportStart] = useState<string>("");
-  const [reportEnd, setReportEnd] = useState<string>("");
+  const [reportStart, setReportStart] = useState<string>(initialReportPeriod?.key ?? "");
+  const [reportEnd, setReportEnd] = useState<string>(initialReportPeriod ? formatPeriodDate(initialReportPeriod.end) : "");
   const [behavior, setBehavior] = useState("");
   const [absenceStart, setAbsenceStart] = useState("");
   const [absenceEnd, setAbsenceEnd] = useState("");
   const [reportNote, setReportNote] = useState<string>("");
-  const [observationLoading, setObservationLoading] = useState(false);
+  const [observationLoading, setObservationLoading] = useState(Boolean(initialReportPeriod));
+  const [reportSaved, setReportSaved] = useState(false);
   const [monthlySummary, setMonthlySummary] = useState<MonthlyStudentSummary | null>(null);
   const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(false);
   const [monthlySummaryError, setMonthlySummaryError] = useState("");
@@ -79,6 +81,7 @@ export function StudentRecordClient({ turma, student, canEdit, canAddParent }: {
     const period = weeklyPeriods.find((item) => item.key === value);
     setReportStart(value);
     setReportEnd(period?.end.toISOString().slice(0, 10) ?? "");
+    setReportSaved(false);
     setObservationLoading(Boolean(value));
     if (!value) {
       setReportNote("");
@@ -165,6 +168,7 @@ export function StudentRecordClient({ turma, student, canEdit, canAddParent }: {
         if (!cancelled) {
           setReportNote(data.observation?.teacherObservation ?? "");
           setBehavior(data.observation?.behavior ?? "");
+          setReportSaved(Boolean(data.observation));
         }
       })
       .catch((error: unknown) => {
@@ -261,6 +265,7 @@ export function StudentRecordClient({ turma, student, canEdit, canAddParent }: {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Não foi possível guardar a observação.");
+    setReportSaved(Boolean(result.saved));
     setStatusMessage(result.saved ? "Observação semanal guardada." : "Observação semanal removida.");
   }
 
@@ -597,7 +602,7 @@ export function StudentRecordClient({ turma, student, canEdit, canAddParent }: {
                       maxLength={300}
                       disabled={!canEdit || observationLoading}
                       value={reportNote}
-                      onChange={(event) => setReportNote(event.target.value.slice(0, 300))}
+                      onChange={(event) => { setReportNote(event.target.value.slice(0, 300)); setReportSaved(false); }}
                       placeholder="Escreva uma observação de até 300 caracteres"
                       style={{ padding: "0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8", resize: "vertical" }}
                     />
@@ -609,7 +614,7 @@ export function StudentRecordClient({ turma, student, canEdit, canAddParent }: {
 
                 <label className="report-behavior-field">
                   Comportamento
-                  <select disabled={!canEdit || observationLoading} value={behavior} onChange={(event) => setBehavior(event.target.value)}>
+                  <select disabled={!canEdit || observationLoading} value={behavior} onChange={(event) => { setBehavior(event.target.value); setReportSaved(false); }}>
                     <option value="">Selecione uma opção</option>
                     <option value="Muito bom">Muito bom</option>
                     <option value="Bom">Bom</option>
@@ -622,6 +627,7 @@ export function StudentRecordClient({ turma, student, canEdit, canAddParent }: {
                   <button type="button" onClick={async () => { try { await saveWeeklyObservation(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível guardar a observação."); } }} disabled={!canEdit || !reportStart || !reportEnd || observationLoading} style={{ padding: "0.9rem 1.2rem", background: !canEdit || !reportStart || !reportEnd || observationLoading ? "#a7b7af" : "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: !canEdit || !reportStart || !reportEnd || observationLoading ? "not-allowed" : "pointer" }}>
                     {observationLoading ? "A carregar..." : "Guardar observação semanal"}
                   </button>
+                  {reportSaved && nextStudent && <Link className="student-next-button" href={`/turmas/${turma.id}/${encodeURIComponent(nextStudent.id)}?week=${encodeURIComponent(reportStart)}`}>Próximo estudante: {nextStudent.name} →</Link>}
                   {statusMessage ? (
                     <div style={{ color: "#244d3d", fontWeight: 700 }}>{statusMessage}</div>
                   ) : null}
