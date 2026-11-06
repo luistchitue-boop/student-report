@@ -10,6 +10,13 @@ import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coo
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
 type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; hasAttachment?: boolean; attachmentName?: string | null; createdAt: string };
+type MonthlyStudentSummary = {
+  month: string;
+  gradeScale: number;
+  negativeThreshold: number;
+  negativeGradesBySubject: Array<{ subject: string; grades: Array<{ value: number; weekStart: string; weekEnd: string }> }>;
+  absencesBySubject: Array<{ subject: string; total: number; justified: number; unjustified: number }>;
+};
 const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 
 function getShortStudentName(name: string) {
@@ -34,6 +41,9 @@ export function StudentRecordClient({ turma, student, canEdit, canAddParent }: {
   const [absenceEnd, setAbsenceEnd] = useState("");
   const [reportNote, setReportNote] = useState<string>("");
   const [observationLoading, setObservationLoading] = useState(false);
+  const [monthlySummary, setMonthlySummary] = useState<MonthlyStudentSummary | null>(null);
+  const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(false);
+  const [monthlySummaryError, setMonthlySummaryError] = useState("");
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [grades, setGrades] = useState<GradeRecord[]>([]);
   const [absences, setAbsences] = useState<AbsenceRecord[]>([]);
@@ -90,27 +100,33 @@ export function StudentRecordClient({ turma, student, canEdit, canAddParent }: {
   useEffect(() => {
     if (tab !== "resumo" && tab !== "notas" && tab !== "faltas" && tab !== "justificativos") return;
     if (tab === "resumo" && (!summaryStart || !summaryEnd)) {
-      setGrades([]);
-      setAbsences([]);
-      setRecordsLoading(false);
+      Promise.resolve().then(() => {
+        setGrades([]);
+        setAbsences([]);
+        setRecordsLoading(false);
+      });
       return;
     }
     if (tab === "notas" && (!gradeStart || !gradeEnd)) {
-      setGrades([]);
+      Promise.resolve().then(() => setGrades([]));
       return;
     }
     if (tab === "justificativos" && (!justificationStart || !justificationEnd)) {
-      setAbsences([]);
-      setRecordsLoading(false);
+      Promise.resolve().then(() => {
+        setAbsences([]);
+        setRecordsLoading(false);
+      });
       return;
     }
     if (tab === "faltas" && (!absenceStart || !absenceEnd)) {
-      setAbsences([]);
-      setRecordsLoading(false);
+      Promise.resolve().then(() => {
+        setAbsences([]);
+        setRecordsLoading(false);
+      });
       return;
     }
     let cancelled = false;
-    setRecordsLoading(true);
+    Promise.resolve().then(() => { if (!cancelled) setRecordsLoading(true); });
     const from = tab === "resumo" ? (summaryStart === "all" ? "2000-01-01" : summaryStart) : tab === "notas" ? gradeStart : tab === "faltas" ? absenceStart : justificationStart;
     const to = tab === "resumo" ? summaryEnd : tab === "notas" ? gradeEnd : tab === "faltas" ? absenceEnd : justificationEnd;
     const term = tab === "notas" || (tab === "resumo" && summaryStart !== "all") ? `Semanal:${from}:${to}` : "";
@@ -159,6 +175,33 @@ export function StudentRecordClient({ turma, student, canEdit, canAddParent }: {
       });
     return () => { cancelled = true; };
   }, [reportEnd, reportStart, student.id, tab]);
+
+  useEffect(() => {
+    if (tab !== "relatorio" || !reportStart) return;
+    let cancelled = false;
+    const month = reportStart.slice(0, 7);
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        setMonthlySummaryLoading(true);
+        setMonthlySummaryError("");
+      }
+    });
+    fetch(`/api/student-monthly-summary?studentId=${encodeURIComponent(student.id)}&month=${encodeURIComponent(month)}`, { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Não foi possível carregar o resumo mensal.");
+        return data as MonthlyStudentSummary;
+      })
+      .then((data) => { if (!cancelled) setMonthlySummary(data); })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setMonthlySummary(null);
+          setMonthlySummaryError(error instanceof Error ? error.message : "Não foi possível carregar o resumo mensal.");
+        }
+      })
+      .finally(() => { if (!cancelled) setMonthlySummaryLoading(false); });
+    return () => { cancelled = true; };
+  }, [reportStart, student.id, tab]);
 
   async function justifySelectedAbsences() {
     if (!selectedAbsenceIds.length || !justificationTitle.trim() || !justificationNotes.trim()) {
@@ -523,6 +566,28 @@ export function StudentRecordClient({ turma, student, canEdit, canAddParent }: {
                 <div className="weekly-period-selector">
                   <label>Período semanal<select value={reportStart} onChange={(event) => selectReportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
                 </div>
+
+                {reportStart && (
+                  <section className="student-monthly-summary" aria-live="polite">
+                    <header>
+                      <p className="eyebrow">CONTEXTO DO MÊS</p>
+                      <h2>Resumo de {new Date(`${reportStart.slice(0, 7)}-01T12:00:00Z`).toLocaleDateString("pt-AO", { month: "long", year: "numeric", timeZone: "UTC" })}</h2>
+                      <p>Notas negativas das semanas iniciadas neste mês e faltas registadas durante o mês.</p>
+                    </header>
+                    {monthlySummaryLoading || (monthlySummary && monthlySummary.month !== reportStart.slice(0, 7)) ? <p>A carregar resumo mensal...</p> : monthlySummaryError ? <p className="student-monthly-summary-error" role="alert">{monthlySummaryError}</p> : monthlySummary ? (
+                      <div className="student-monthly-summary-grid">
+                        <article>
+                          <h3>Notas negativas <small>(abaixo de {monthlySummary.negativeThreshold} valores)</small></h3>
+                          {monthlySummary.negativeGradesBySubject.length ? <ul>{monthlySummary.negativeGradesBySubject.map((entry) => <li key={entry.subject}><strong>{entry.subject}</strong><span>{entry.grades.map((grade) => `${grade.value} (${grade.weekStart.slice(8, 10)}/${grade.weekStart.slice(5, 7)}–${grade.weekEnd.slice(8, 10)}/${grade.weekEnd.slice(5, 7)})`).join(", ")}</span></li>)}</ul> : <p>Nenhuma nota negativa registada neste mês.</p>}
+                        </article>
+                        <article>
+                          <h3>Faltas por disciplina</h3>
+                          {monthlySummary.absencesBySubject.length ? <ul>{monthlySummary.absencesBySubject.map((entry) => <li key={entry.subject}><strong>{entry.subject}</strong><span>{entry.total} falta(s) · {entry.unjustified} injustificada(s) · {entry.justified} justificada(s)</span></li>)}</ul> : <p>Nenhuma falta registada neste mês.</p>}
+                        </article>
+                      </div>
+                    ) : null}
+                  </section>
+                )}
 
                 <div style={{ display: "grid", gap: "0.55rem" }}>
                   <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
