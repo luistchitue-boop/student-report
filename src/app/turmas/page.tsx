@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { getCoordinatorTurmas } from "@/lib/teacher-data";
 import TurmaDeleteAction from "./turma-delete-action";
 import TurmasActions from "./turmas-actions";
+import { TopTurmasMonthlyRanking } from "./top-turmas-monthly-ranking";
 
 const PAGE_SIZE = 6;
 
@@ -99,6 +100,8 @@ export default async function TurmasPage({
             ← Voltar ao dashboard
           </Link>
         </header>
+
+        {(session.user.role === "ADMIN" || session.user.role === "DIRECCAO") && <TopTurmasMonthlyRanking />}
 
         <section className="turma-summary" aria-label="Resumo de turmas">
           <div className="summary-card">
