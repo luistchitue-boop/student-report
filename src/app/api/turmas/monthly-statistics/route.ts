@@ -80,15 +80,14 @@ export async function GET(request: NextRequest) {
     const classAverage = assessedStudents.length
       ? assessedStudents.reduce((sum, student) => sum + (student.gradeAverage ?? 0), 0) / assessedStudents.length
       : null;
-    const compareTop = (a: typeof students[number], b: typeof students[number]) =>
-      (b.gradeAverage ?? 0) - (a.gradeAverage ?? 0)
-      || a.absenceCount - b.absenceCount
-      || a.name.localeCompare(b.name, "pt");
-    const compareBottom = (a: typeof students[number], b: typeof students[number]) =>
-      (a.gradeAverage ?? 0) - (b.gradeAverage ?? 0)
-      || b.absenceCount - a.absenceCount
-      || a.name.localeCompare(b.name, "pt");
-    const rankedStudents = assessedStudents;
+    const compareBestGrades = (a: typeof students[number], b: typeof students[number]) =>
+      (b.gradeAverage ?? 0) - (a.gradeAverage ?? 0) || a.name.localeCompare(b.name, "pt");
+    const compareWorstGrades = (a: typeof students[number], b: typeof students[number]) =>
+      (a.gradeAverage ?? 0) - (b.gradeAverage ?? 0) || a.name.localeCompare(b.name, "pt");
+    const compareFewestAbsences = (a: typeof students[number], b: typeof students[number]) =>
+      a.absenceCount - b.absenceCount || a.name.localeCompare(b.name, "pt");
+    const compareMostAbsences = (a: typeof students[number], b: typeof students[number]) =>
+      b.absenceCount - a.absenceCount || a.name.localeCompare(b.name, "pt");
 
     return NextResponse.json({
       turmaName: turma.name,
@@ -100,8 +99,10 @@ export async function GET(request: NextRequest) {
       absenceCount: students.reduce((sum, student) => sum + student.absenceCount, 0),
       justifiedAbsenceCount: students.reduce((sum, student) => sum + student.justifiedAbsenceCount, 0),
       unjustifiedAbsenceCount: students.reduce((sum, student) => sum + student.unjustifiedAbsenceCount, 0),
-      topStudents: [...rankedStudents].sort(compareTop).slice(0, 4),
-      bottomStudents: [...rankedStudents].sort(compareBottom).slice(0, 4),
+      bestGradeStudents: [...assessedStudents].sort(compareBestGrades).slice(0, 4),
+      worstGradeStudents: [...assessedStudents].sort(compareWorstGrades).slice(0, 4),
+      fewestAbsenceStudents: [...students].sort(compareFewestAbsences).slice(0, 4),
+      mostAbsenceStudents: [...students].sort(compareMostAbsences).slice(0, 4),
     });
   } catch (error) {
     console.error("Turma monthly statistics error:", error);
