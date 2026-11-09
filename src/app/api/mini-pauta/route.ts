@@ -49,10 +49,7 @@ export async function GET(request: NextRequest) {
   const exportMode = searchParams.get("export") === "true";
   const assessmentType = searchParams.get("assessmentType");
   const trimester = searchParams.get("trimester");
-
-  if (!turmaId || !subject || !weekStart || !weekEnd || !isValidDate(weekStart) || !isValidDate(weekEnd)) {
-    return NextResponse.json({ error: "Turma, subject, and a valid weekly interval are required" }, { status: 400 });
-  }
+  if (!turmaId || !subject) return NextResponse.json({ error: "Turma e disciplina são obrigatórias." }, { status: 400 });
 
   const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
   if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
@@ -60,13 +57,24 @@ export async function GET(request: NextRequest) {
   const classification = parseGradeClassification(assessmentType, trimester, turma.educationType);
   if (!classification) return NextResponse.json({ error: "O tipo de nota não corresponde ao ensino da turma ou falta selecionar o trimestre." }, { status: 400 });
 
-  const term = `Semanal:${weekStart}:${weekEnd}`;
-  const startDate = new Date(`${weekStart}T00:00:00Z`);
-  const endDate = new Date(`${weekEnd}T23:59:59.999Z`);
+  const isTrimesterAssessment = classification.assessmentType !== null;
+  if (isTrimesterAssessment && !classification.trimester) return NextResponse.json({ error: "Selecione o trimestre I, II ou III." }, { status: 400 });
+  if (!isTrimesterAssessment && (!weekStart || !weekEnd || !isValidDate(weekStart) || !isValidDate(weekEnd))) {
+    return NextResponse.json({ error: "Selecione um intervalo semanal válido para as notas AC1." }, { status: 400 });
+  }
+
+  const term = isTrimesterAssessment ? `Trimestral:${classification.trimester}` : `Semanal:${weekStart}:${weekEnd}`;
+  const startDate = weekStart ? new Date(`${weekStart}T00:00:00Z`) : undefined;
+  const endDate = weekEnd ? new Date(`${weekEnd}T23:59:59.999Z`) : undefined;
+  const gradePeriodFilter = isTrimesterAssessment
+    ? { assessmentType: classification.assessmentType, trimester: classification.trimester }
+    : classification;
   const grades = await prisma.grade.findMany({
-    where: exportMode
-      ? { studentId: { in: turma.students.map((student) => student.id) }, subject, createdAt: { gte: startDate, lte: endDate }, ...classification }
-      : { studentId: { in: turma.students.map((student) => student.id) }, subject, term, ...classification },
+    where: isTrimesterAssessment
+      ? { studentId: { in: turma.students.map((student) => student.id) }, subject, ...gradePeriodFilter }
+      : exportMode
+        ? { studentId: { in: turma.students.map((student) => student.id) }, subject, createdAt: { gte: startDate!, lte: endDate! }, ...gradePeriodFilter }
+        : { studentId: { in: turma.students.map((student) => student.id) }, subject, term, ...gradePeriodFilter },
     select: { studentId: true, value: true },
     orderBy: { createdAt: "asc" },
   });
@@ -86,26 +94,27 @@ export async function POST(request: NextRequest) {
     const weekStart = typeof body.weekStart === "string" ? body.weekStart : "";
     const weekEnd = typeof body.weekEnd === "string" ? body.weekEnd : "";
     const grades = Array.isArray(body.grades) ? body.grades : [];
-
-    if (!turmaId || !subject || !weekStart || !weekEnd || !isValidDate(weekStart) || !isValidDate(weekEnd)) {
-      return NextResponse.json({ error: "Turma, subject, and a valid weekly interval are required" }, { status: 400 });
-    }
-
-    const start = new Date(`${weekStart}T12:00:00Z`);
-    const officialPeriod = getWeeklyCoordinationPeriods(start.getUTCFullYear()).find((period) => period.key === formatPeriodDate(start) && formatPeriodDate(period.end) === weekEnd);
-    if (!officialPeriod) return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
-    if (officialPeriod.key > formatPeriodDate(new Date())) {
-      return NextResponse.json({ error: "Não é possível registar notas num período semanal futuro." }, { status: 400 });
-    }
+    if (!turmaId || !subject) return NextResponse.json({ error: "Turma e disciplina são obrigatórias." }, { status: 400 });
 
     const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
     if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
     const classification = parseGradeClassification(body.assessmentType, body.trimester, turma.educationType);
     if (!classification) return NextResponse.json({ error: "O tipo de nota não corresponde ao ensino da turma ou falta selecionar o trimestre." }, { status: 400 });
 
-    const periodClosed = await isTurmaWeeklyPeriodClosed(turmaId, officialPeriod.start, officialPeriod.end, prisma);
-    if (periodClosed) {
-      return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar notas." }, { status: 403 });
+    const isTrimesterAssessment = classification.assessmentType !== null;
+    let officialPeriod: ReturnType<typeof getWeeklyCoordinationPeriods>[number] | undefined;
+    if (!isTrimesterAssessment) {
+      if (!weekStart || !weekEnd || !isValidDate(weekStart) || !isValidDate(weekEnd)) {
+        return NextResponse.json({ error: "Selecione um intervalo semanal válido para as notas AC1." }, { status: 400 });
+      }
+      const start = new Date(`${weekStart}T12:00:00Z`);
+      officialPeriod = getWeeklyCoordinationPeriods(start.getUTCFullYear()).find((period) => period.key === formatPeriodDate(start) && formatPeriodDate(period.end) === weekEnd);
+      if (!officialPeriod) return NextResponse.json({ error: "Selecione um período semanal válido." }, { status: 400 });
+      if (officialPeriod.key > formatPeriodDate(new Date())) {
+        return NextResponse.json({ error: "Não é possível registar notas num período semanal futuro." }, { status: 400 });
+      }
+      const periodClosed = await isTurmaWeeklyPeriodClosed(turmaId, officialPeriod.start, officialPeriod.end, prisma);
+      if (periodClosed) return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar notas." }, { status: 403 });
     }
 
     if (!turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
@@ -116,17 +125,19 @@ export async function POST(request: NextRequest) {
       const value = Number(entry.value);
       return Number.isFinite(value) && value >= 0 && value <= turma.gradeScale ? [{ studentId: entry.studentId, value }] : [];
     });
-    const term = `Semanal:${weekStart}:${weekEnd}`;
+    const term = isTrimesterAssessment ? `Trimestral:${classification.trimester}` : `Semanal:${weekStart}:${weekEnd}`;
 
     await prisma.$transaction(async (tx) => {
       for (const entry of validGrades) {
         const existing = await tx.grade.findFirst({
-          where: { studentId: entry.studentId, subject, term, ...classification },
+          where: isTrimesterAssessment
+            ? { studentId: entry.studentId, subject, assessmentType: classification.assessmentType, trimester: classification.trimester }
+            : { studentId: entry.studentId, subject, term, ...classification },
           orderBy: { createdAt: "desc" },
           select: { id: true },
         });
         if (existing) {
-          await tx.grade.update({ where: { id: existing.id }, data: { value: entry.value } });
+          await tx.grade.update({ where: { id: existing.id }, data: { value: entry.value, term } });
         } else {
           await tx.grade.create({
             data: { studentId: entry.studentId, subject, value: entry.value, term, ...classification },
@@ -154,7 +165,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, saved: validGrades.length, unchangedWhenBlank: true });
+    return NextResponse.json({ success: true, saved: validGrades.length, assessmentType: classification.assessmentType, trimester: classification.trimester, unchangedWhenBlank: true });
   } catch (error) {
     console.error("Mini pauta save error:", error);
     return NextResponse.json({ error: "Não foi possível guardar a mini pauta" }, { status: 500 });
