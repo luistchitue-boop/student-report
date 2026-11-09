@@ -154,7 +154,6 @@ async function generateStudentReportPdf({
   studentName,
   turmaName,
   gradeScale,
-  educationType,
   teacherName,
   teacherPhone,
   periodType,
@@ -176,7 +175,6 @@ async function generateStudentReportPdf({
   studentName: string;
   turmaName: string;
   gradeScale: number;
-  educationType: "ENSINO_GERAL" | "ENSINO_TECNICO" | null;
   teacherName: string;
   teacherPhone?: string | null;
   periodType: "WEEKLY" | "MONTHLY";
@@ -275,12 +273,7 @@ async function generateStudentReportPdf({
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.text(`Turma: ${turmaName}`, 135, 190);
-  if (educationType) {
-    doc.text(educationType === "ENSINO_GERAL" ? "Ensino geral" : "Ensino Técnico", 135, 207);
-    doc.text(`Período ${periodType === "MONTHLY" ? "mensal" : "semanal"}`, 135, 224);
-  } else {
-    doc.text(`Período ${periodType === "MONTHLY" ? "mensal" : "semanal"}`, 135, 207);
-  }
+  doc.text(`Período ${periodType === "MONTHLY" ? "mensal" : "semanal"}`, 135, 207);
 
   const averageValue = grades.length ? grades.reduce((total, grade) => total + Number(grade.value), 0) / grades.length : 0;
   const average = averageValue.toFixed(1);
@@ -845,7 +838,6 @@ export async function POST(request: Request) {
             studentName: student.name,
             turmaName: turma.name,
             gradeScale: turma.gradeScale,
-            educationType: turma.educationType,
             teacherName: reportTeacherName,
             teacherPhone: reportTeacherPhone,
             periodType: period.type,
@@ -899,7 +891,6 @@ export async function POST(request: Request) {
           studentName: student.name,
           turmaName: turma.name,
           gradeScale: turma.gradeScale,
-          educationType: turma.educationType,
           teacherName: reportTeacherName,
           teacherPhone: reportTeacherPhone,
           periodType: period.type,
