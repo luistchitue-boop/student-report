@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     const [weeklyGrades, absences] = await Promise.all([
       prisma.grade.findMany({
-        where: { studentId: student.id, term: { startsWith: "Semanal:" } },
+        where: { studentId: student.id, assessmentType: null, term: { startsWith: "Semanal:" } },
         select: { subject: true, value: true, term: true },
         orderBy: [{ subject: "asc" }, { term: "asc" }],
       }),

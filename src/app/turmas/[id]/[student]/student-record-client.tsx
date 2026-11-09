@@ -8,7 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { ContactosTab } from "./contactos-tab";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
-type GradeRecord = { id: string; subject: string; value: number; term: string; createdAt: string };
+type GradeRecord = { id: string; subject: string; value: number; term: string; assessmentType: "AC2" | "NPP" | "NPT" | null; trimester: "I" | "II" | "III" | null; createdAt: string };
 type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; hasAttachment?: boolean; attachmentName?: string | null; createdAt: string };
 type MonthlyStudentSummary = {
   month: string;
@@ -344,7 +344,7 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
       }
 
       const payload = await response.json();
-      const grades = Array.isArray(payload.grades) ? payload.grades : [];
+      const grades = (Array.isArray(payload.grades) ? payload.grades : []).filter((grade: { assessmentType?: string | null }) => !grade.assessmentType);
       const faults = Array.isArray(payload.absences) ? payload.absences : [];
 
       const normalizedGrades: Array<{ subject: string; value: number }> = grades.map((grade: { subject: string; value: number | string }) => ({
@@ -440,11 +440,12 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
     }
   }
 
-  const averageGrade = grades.length ? grades.reduce((total, grade) => total + Number(grade.value), 0) / grades.length : 0;
+  const ac1Grades = grades.filter((grade) => grade.assessmentType === null);
+  const averageGrade = ac1Grades.length ? ac1Grades.reduce((total, grade) => total + Number(grade.value), 0) / ac1Grades.length : 0;
   const justifiedAbsences = absences.filter((absence) => absence.justified).length;
   const subjectAverages = turma.subjects
     .map((subject) => {
-      const subjectGrades = grades.filter((grade) => grade.subject === subject);
+      const subjectGrades = ac1Grades.filter((grade) => grade.subject === subject);
       return { subject, average: subjectGrades.length ? subjectGrades.reduce((total, grade) => total + Number(grade.value), 0) / subjectGrades.length : 0, count: subjectGrades.length };
     })
     .filter((item) => item.count > 0)
@@ -454,10 +455,10 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
     { label: "Falta de material", count: absences.filter((absence) => absence.faultType === "FALTA_DE_MATERIAL").length },
   ];
   const gradeBands = [
-    { label: "0-9", count: grades.filter((grade) => Number(grade.value) < 10).length },
-    { label: "10-13", count: grades.filter((grade) => Number(grade.value) >= 10 && Number(grade.value) < 14).length },
-    { label: "14-17", count: grades.filter((grade) => Number(grade.value) >= 14 && Number(grade.value) < 18).length },
-    { label: "18-20", count: grades.filter((grade) => Number(grade.value) >= 18).length },
+    { label: "0-9", count: ac1Grades.filter((grade) => Number(grade.value) < 10).length },
+    { label: "10-13", count: ac1Grades.filter((grade) => Number(grade.value) >= 10 && Number(grade.value) < 14).length },
+    { label: "14-17", count: ac1Grades.filter((grade) => Number(grade.value) >= 14 && Number(grade.value) < 18).length },
+    { label: "18-20", count: ac1Grades.filter((grade) => Number(grade.value) >= 18).length },
   ];
   const maxSubjectAverage = Math.max(20, ...subjectAverages.map((item) => item.average));
   const maxFaultCount = Math.max(1, ...faultTypeCounts.map((item) => item.count));
@@ -517,7 +518,7 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
                 {!summaryStart || !summaryEnd ? <p className="student-record-empty">Selecione um período semanal para ver o resumo.</p> : recordsLoading ? <p className="student-record-empty">A carregar o resumo...</p> : (
                   <>
                     <div className="student-summary-metrics">
-                      <div className="student-summary-metric accent"><span>Média geral</span><strong>{averageGrade.toFixed(1)}</strong><small>em {grades.length} nota(s)</small></div>
+                      <div className="student-summary-metric accent"><span>Média AC1</span><strong>{averageGrade.toFixed(1)}</strong><small>em {ac1Grades.length} nota(s) normais</small></div>
                       <div className="student-summary-metric"><span>Faltas registadas</span><strong>{absences.length}</strong><small>{justifiedAbsences} justificadas</small></div>
                       <div className="student-summary-metric"><span>Disciplinas avaliadas</span><strong>{subjectAverages.length}</strong><small>de {turma.subjects.length} disciplinas</small></div>
                     </div>
@@ -555,6 +556,7 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
                   <div className="student-record-row" key={grade.id}>
                     <label>Disciplina<select disabled={!canEdit} value={grade.subject} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, subject: event.target.value } : item))}>{turma.subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select></label>
                     <label>Nota<input disabled={!canEdit} type="number" min="0" max="20" step="0.1" value={grade.value} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, value: Number(event.target.value) } : item))} /></label>
+                    <span className="student-record-grade-classification">{grade.assessmentType ? `${grade.assessmentType} · ${grade.trimester} trimestre` : "AC1 · nota normal"}</span>
                     {canEdit && <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("grade", grade); setStatusMessage("Nota atualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível atualizar a nota."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("grade", grade.id); setGrades((current) => current.filter((item) => item.id !== grade.id)); setStatusMessage("Nota eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a nota."); } }}>Eliminar</button></div>}
                   </div>
                 )) : <p className="student-record-empty">Nenhuma nota registada.</p>}

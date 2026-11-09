@@ -10,9 +10,12 @@ type Turma = {
   id: string;
   name: string;
   gradeScale: number;
+  educationType: "ENSINO_GERAL" | "ENSINO_TECNICO" | null;
   subjects: string[];
   roster: Array<{ id: string; name: string; age: number; avatarUrl?: string | null }>;
 };
+type GradeAssessmentType = "AC2" | "NPP" | "NPT" | "";
+type Trimester = "I" | "II" | "III" | "";
 
 function displayName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -21,9 +24,17 @@ function displayName(name: string) {
 
 export function MiniPautaClient({ turma }: { turma: Turma }) {
   const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
+  const assessmentOptions: Array<{ value: GradeAssessmentType; label: string }> = [
+    { value: "", label: "Nota normal · AC1" },
+    ...(turma.educationType === "ENSINO_GERAL" ? [{ value: "AC2" as const, label: "AC2" }] : []),
+    ...(turma.educationType === "ENSINO_TECNICO" ? [{ value: "NPP" as const, label: "NPP" }] : []),
+    { value: "NPT", label: "NPT" },
+  ];
   const [weekStart, setWeekStart] = useState("");
   const [weekEnd, setWeekEnd] = useState("");
   const [subject, setSubject] = useState(turma.subjects[0] ?? "");
+  const [assessmentType, setAssessmentType] = useState<GradeAssessmentType>("");
+  const [trimester, setTrimester] = useState<Trimester>("");
   const [grades, setGrades] = useState<Record<string, string>>({});
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +43,8 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
   const [exportStart, setExportStart] = useState("");
   const [exportEnd, setExportEnd] = useState("");
   const [exportSubject, setExportSubject] = useState(turma.subjects[0] ?? "");
+  const [exportAssessmentType, setExportAssessmentType] = useState<GradeAssessmentType>("");
+  const [exportTrimester, setExportTrimester] = useState<Trimester>("");
   const [isExporting, setIsExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState("");
   const [closedPeriods, setClosedPeriods] = useState<Map<string, boolean>>(new Map());
@@ -44,7 +57,8 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
         const data = await response.json();
         
         const closed = new Map<string, boolean>();
-        data.closedPeriods.forEach((p: any) => {
+        const closedPeriodsFromApi = (data.closedPeriods ?? []) as Array<{ weekStart: string }>;
+        closedPeriodsFromApi.forEach((p) => {
           const start = new Date(p.weekStart).toISOString().slice(0, 10);
           closed.set(start, true);
         });
@@ -59,6 +73,8 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
   function changeWeekStart(value: string) {
     setWeekStart(value);
     setWeekEnd(weeklyPeriods.find((period) => period.key === value)?.end.toISOString().slice(0, 10) ?? "");
+    setGrades({});
+    setIsLoading(false);
   }
 
   function changeExportPeriod(value: string) {
@@ -71,19 +87,16 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
   }
 
   useEffect(() => {
-    if (!weekStart || !weekEnd || !subject) {
-      setGrades({});
-      return;
-    }
+    if (!weekStart || !weekEnd || !subject || (assessmentType && !trimester)) return;
 
-    if (isFuturePeriod(weekStart)) {
-      setStatus("Não é possível registar notas num período semanal futuro.");
-      return;
-    }
+    if (isFuturePeriod(weekStart)) return;
 
     let cancelled = false;
-    setIsLoading(true);
-    fetch(`/api/mini-pauta?turmaId=${encodeURIComponent(turma.id)}&subject=${encodeURIComponent(subject)}&weekStart=${weekStart}&weekEnd=${weekEnd}`)
+    Promise.resolve().then(() => { if (!cancelled) setIsLoading(true); });
+    const query = new URLSearchParams({ turmaId: turma.id, subject, weekStart, weekEnd });
+    if (assessmentType) query.set("assessmentType", assessmentType);
+    if (trimester) query.set("trimester", trimester);
+    fetch(`/api/mini-pauta?${query.toString()}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("Não foi possível carregar as notas.");
         return response.json();
@@ -92,7 +105,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
         if (!cancelled) {
           setGrades(Object.fromEntries((data.grades ?? []).map((grade) => [grade.studentId, String(grade.value)])));
           if (data.alreadyRecorded || (data.grades ?? []).length > 0) {
-            setStatus("Já existem notas neste período. Pode alterá-las e guardar para substituir as anteriores.");
+            setStatus("Já existem notas para esta avaliação. Pode atualizar os valores; outros tipos e registos existentes serão preservados.");
           } else {
             setStatus("");
           }
@@ -108,11 +121,11 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
     return () => {
       cancelled = true;
     };
-  }, [subject, turma.id, weekEnd, weekStart]);
+  }, [assessmentType, subject, trimester, turma.id, weekEnd, weekStart]);
 
   async function saveGrades() {
     if (!weekStart || !weekEnd || !subject) {
-      setStatus("Escolha a disciplina e o intervalo semanal antes de guardar.");
+      setStatus("Escolha a disciplina, o intervalo semanal e o trimestre da avaliação antes de guardar.");
       return;
     }
 
@@ -125,6 +138,11 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       .filter(([, value]) => value.trim() !== "")
       .map(([studentId, value]) => ({ studentId, value: Number(value) }));
 
+    if (assessmentType && !trimester) {
+      setStatus("Selecione o trimestre I, II ou III para este tipo de nota.");
+      return;
+    }
+
     if (gradeEntries.some((entry) => !Number.isFinite(entry.value) || entry.value < 0 || entry.value > turma.gradeScale)) {
       setStatus(`As notas devem estar entre 0 e ${turma.gradeScale}.`);
       return;
@@ -136,11 +154,11 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       const response = await fetch("/api/mini-pauta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turmaId: turma.id, subject, weekStart, weekEnd, grades: gradeEntries }),
+        body: JSON.stringify({ turmaId: turma.id, subject, weekStart, weekEnd, assessmentType: assessmentType || null, trimester: trimester || null, grades: gradeEntries }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível guardar a mini pauta.");
-      setStatus(`${data.saved} nota(s) guardada(s). As notas anteriores deste período foram substituídas.`);
+      setStatus(data.saved ? `${data.saved} nota(s) guardada(s) ou atualizada(s). Outros tipos de avaliação e dados existentes foram preservados.` : "Nenhuma nota preenchida. Os registos existentes foram mantidos sem alterações.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Não foi possível guardar a mini pauta.");
     } finally {
@@ -153,8 +171,8 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
   }
 
   async function exportGrades() {
-    if (!exportStart || !exportEnd || !exportSubject) {
-      setExportStatus("Escolha o intervalo e a disciplina.");
+    if (!exportStart || !exportEnd || !exportSubject || (exportAssessmentType && !exportTrimester)) {
+      setExportStatus("Escolha o intervalo, a disciplina e o trimestre da avaliação.");
       return;
     }
 
@@ -167,7 +185,10 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
     setIsExporting(true);
     setExportStatus("");
     try {
-      const response = await fetch(`/api/mini-pauta?export=true&turmaId=${encodeURIComponent(turma.id)}&subject=${encodeURIComponent(exportSubject)}&weekStart=${exportStart}&weekEnd=${exportEnd}`);
+      const exportQuery = new URLSearchParams({ export: "true", turmaId: turma.id, subject: exportSubject, weekStart: exportStart, weekEnd: exportEnd });
+      if (exportAssessmentType) exportQuery.set("assessmentType", exportAssessmentType);
+      if (exportTrimester) exportQuery.set("trimester", exportTrimester);
+      const response = await fetch(`/api/mini-pauta?${exportQuery.toString()}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível carregar as notas.");
 
@@ -185,6 +206,11 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       reportElement.style.fontFamily = "Arial, sans-serif";
       reportElement.style.color = "#1f2a2b";
       reportElement.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #1b3d34;padding-bottom:18px;"><div style="display:flex;align-items:center;gap:15px;"><img src="/school-logo.png" alt="Logo da escola" style="width:68px;height:68px;object-fit:contain;" /><div><div style="color:#1b3d34;font-size:21px;font-weight:800;letter-spacing:.08em;">NEPH RELATORIOS</div><div style="margin-top:6px;color:#60716a;font-size:11px;text-transform:uppercase;letter-spacing:.12em;">Mini pauta</div></div></div><div style="text-align:right;color:#60716a;font-size:11px;"><strong style="display:block;color:#1b3d34;">INTERVALO</strong>${escapeHtml(exportStart)} a ${escapeHtml(exportEnd)}</div></div><div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin:22px 0 26px;"><div style="background:#1b3d34;color:#fff;border-radius:12px;padding:17px 19px;"><span style="display:block;color:#b9d7c4;font-size:10px;text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;">Disciplina</span><strong style="font-size:20px;">${escapeHtml(exportSubject)}</strong></div><div style="background:#fff7df;border:1px solid #f0dfaa;border-radius:12px;padding:17px 19px;"><span style="display:block;color:#806b2c;font-size:10px;text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;">Média aritmética</span><strong style="font-size:25px;color:#6d581e;">${average.toFixed(1)}</strong><span style="display:block;margin-top:4px;color:#806b2c;font-size:10px;">${scores.length} nota(s) considerada(s)</span></div></div><h2 style="color:#1b3d34;font-size:17px;margin:0 0 10px;padding-bottom:8px;border-bottom:2px solid #d8e7dc;">Notas por aluno</h2><table style="width:100%;border-collapse:separate;border-spacing:0;border:1px solid #d8e7dc;border-radius:10px;overflow:hidden;"><thead><tr><th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Aluno</th><th style="padding:11px 12px;text-align:left;background:#e8f2ea;color:#315746;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Nota</th></tr></thead><tbody>${students.map((student, index) => `<tr style="background:${index % 2 ? "#fbfdfb" : "#fff"};"><td style="padding:10px 12px;border-top:1px solid #e5eee7;">${escapeHtml(student.name)}</td><td style="padding:10px 12px;border-top:1px solid #e5eee7;font-weight:800;color:#1b3d34;">${scoreByStudent.has(student.id) ? scoreByStudent.get(student.id)!.toFixed(1) : "Não avaliado"}</td></tr>`).join("")}</tbody></table><div style="margin-top:25px;padding:13px 16px;border-left:4px solid #39755d;border-radius:0 10px 10px 0;background:#f1f7f2;color:#40554c;font-size:11px;">A média aritmética considera apenas as notas registadas para esta disciplina no intervalo seleccionado.</div>`;
+      const classificationLabel = exportAssessmentType ? `${exportAssessmentType} · ${exportTrimester} trimestre` : "AC1 · nota normal";
+      const classificationHeading = document.createElement("p");
+      classificationHeading.textContent = `Classificação: ${classificationLabel}`;
+      classificationHeading.style.cssText = "margin:14px 0 0;color:#315746;font-size:13px;font-weight:700;";
+      reportElement.insertBefore(classificationHeading, reportElement.firstChild);
       document.body.appendChild(reportElement);
       const logo = reportElement.querySelector("img");
       if (logo && !logo.complete) await new Promise<void>((resolve) => { logo.addEventListener("load", () => resolve(), { once: true }); logo.addEventListener("error", () => resolve(), { once: true }); });
@@ -236,7 +262,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
 
       <section className="mini-pauta-panel">
         <div className="mini-pauta-toolbar">
-          <label>Disciplina<select value={subject} onChange={(event) => setSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
+          <label>Disciplina<select value={subject} onChange={(event) => { setSubject(event.target.value); setGrades({}); setIsLoading(false); }}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
           <label>Período semanal<select value={weekStart} onChange={(event) => changeWeekStart(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => {
             const isClosed = closedPeriods.has(period.key);
             const isFuture = isFuturePeriod(period.key);
@@ -244,10 +270,16 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
             const label = `${period.start.toLocaleDateString("pt-AO")} - ${period.end.toLocaleDateString("pt-AO")}${isFuture ? " (futuro)" : ""}${isClosed ? " (fechado)" : ""}`;
             return <option key={period.key} value={period.key} disabled={isDisabled}>{label}</option>;
           })}</select></label>
+          <label>Tipo de nota<select value={assessmentType} onChange={(event) => { setAssessmentType(event.target.value as GradeAssessmentType); if (!event.target.value) setTrimester(""); setGrades({}); setIsLoading(false); setStatus(event.target.value && !trimester ? "Selecione o trimestre I, II ou III para esta avaliação." : ""); }}>
+            {assessmentOptions.map((option) => <option key={option.value || "AC1"} value={option.value}>{option.label}</option>)}
+          </select></label>
+          <label>Trimestre<select value={trimester} onChange={(event) => { setTrimester(event.target.value as Trimester); setGrades({}); setIsLoading(false); }} disabled={!assessmentType}>
+            <option value="">{assessmentType ? "Selecione" : "Não aplicável · AC1"}</option><option value="I">I</option><option value="II">II</option><option value="III">III</option>
+          </select></label>
         </div>
 
         <div className="mini-pauta-heading">
-          <div><p className="eyebrow">NOTAS DOS ALUNOS</p><h2>{subject || "Escolha uma disciplina"}</h2></div>
+          <div><p className="eyebrow">NOTAS DOS ALUNOS · {assessmentType || "AC1"}{assessmentType && trimester ? ` · ${trimester} trimestre` : ""}</p><h2>{subject || "Escolha uma disciplina"}</h2></div>
           <span className="mini-pauta-range">{weekStart && weekEnd ? `${weekStart} a ${weekEnd}` : "Intervalo de 7 dias"}</span>
         </div>
 
@@ -265,11 +297,11 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
 
         <div className="mini-pauta-footer">
           <span>{isLoading ? "A carregar notas..." : `${Object.values(grades).filter(Boolean).length} de ${turma.roster.length} alunos avaliados`}</span>
-          <div className="mini-pauta-footer-actions"><button type="button" className="mini-pauta-export-button" onClick={() => { setExportSubject(subject); setShowExportModal(true); }}>Export</button><button type="button" className="mini-pauta-save-button" onClick={saveGrades} disabled={isSaving || isLoading || !weekStart || isFuturePeriod(weekStart)}>{isSaving ? "A guardar..." : "Guardar notas"}</button></div>
+          <div className="mini-pauta-footer-actions"><button type="button" className="mini-pauta-export-button" onClick={() => { setExportSubject(subject); setExportAssessmentType(assessmentType); setExportTrimester(trimester); setShowExportModal(true); }}>Export</button><button type="button" className="mini-pauta-save-button" onClick={saveGrades} disabled={isSaving || isLoading || !weekStart || isFuturePeriod(weekStart) || Boolean(assessmentType && !trimester)}>{isSaving ? "A guardar..." : "Guardar notas"}</button></div>
         </div>
         {status ? <p className="mini-pauta-status">{status}</p> : null}
       </section>
-      {showExportModal ? <div className="mini-pauta-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowExportModal(false); }}><form className="mini-pauta-export-modal" onSubmit={(event) => { event.preventDefault(); void exportGrades(); }}><div className="mini-pauta-modal-heading"><div><p className="eyebrow">EXPORTAR MINI PAUTA</p><h2>Gerar relatório</h2></div><button type="button" className="mini-pauta-modal-close" onClick={() => setShowExportModal(false)} aria-label="Fechar">×</button></div><label>Disciplina<select value={exportSubject} onChange={(event) => setExportSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label><label>Período semanal<select required value={exportStart} onChange={(event) => changeExportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => {
+      {showExportModal ? <div className="mini-pauta-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowExportModal(false); }}><form className="mini-pauta-export-modal" onSubmit={(event) => { event.preventDefault(); void exportGrades(); }}><div className="mini-pauta-modal-heading"><div><p className="eyebrow">EXPORTAR MINI PAUTA</p><h2>Gerar relatório</h2></div><button type="button" className="mini-pauta-modal-close" onClick={() => setShowExportModal(false)} aria-label="Fechar">×</button></div><label>Disciplina<select value={exportSubject} onChange={(event) => setExportSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label><label>Tipo de nota<select value={exportAssessmentType} onChange={(event) => { setExportAssessmentType(event.target.value as GradeAssessmentType); if (!event.target.value) setExportTrimester(""); }}>{assessmentOptions.map((option) => <option key={option.value || "AC1"} value={option.value}>{option.label}</option>)}</select></label>{exportAssessmentType && <label>Trimestre<select required value={exportTrimester} onChange={(event) => setExportTrimester(event.target.value as Trimester)}><option value="">Selecione</option><option value="I">I</option><option value="II">II</option><option value="III">III</option></select></label>}<label>Período semanal<select required value={exportStart} onChange={(event) => changeExportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => {
             const isClosed = closedPeriods.has(period.key);
             return <option key={period.key} value={period.key} disabled={isClosed}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isClosed ? " (fechado)" : ""}</option>;
           })}</select></label><p className="mini-pauta-export-help">A média será calculada com todas as notas registadas para a disciplina e período selecionado.</p>{exportStatus ? <p className="mini-pauta-status">{exportStatus}</p> : null}<button type="submit" className="mini-pauta-save-button" disabled={isExporting || !exportStart}>{isExporting ? "A gerar..." : "Exportar PDF"}</button></form></div> : null}

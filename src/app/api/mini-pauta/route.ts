@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { GradeAssessmentType, PrismaClient, Trimester } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
@@ -10,6 +10,19 @@ const prisma = new PrismaClient();
 function isValidDate(value: string) {
   const date = new Date(`${value}T12:00:00Z`);
   return !Number.isNaN(date.getTime());
+}
+
+function parseGradeClassification(assessmentType: unknown, trimester: unknown, educationType: string | null) {
+  const normalizedType = assessmentType === "" || assessmentType === undefined || assessmentType === null ? null : assessmentType;
+  const normalizedTrimester = trimester === "" || trimester === undefined || trimester === null ? null : trimester;
+  if (normalizedType === null) {
+    return normalizedTrimester === null ? { assessmentType: null, trimester: null } : null;
+  }
+  if (!Object.values(GradeAssessmentType).includes(normalizedType as GradeAssessmentType)) return null;
+  if (!Object.values(Trimester).includes(normalizedTrimester as Trimester)) return null;
+  if (normalizedType === GradeAssessmentType.AC2 && educationType !== "ENSINO_GERAL") return null;
+  if (normalizedType === GradeAssessmentType.NPP && educationType !== "ENSINO_TECNICO") return null;
+  return { assessmentType: normalizedType as GradeAssessmentType, trimester: normalizedTrimester as Trimester };
 }
 
 async function getAuthorizedTurma(userId: string, turmaId: string, userRole?: string) {
@@ -34,6 +47,8 @@ export async function GET(request: NextRequest) {
   const weekStart = searchParams.get("weekStart") ?? "";
   const weekEnd = searchParams.get("weekEnd") ?? "";
   const exportMode = searchParams.get("export") === "true";
+  const assessmentType = searchParams.get("assessmentType");
+  const trimester = searchParams.get("trimester");
 
   if (!turmaId || !subject || !weekStart || !weekEnd || !isValidDate(weekStart) || !isValidDate(weekEnd)) {
     return NextResponse.json({ error: "Turma, subject, and a valid weekly interval are required" }, { status: 400 });
@@ -42,15 +57,18 @@ export async function GET(request: NextRequest) {
   const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
   if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
   if (!turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
+  const classification = parseGradeClassification(assessmentType, trimester, turma.educationType);
+  if (!classification) return NextResponse.json({ error: "O tipo de nota não corresponde ao ensino da turma ou falta selecionar o trimestre." }, { status: 400 });
 
   const term = `Semanal:${weekStart}:${weekEnd}`;
   const startDate = new Date(`${weekStart}T00:00:00Z`);
   const endDate = new Date(`${weekEnd}T23:59:59.999Z`);
   const grades = await prisma.grade.findMany({
     where: exportMode
-      ? { studentId: { in: turma.students.map((student) => student.id) }, subject, createdAt: { gte: startDate, lte: endDate } }
-      : { studentId: { in: turma.students.map((student) => student.id) }, subject, term },
+      ? { studentId: { in: turma.students.map((student) => student.id) }, subject, createdAt: { gte: startDate, lte: endDate }, ...classification }
+      : { studentId: { in: turma.students.map((student) => student.id) }, subject, term, ...classification },
     select: { studentId: true, value: true },
+    orderBy: { createdAt: "asc" },
   });
 
   return NextResponse.json({ students: turma.students, subjects: turma.subjects.map((entry) => entry.name), gradeScale: turma.gradeScale, grades, alreadyRecorded: grades.length > 0 });
@@ -82,6 +100,8 @@ export async function POST(request: NextRequest) {
 
     const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
     if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
+    const classification = parseGradeClassification(body.assessmentType, body.trimester, turma.educationType);
+    if (!classification) return NextResponse.json({ error: "O tipo de nota não corresponde ao ensino da turma ou falta selecionar o trimestre." }, { status: 400 });
 
     const periodClosed = await isTurmaWeeklyPeriodClosed(turmaId, officialPeriod.start, officialPeriod.end, prisma);
     if (periodClosed) {
@@ -99,14 +119,19 @@ export async function POST(request: NextRequest) {
     const term = `Semanal:${weekStart}:${weekEnd}`;
 
     await prisma.$transaction(async (tx) => {
-      await tx.grade.deleteMany({
-        where: { studentId: { in: turma.students.map((student) => student.id) }, subject, term },
-      });
-
-      if (validGrades.length) {
-        await tx.grade.createMany({
-          data: validGrades.map((entry) => ({ studentId: entry.studentId, subject, value: entry.value, term })),
+      for (const entry of validGrades) {
+        const existing = await tx.grade.findFirst({
+          where: { studentId: entry.studentId, subject, term, ...classification },
+          orderBy: { createdAt: "desc" },
+          select: { id: true },
         });
+        if (existing) {
+          await tx.grade.update({ where: { id: existing.id }, data: { value: entry.value } });
+        } else {
+          await tx.grade.create({
+            data: { studentId: entry.studentId, subject, value: entry.value, term, ...classification },
+          });
+        }
       }
     });
 
@@ -121,13 +146,15 @@ export async function POST(request: NextRequest) {
           turmaId,
           subject,
           term,
+          assessmentType: classification.assessmentType,
+          trimester: classification.trimester,
           studentIds: validGrades.map((entry) => entry.studentId),
           values: validGrades,
         },
       });
     }
 
-    return NextResponse.json({ success: true, saved: validGrades.length });
+    return NextResponse.json({ success: true, saved: validGrades.length, unchangedWhenBlank: true });
   } catch (error) {
     console.error("Mini pauta save error:", error);
     return NextResponse.json({ error: "Não foi possível guardar a mini pauta" }, { status: 500 });

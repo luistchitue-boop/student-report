@@ -819,22 +819,23 @@ export async function POST(request: Request) {
         if (studentIds.length && !studentIds.includes(student.id)) continue;
         const currentTerm = `Semanal:${currentPeriodStart}:${currentPeriodEnd}`;
         const previousTerm = previousPeriodStart && previousPeriodEnd ? `Semanal:${previousPeriodStart}:${previousPeriodEnd}` : "";
-        const currentGrades = period.type === "MONTHLY"
+        const currentPeriodGrades = period.type === "MONTHLY"
           ? student.grades.filter((grade) => weeklyPeriodTerms.includes(grade.term))
           : student.grades.filter((grade) => grade.term === currentTerm);
+        const currentGrades = currentPeriodGrades.filter((grade) => grade.assessmentType === null);
         const previousGrades = previousPeriod
           ? student.grades.filter((grade) => period.type === "MONTHLY"
             ? weeklyPeriods
               .filter((weeklyPeriod) => weeklyPeriod.start >= previousPeriod.start && weeklyPeriod.end <= previousPeriod.end)
               .some((weeklyPeriod) => grade.term === `Semanal:${formatPeriodDate(weeklyPeriod.start)}:${formatPeriodDate(weeklyPeriod.end)}`)
-            : grade.term === previousTerm)
+            : grade.term === previousTerm).filter((grade) => grade.assessmentType === null)
           : [];
-        const weeklyGrades = student.grades.filter((grade) => weeklyPeriodTerms.includes(grade.term));
-        const globalGrades = student.grades;
+        const weeklyGrades = student.grades.filter((grade) => grade.assessmentType === null && weeklyPeriodTerms.includes(grade.term));
+        const globalGrades = student.grades.filter((grade) => grade.assessmentType === null);
         const currentAbsences = student.absences;
         const reportTeacherName = turma.teacherAssignments[0]?.teacher.name ?? turma.coordinator?.name ?? "";
         const reportTeacherPhone = turma.teacherAssignments[0]?.teacher.phone ?? null;
-        if (!preview && period.type === "MONTHLY" && !hasMonthlyReportData({ grades: currentGrades, absences: currentAbsences, weeklyObservations: student.weeklyObservations })) {
+        if (!preview && period.type === "MONTHLY" && !hasMonthlyReportData({ grades: currentPeriodGrades, absences: currentAbsences, weeklyObservations: student.weeklyObservations })) {
           skippedStudents.push({ studentId: student.id, studentName: student.name, reason: "Não existem dados registados para este mês." });
           continue;
         }

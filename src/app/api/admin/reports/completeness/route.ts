@@ -38,7 +38,7 @@ export async function GET(request: Request) {
         select: {
           id: true,
           name: true,
-          grades: { where: { term: { in: periodGradeTerms } }, select: { subject: true } },
+          grades: { where: { term: { in: periodGradeTerms }, assessmentType: null }, select: { subject: true } },
           weeklyObservations: { where: { weekStart: { gte: period.start, lte: period.end } }, select: { behavior: true } },
         },
       },

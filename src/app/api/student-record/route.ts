@@ -91,6 +91,8 @@ export async function GET(request: NextRequest) {
         subject: grade.subject,
         value: grade.value,
         term: grade.term,
+        assessmentType: grade.assessmentType,
+        trimester: grade.trimester,
         createdAt: grade.createdAt.toISOString(),
       })),
       absences: absences.map((absence) => ({

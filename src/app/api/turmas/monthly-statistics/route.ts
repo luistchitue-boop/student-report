@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
             name: true,
             avatarUrl: true,
             grades: {
-              where: { OR: monthKeys.map((monthKey) => ({ term: { startsWith: `Semanal:${monthKey}` } })) },
+              where: { assessmentType: null, OR: monthKeys.map((monthKey) => ({ term: { startsWith: `Semanal:${monthKey}` } })) },
               select: { subject: true, value: true, term: true },
             },
             absences: {

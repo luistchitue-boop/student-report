@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         students: {
           where: { active: true },
           select: {
-            grades: { where: { term: { startsWith: `Semanal:${monthKey}` } }, select: { value: true, term: true } },
+            grades: { where: { assessmentType: null, term: { startsWith: `Semanal:${monthKey}` } }, select: { value: true, term: true } },
             absences: { where: { dia: { gte: monthStart, lt: nextMonthStart } }, select: { justified: true } },
           },
         },

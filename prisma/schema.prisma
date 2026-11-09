@@ -79,6 +79,18 @@ enum TurmaEducationType {
   ENSINO_TECNICO
 }
 
+enum GradeAssessmentType {
+  AC2
+  NPP
+  NPT
+}
+
+enum Trimester {
+  I
+  II
+  III
+}
+
 model Teacher {
   id        String   @id @default(cuid())
   userId    String   @unique
@@ -268,12 +280,14 @@ model ReportDelivery {
 }
 
 model Grade {
-  id        String   @id @default(cuid())
-  studentId String
-  subject   String
-  value     Float
-  term      String
-  createdAt DateTime @default(now())
+  id             String              @id @default(cuid())
+  studentId      String
+  subject        String
+  value          Float
+  term           String
+  assessmentType GradeAssessmentType?
+  trimester      Trimester?
+  createdAt      DateTime            @default(now())
 
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
