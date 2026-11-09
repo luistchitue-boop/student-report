@@ -4,7 +4,7 @@ import { useState } from "react";
 
 export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState({ name: "" });
+  const [form, setForm] = useState({ name: "", educationType: "" });
   const [status, setStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -21,6 +21,11 @@ export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
       setMessage("Digite o nome da turma.");
       return;
     }
+    if (form.educationType !== "ENSINO_GERAL" && form.educationType !== "ENSINO_TECNICO") {
+      setStatus("error");
+      setMessage("Selecione o tipo de ensino da turma.");
+      return;
+    }
 
     setStatus("saving");
     setMessage("");
@@ -29,7 +34,7 @@ export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
       const response = await fetch("/api/turmas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: turmaName }),
+        body: JSON.stringify({ name: turmaName, educationType: form.educationType }),
       });
 
       const data = await response.json();
@@ -40,7 +45,7 @@ export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
 
       setStatus("success");
       setMessage(`Turma criada com sucesso: ${data.turma.name}`);
-      setForm({ name: "" });
+      setForm({ name: "", educationType: "" });
       setIsOpen(false);
       window.location.reload();
     } catch (error) {
@@ -73,9 +78,18 @@ export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
                   type="text"
                   required
                   value={form.name}
-                  onChange={(event) => setForm({ name: event.target.value })}
+                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                   placeholder="Ex.: 10CEJ"
                 />
+              </div>
+
+              <div className="turma-create-field">
+                <label htmlFor="turma-education-type">Tipo de ensino</label>
+                <select id="turma-education-type" required value={form.educationType} onChange={(event) => setForm((current) => ({ ...current, educationType: event.target.value }))}>
+                  <option value="">Selecione</option>
+                  <option value="ENSINO_GERAL">Ensino geral</option>
+                  <option value="ENSINO_TECNICO">Ensino Técnico</option>
+                </select>
               </div>
 
               <div className="turma-create-actions">

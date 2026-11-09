@@ -18,14 +18,19 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const name = typeof body.name === "string" ? body.name.trim() : "";
+    const educationType = body.educationType;
 
     if (!name) {
       return NextResponse.json({ error: "O nome da turma é obrigatório." }, { status: 400 });
+    }
+    if (educationType !== "ENSINO_GERAL" && educationType !== "ENSINO_TECNICO") {
+      return NextResponse.json({ error: "Selecione um tipo de ensino válido para a turma." }, { status: 400 });
     }
 
     const turma = await prisma.turma.create({
       data: {
         name,
+        educationType,
       },
     });
 

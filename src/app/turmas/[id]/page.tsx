@@ -96,6 +96,7 @@ export default async function TurmaDetailPage({
           <div>
             <p className="eyebrow">ALUNOS</p>
             <h1>{turma.name}</h1>
+            <p className="eyebrow">{turma.educationType === "ENSINO_GERAL" ? "Ensino geral" : turma.educationType === "ENSINO_TECNICO" ? "Ensino Técnico" : "Tipo de ensino não definido"}</p>
           </div>
           <Link href="/turmas" className="dashboard-link">
             ← Voltar às turmas
@@ -121,7 +122,7 @@ export default async function TurmaDetailPage({
               <Link href={`/turmas/${turma.id}/novo_aluno`} className="new-student-button">
                 Novo aluno
               </Link>
-              {session.user.role === "ADMIN" && <GradeScaleClient turmaId={turma.id} initialScale={turma.gradeScale} />}
+              {session.user.role === "ADMIN" && <GradeScaleClient turmaId={turma.id} initialScale={turma.gradeScale} initialEducationType={turma.educationType} />}
             </div>
           </div>
 

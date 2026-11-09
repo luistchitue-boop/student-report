@@ -34,6 +34,7 @@ type CoordinatorTurmaRecord = {
   name: string;
   schedule: string | null;
   gradeScale: number;
+  educationType: "ENSINO_GERAL" | "ENSINO_TECNICO" | null;
   _count: { students: number };
   subjects: Array<{ name: string }>;
   students: TurmaStudent[];
@@ -46,6 +47,7 @@ function mapTurmaForCoordinator(turma: CoordinatorTurmaRecord) {
     name: turma.name,
     schedule: turma.schedule ?? "Sem horário definido",
     gradeScale: turma.gradeScale === 10 ? 10 : 20,
+    educationType: turma.educationType,
     students: turma._count.students,
     avatarCoverage: turma._count.students ? Math.round((studentsWithAvatars / turma._count.students) * 100) : 0,
     subjects: turma.subjects.map((subject: { name: string }) => subject.name),
@@ -67,6 +69,7 @@ const turmaSelect = {
   schedule: true,
   _count: { select: { students: true } },
   gradeScale: true,
+  educationType: true,
   subjects: { orderBy: { name: "asc" as const }, select: { name: true } },
   students: {
     orderBy: { name: "asc" as const },

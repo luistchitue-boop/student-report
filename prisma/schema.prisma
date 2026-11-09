@@ -74,6 +74,11 @@ enum ReportDeliveryChannel {
   WHATSAPP
 }
 
+enum TurmaEducationType {
+  ENSINO_GERAL
+  ENSINO_TECNICO
+}
+
 model Teacher {
   id        String   @id @default(cuid())
   userId    String   @unique
@@ -96,6 +101,7 @@ model Turma {
   code         String?  @unique
   schedule     String?
   gradeScale   Int      @default(20)
+  educationType TurmaEducationType?
   isInternship Boolean  @default(false)
   coordinatorId String?
   createdAt    DateTime @default(now())

@@ -11,10 +11,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const { id } = await params;
     const body = await request.json();
-    const gradeScale = Number(body.gradeScale);
-    if (gradeScale !== 10 && gradeScale !== 20) return Response.json({ error: "A escala deve ser 0-10 ou 0-20." }, { status: 400 });
+    const data: { gradeScale?: number; educationType?: "ENSINO_GERAL" | "ENSINO_TECNICO" | null } = {};
+    if (Object.prototype.hasOwnProperty.call(body, "gradeScale")) {
+      const gradeScale = Number(body.gradeScale);
+      if (gradeScale !== 10 && gradeScale !== 20) return Response.json({ error: "A escala deve ser 0-10 ou 0-20." }, { status: 400 });
+      data.gradeScale = gradeScale;
+    }
+    if (Object.prototype.hasOwnProperty.call(body, "educationType")) {
+      if (body.educationType !== null && body.educationType !== "ENSINO_GERAL" && body.educationType !== "ENSINO_TECNICO") {
+        return Response.json({ error: "Selecione um tipo de ensino válido." }, { status: 400 });
+      }
+      data.educationType = body.educationType;
+    }
+    if (!Object.keys(data).length) return Response.json({ error: "Nenhuma classificação da turma foi indicada." }, { status: 400 });
 
-    const turma = await prisma.turma.update({ where: { id }, data: { gradeScale }, select: { id: true, gradeScale: true } });
+    const turma = await prisma.turma.update({ where: { id }, data, select: { id: true, gradeScale: true, educationType: true } });
     return Response.json(turma);
   } catch (error) {
     console.error("Grade scale update error:", error);
