@@ -10,17 +10,21 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const turmaId = searchParams.get("turmaId") ?? "";
-  const monthKey = searchParams.get("month") ?? "";
-  if (!turmaId || !/^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey)) {
-    return NextResponse.json({ error: "Turma e mês válidos são obrigatórios." }, { status: 400 });
+  const monthKeys = [...new Set(searchParams.getAll("month"))].sort();
+  if (!turmaId || !monthKeys.length || monthKeys.some((monthKey) => !/^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey))) {
+    return NextResponse.json({ error: "Turma e pelo menos um mês válido são obrigatórios." }, { status: 400 });
   }
 
-  const [year, month] = monthKey.split("-").map(Number);
-  const monthStart = new Date(Date.UTC(year, month - 1, 1));
-  const nextMonthStart = new Date(Date.UTC(year, month, 1));
-  if (Number.isNaN(monthStart.getTime()) || monthStart.toISOString().slice(0, 7) !== monthKey) {
-    return NextResponse.json({ error: "Mês inválido." }, { status: 400 });
+  const selectedMonths = monthKeys.map((monthKey) => {
+    const [year, month] = monthKey.split("-").map(Number);
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 1));
+    return { key: monthKey, start, end };
+  });
+  if (selectedMonths.some(({ key, start }) => Number.isNaN(start.getTime()) || start.toISOString().slice(0, 7) !== key)) {
+    return NextResponse.json({ error: "Um ou mais meses são inválidos." }, { status: 400 });
   }
+  const monthSet = new Set(monthKeys);
 
   try {
     const role = session.user.role ?? "COORDENADOR";
@@ -46,8 +50,14 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             avatarUrl: true,
-            grades: { where: { term: { startsWith: `Semanal:${monthKey}` } }, select: { subject: true, value: true, term: true } },
-            absences: { where: { dia: { gte: monthStart, lt: nextMonthStart } }, select: { justified: true } },
+            grades: {
+              where: { OR: monthKeys.map((monthKey) => ({ term: { startsWith: `Semanal:${monthKey}` } })) },
+              select: { subject: true, value: true, term: true },
+            },
+            absences: {
+              where: { OR: selectedMonths.map(({ start, end }) => ({ dia: { gte: start, lt: end } })) },
+              select: { justified: true },
+            },
           },
         },
       },
@@ -58,7 +68,7 @@ export async function GET(request: NextRequest) {
     const students = turma.students.map((student) => {
       const monthGrades = student.grades.filter((grade) => {
         const match = weeklyTermPattern.exec(grade.term);
-        return match?.[1].slice(0, 7) === monthKey;
+        return Boolean(match && monthSet.has(match[1].slice(0, 7)));
       });
       const gradeAverage = monthGrades.length
         ? monthGrades.reduce((sum, grade) => sum + Number(grade.value), 0) / monthGrades.length
@@ -91,7 +101,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       turmaName: turma.name,
-      month: monthKey,
+      months: monthKeys,
       gradeScale: turma.gradeScale,
       studentCount: turma.students.length,
       assessedStudentCount: assessedStudents.length,

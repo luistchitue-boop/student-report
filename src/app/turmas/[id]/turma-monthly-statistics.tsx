@@ -17,7 +17,7 @@ type RankedStudent = {
 
 type MonthlyStatistics = {
   turmaName: string;
-  month: string;
+  months: string[];
   gradeScale: number;
   studentCount: number;
   assessedStudentCount: number;
@@ -56,14 +56,16 @@ function StudentRanking({ title, students, emptyText, criterion }: { title: stri
 
 export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
   const months = useMemo(() => getAvailableMonths(), []);
-  const [month, setMonth] = useState(() => months[0]?.start.toISOString().slice(0, 7) ?? "");
+  const [selectedMonths, setSelectedMonths] = useState(() => months[0] ? [months[0].start.toISOString().slice(0, 7)] : []);
   const [statistics, setStatistics] = useState<MonthlyStatistics | null>(null);
   const [classification, setClassification] = useState<"grades" | "absences">("grades");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const selectedMonthsKey = selectedMonths.join(",");
 
   useEffect(() => {
-    if (!month) return;
+    if (!selectedMonthsKey) return;
+    const monthKeys = selectedMonthsKey.split(",");
     let cancelled = false;
     Promise.resolve().then(() => {
       if (!cancelled) {
@@ -71,7 +73,9 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
         setError("");
       }
     });
-    fetch(`/api/turmas/monthly-statistics?turmaId=${encodeURIComponent(turmaId)}&month=${encodeURIComponent(month)}`, { cache: "no-store" })
+    const query = new URLSearchParams({ turmaId });
+    monthKeys.forEach((monthKey) => query.append("month", monthKey));
+    fetch(`/api/turmas/monthly-statistics?${query.toString()}`, { cache: "no-store" })
       .then(async (response) => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Não foi possível carregar as estatísticas da turma.");
@@ -83,7 +87,18 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [month, turmaId]);
+  }, [selectedMonthsKey, turmaId]);
+
+  function toggleMonth(monthKey: string) {
+    setSelectedMonths((current) => current.includes(monthKey)
+      ? current.filter((value) => value !== monthKey)
+      : [...current, monthKey].sort());
+  }
+
+  const selectedPeriodLabels = months
+    .filter((period) => selectedMonths.includes(period.start.toISOString().slice(0, 7)))
+    .sort((a, b) => a.start.getTime() - b.start.getTime())
+    .map(getPeriodLabel);
 
   return (
     <section className="turma-monthly-statistics" aria-labelledby="turma-monthly-statistics-title">
@@ -93,13 +108,18 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
           <h2 id="turma-monthly-statistics-title">Estatísticas mensais</h2>
           <p>Média por aluno avaliado, faltas e classificações da turma.</p>
         </div>
-        <label>Período mensal<select value={month} onChange={(event) => setMonth(event.target.value)}>
-          {months.map((period) => <option key={period.key} value={period.start.toISOString().slice(0, 7)}>{getPeriodLabel(period)}</option>)}
-        </select></label>
+        <fieldset className="turma-monthly-period-picker">
+          <legend>Selecionar meses</legend>
+          <div>{months.map((period) => {
+            const monthKey = period.start.toISOString().slice(0, 7);
+            return <label key={period.key}><input type="checkbox" checked={selectedMonths.includes(monthKey)} onChange={() => toggleMonth(monthKey)} />{getPeriodLabel(period)}</label>;
+          })}</div>
+        </fieldset>
       </header>
 
-      {error ? <p className="turma-monthly-message error" role="alert">{error}</p> : loading || (statistics && statistics.month !== month) ? <p className="turma-monthly-message">A carregar estatísticas...</p> : statistics ? (
+      {!selectedMonths.length ? <p className="turma-monthly-message">Selecione pelo menos um mês para ver a classificação.</p> : error ? <p className="turma-monthly-message error" role="alert">{error}</p> : loading || (statistics && statistics.months.join(",") !== selectedMonthsKey) ? <p className="turma-monthly-message">A carregar estatísticas...</p> : statistics ? (
         <>
+          <p className="turma-monthly-selected-periods">Período agregado: {selectedPeriodLabels.join(", ")}</p>
           <div className="turma-monthly-metrics">
             <article><span>Média geral</span><strong>{statistics.classAverage?.toFixed(1) ?? "—"}<small> / {statistics.gradeScale}</small></strong><small>{statistics.assessedStudentCount} de {statistics.studentCount} aluno(s) avaliados</small></article>
             <article><span>Total de faltas</span><strong>{statistics.absenceCount}</strong><small>{statistics.unjustifiedAbsenceCount} injustificada(s) · {statistics.justifiedAbsenceCount} justificada(s)</small></article>
@@ -108,26 +128,30 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
             <button type="button" className={classification === "grades" ? "active" : ""} aria-pressed={classification === "grades"} onClick={() => setClassification("grades")}>Classificação por notas</button>
             <button type="button" className={classification === "absences" ? "active" : ""} aria-pressed={classification === "absences"} onClick={() => setClassification("absences")}>Classificação por faltas</button>
           </div>
-          <p className="turma-monthly-ranking-note">{classification === "grades" ? "Classificação baseada exclusivamente na média mensal: melhor média primeiro e pior média primeiro. Alunos sem notas no mês não entram nestas listas." : "Classificação baseada exclusivamente no número de faltas do mês: menos faltas primeiro e mais faltas primeiro. Inclui todos os alunos ativos; faltas justificadas e injustificadas contam igualmente."}</p>
+          <p className="turma-monthly-ranking-note">{classification === "grades" ? "Classificação baseada na média de todas as notas semanais registadas nos meses selecionados: melhor média primeiro e pior média primeiro. Alunos sem notas nesses meses não entram nestas listas." : "Classificação baseada no total de faltas dos meses selecionados: menos faltas primeiro e mais faltas primeiro. Inclui todos os alunos ativos; faltas justificadas e injustificadas contam igualmente."}</p>
           <div className="turma-monthly-rankings">
             {classification === "grades" ? <>
-              <StudentRanking title="Top 5 · melhores notas" students={statistics.bestGradeStudents} emptyText="Ainda não há alunos avaliados neste mês." criterion="grades" />
-              <StudentRanking title="Bottom 5 · piores notas" students={statistics.worstGradeStudents} emptyText="Ainda não há alunos avaliados neste mês." criterion="grades" />
+              <StudentRanking title="Top 5 · melhores notas" students={statistics.bestGradeStudents} emptyText="Ainda não há alunos avaliados nos meses selecionados." criterion="grades" />
+              <StudentRanking title="Bottom 5 · piores notas" students={statistics.worstGradeStudents} emptyText="Ainda não há alunos avaliados nos meses selecionados." criterion="grades" />
             </> : <>
               <StudentRanking title="Top 5 · menos faltas" students={statistics.fewestAbsenceStudents} emptyText="Não há alunos ativos nesta turma." criterion="absences" />
               <StudentRanking title="Bottom 5 · mais faltas" students={statistics.mostAbsenceStudents} emptyText="Não há alunos ativos nesta turma." criterion="absences" />
             </>}
           </div>
         </>
-      ) : <p className="turma-monthly-message">Sem dados disponíveis para este mês.</p>}
+      ) : <p className="turma-monthly-message">Sem dados disponíveis para os meses selecionados.</p>}
 
       <style>{`
         .turma-monthly-statistics { display:grid; gap:1rem; margin:0 0 1.2rem; padding:1.2rem; border:1px solid #dbe3ec; border-radius:16px; background:#fff; box-shadow:0 6px 20px rgba(15,23,42,.035); }
         .turma-monthly-statistics-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
         .turma-monthly-statistics-header h2 { margin:.2rem 0 .3rem; color:#173044; font-size:1.2rem; }
         .turma-monthly-statistics-header p:not(.eyebrow) { margin:0; color:#64748b; font-size:.84rem; }
-        .turma-monthly-statistics-header label { display:grid; gap:.4rem; min-width:190px; color:#334155; font-size:.76rem; font-weight:800; }
-        .turma-monthly-statistics-header select { width:100%; min-height:2.6rem; padding:.55rem .7rem; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#1e293b; }
+        .turma-monthly-period-picker { display:grid; gap:.4rem; min-width:220px; margin:0; padding:.6rem .7rem; border:1px solid #cbd5e1; border-radius:9px; color:#334155; font-size:.76rem; }
+        .turma-monthly-period-picker legend { padding:0 .2rem; font-weight:800; }
+        .turma-monthly-period-picker > div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.35rem .7rem; max-height:9rem; overflow:auto; }
+        .turma-monthly-period-picker label { display:flex; align-items:center; gap:.4rem; font-weight:600; }
+        .turma-monthly-period-picker input { accent-color:#176b8b; }
+        .turma-monthly-selected-periods { margin:0; color:#475569; font-size:.78rem; font-weight:700; }
         .turma-monthly-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; }
         .turma-monthly-metrics article { display:grid; gap:.3rem; padding:.9rem 1rem; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; }
         .turma-monthly-metrics article > span { color:#64748b; font-size:.77rem; font-weight:700; }
@@ -151,7 +175,7 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
         .turma-monthly-secondary-stat { color:#64748b; font-size:.72rem; }
         .turma-monthly-message { margin:0; }
         .turma-monthly-message.error { color:#b91c1c; }
-        @media (max-width:700px) { .turma-monthly-statistics-header { flex-direction:column; } .turma-monthly-statistics-header label { width:100%; } .turma-monthly-metrics,.turma-monthly-rankings { grid-template-columns:1fr; } }
+        @media (max-width:700px) { .turma-monthly-statistics-header { flex-direction:column; } .turma-monthly-period-picker { width:100%; } .turma-monthly-metrics,.turma-monthly-rankings { grid-template-columns:1fr; } }
       `}</style>
     </section>
   );
