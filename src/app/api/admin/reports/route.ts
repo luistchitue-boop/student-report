@@ -11,6 +11,7 @@ import { PDFDocument } from "pdf-lib";
 import { auth } from "@/auth";
 import { proofreadCoordinatorObservation } from "@/lib/proofread-observation";
 import { isSendableEmailAddress } from "@/lib/email-address";
+import { hasMonthlyReportData } from "@/lib/monthly-report-data";
 import { formatPeriodDate, getMonthlyCoordinationPeriods, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
 declare global {
@@ -798,6 +799,7 @@ export async function POST(request: Request) {
 
     const recipients: Array<{ email: string; phone: string; reportUrl: string; studentName: string; firstName: string; studentId: string; turmaId: string; recipientName: string; pdfBuffer?: Buffer }> = [];
     const previewPdfs: Buffer[] = [];
+    const skippedStudents: Array<{ studentId: string; studentName: string; reason: string }> = [];
     const saveDelivery = (data: { turmaId: string; studentId: string; recipientName?: string; recipientEmail: string; reportUrl?: string; providerEmailId?: string; status: "SENT" | "FAILED"; error?: string }) => prisma.reportDelivery.upsert({
       where: { studentId_periodStart_recipientEmail_channel: { studentId: data.studentId, periodStart: period.start, recipientEmail: data.recipientEmail, channel } },
       update: { turmaId: data.turmaId, periodEnd: period.end, recipientName: data.recipientName, reportUrl: data.reportUrl, providerEmailId: data.providerEmailId, status: data.status, error: data.error, attemptedAt: new Date() },
@@ -825,6 +827,10 @@ export async function POST(request: Request) {
         const currentAbsences = student.absences;
         const reportTeacherName = turma.teacherAssignments[0]?.teacher.name ?? turma.coordinator?.name ?? "";
         const reportTeacherPhone = turma.teacherAssignments[0]?.teacher.phone ?? null;
+        if (!preview && period.type === "MONTHLY" && !hasMonthlyReportData({ grades: currentGrades, absences: currentAbsences, weeklyObservations: student.weeklyObservations })) {
+          skippedStudents.push({ studentId: student.id, studentName: student.name, reason: "Não existem dados registados para este mês." });
+          continue;
+        }
         const teacherObservation = await proofreadCoordinatorObservation(student.weeklyObservations[0]?.teacherObservation);
         if (preview) {
           const pdf = await generateStudentReportPdf({
@@ -953,11 +959,15 @@ export async function POST(request: Request) {
       return new NextResponse(new Uint8Array(mergedBytes), { headers: { "Content-Type": "application/pdf", "Content-Disposition": "inline; filename=relatorios-preview.pdf" } });
     }
 
+    if (skippedStudents.length && studentIds.length === 1 && !selectedDeliveryRecipients) {
+      return NextResponse.json({ error: `Envio bloqueado para ${skippedStudents[0].studentName}: não existem dados registados para este mês.` }, { status: 409 });
+    }
+
     if (!recipients.length) {
       if (retryDelivery) {
         return NextResponse.json({ error: "O contacto de e-mail associado a este envio já foi alterado ou removido. Atualize o contacto e envie o relatório novamente." }, { status: 409 });
       }
-      return NextResponse.json({ success: true, sent: 0, message: `Nenhum encarregado com ${channel === "EMAIL" ? "email" : "número de WhatsApp"} válido encontrado nas turmas selecionadas.` });
+      return NextResponse.json({ success: true, sent: 0, skippedStudents, message: `Nenhum encarregado com ${channel === "EMAIL" ? "email" : "número de WhatsApp"} válido encontrado nas turmas selecionadas.` });
     }
 
     const resend = channel === "EMAIL" ? new Resend(RESEND_API_KEY) : null;
@@ -1013,7 +1023,7 @@ export async function POST(request: Request) {
     }
 
     const failed = results.length - sent;
-    return NextResponse.json({ success: failed === 0, sent, failed, total: recipients.length, successRate: recipients.length ? Math.round((sent / recipients.length) * 100) : 0, results });
+    return NextResponse.json({ success: failed === 0 && skippedStudents.length === 0, sent, failed, total: recipients.length, skippedStudents, successRate: recipients.length ? Math.round((sent / recipients.length) * 100) : 0, results });
   } catch (error) {
     console.error("Admin report dispatch error:", error);
     return NextResponse.json({ error: "Não foi possível enviar os relatórios." }, { status: 500 });

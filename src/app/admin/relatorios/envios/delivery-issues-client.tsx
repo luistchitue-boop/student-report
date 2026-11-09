@@ -151,7 +151,7 @@ export function DeliveryIssuesClient() {
   const [exporting, setExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [bulkSending, setBulkSending] = useState(false);
-  const [bulkProgress, setBulkProgress] = useState<{ completed: number; total: number; sent: number; failed: number } | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{ completed: number; total: number; sent: number; failed: number; blocked: number } | null>(null);
   const [bulkResult, setBulkResult] = useState("");
   const [retryFeedback, setRetryFeedback] = useState<{ id: string; message: string; success: boolean } | null>(null);
 
@@ -271,7 +271,8 @@ export function DeliveryIssuesClient() {
       let completed = 0;
       let sent = 0;
       let failed = 0;
-      setBulkProgress({ completed, total: candidates.length, sent, failed });
+      let blocked = 0;
+      setBulkProgress({ completed, total: candidates.length, sent, failed, blocked });
 
       const processNextBatch = async () => {
         while (nextBatchIndex < batches.length) {
@@ -292,18 +293,20 @@ export function DeliveryIssuesClient() {
             if (!response.ok) throw new Error(data.error || "Não foi possível enviar este lote.");
             sent += Number(data.sent) || 0;
             failed += Number(data.failed) || 0;
+            const blockedStudentIds = new Set<string>((data.skippedStudents ?? []).map((student: { studentId: string }) => student.studentId));
+            blocked += batch.filter((issue) => blockedStudentIds.has(issue.studentId)).length;
           } catch {
             failed += batch.length;
           } finally {
             completed += batch.length;
-            setBulkProgress({ completed, total: candidates.length, sent, failed });
+            setBulkProgress({ completed, total: candidates.length, sent, failed, blocked });
           }
         }
       };
 
       await Promise.all(Array.from({ length: Math.min(MAX_PARALLEL_BATCHES, batches.length) }, () => processNextBatch()));
       await refreshDeliveryStatus();
-      setBulkResult(`Envios concluídos: ${sent} enviado(s), ${failed} falhou/falharam.`);
+      setBulkResult(`Envios concluídos: ${sent} enviado(s), ${failed} falhou/falharam, ${blocked} bloqueado(s) por falta de dados mensais.`);
     } finally {
       setBulkSending(false);
       setBulkProgress(null);
@@ -342,7 +345,7 @@ export function DeliveryIssuesClient() {
       </div>
 
       <div className="delivery-bulk-send"><button type="button" onClick={sendAllUnsentReports} disabled={loading || refreshing || exporting || bulkSending}>{bulkSending ? `A enviar ${bulkProgress?.completed ?? 0}/${bulkProgress?.total ?? eligibleUnsentIssues.length}...` : `Enviar relatórios não enviados (${eligibleUnsentIssues.length})`}</button><span>Envia apenas para e-mails válidos sem registo de envio no período selecionado, em lotes controlados.</span></div>
-      {bulkProgress && <div className="delivery-bulk-progress" role="status"><span>{bulkProgress.completed} de {bulkProgress.total} processados · {bulkProgress.sent} enviado(s) · {bulkProgress.failed} falhou/falharam</span><progress value={bulkProgress.completed} max={bulkProgress.total} /></div>}
+      {bulkProgress && <div className="delivery-bulk-progress" role="status"><span>{bulkProgress.completed} de {bulkProgress.total} processados · {bulkProgress.sent} enviado(s) · {bulkProgress.failed} falhou/falharam · {bulkProgress.blocked} bloqueado(s)</span><progress value={bulkProgress.completed} max={bulkProgress.total} /></div>}
       {bulkResult && <p className="delivery-retry-feedback success" role="status">{bulkResult}</p>}
 
       <div className="delivery-issue-metrics">

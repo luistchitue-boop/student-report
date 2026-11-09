@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { isSendableEmailAddress } from "@/lib/email-address";
-import { formatPeriodDate, type MonthlyPeriod } from "@/lib/weekly-coordination";
+import { hasMonthlyReportData } from "@/lib/monthly-report-data";
+import { formatPeriodDate, getWeeklyCoordinationPeriods, type MonthlyPeriod } from "@/lib/weekly-coordination";
 
 declare global {
   var prismaAdminDeliveryStatus: PrismaClient | undefined;
@@ -49,14 +50,38 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Selecione um período mensal válido." }, { status: 400 });
   }
 
+  const scheduleYear = period.start.getMonth() >= 8 ? period.start.getFullYear() : period.start.getFullYear() - 1;
+  const monthlyWeekTerms = new Set(getWeeklyCoordinationPeriods(scheduleYear)
+    .filter((week) => week.start >= period.start && week.end <= period.end)
+    .map((week) => `Semanal:${formatPeriodDate(week.start)}:${formatPeriodDate(week.end)}`));
+  const periodStartDate = new Date(`${formatPeriodDate(period.start)}T00:00:00.000Z`);
+  const periodEndNextDate = new Date(period.end.getFullYear(), period.end.getMonth(), period.end.getDate() + 1, 12);
+  const [periodEndYear, periodEndMonth, periodEndDay] = formatPeriodDate(period.end).split("-").map(Number);
+  const absenceEndExclusive = new Date(Date.UTC(periodEndYear, periodEndMonth - 1, periodEndDay + 1));
   const [turmas, activeStudents, deliveries] = await Promise.all([
     prisma.turma.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.student.findMany({ where: { active: true }, select: { id: true, name: true, turmaId: true, parents: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true } } } }),
+    prisma.student.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        name: true,
+        turmaId: true,
+        parents: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true } },
+        grades: { where: { term: { startsWith: "Semanal:" } }, select: { term: true } },
+        absences: { where: { dia: { gte: periodStartDate, lt: absenceEndExclusive } }, select: { id: true } },
+        weeklyObservations: { where: { weekStart: { gte: periodStartDate, lt: periodEndNextDate } }, select: { behavior: true, teacherObservation: true } },
+      },
+    }),
     prisma.reportDelivery.findMany({
       where: { periodStart: period.start, channel: "EMAIL" },
       select: { id: true, turmaId: true, studentId: true, recipientName: true, recipientEmail: true, status: true, error: true, attemptedAt: true, student: { select: { name: true, parents: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true } } } }, turma: { select: { name: true } } },
     }),
   ]);
+  const studentsWithMonthlyData = new Set(activeStudents.filter((student) => hasMonthlyReportData({
+    grades: student.grades.filter((grade) => monthlyWeekTerms.has(grade.term)),
+    absences: student.absences,
+    weeklyObservations: student.weeklyObservations,
+  })).map((student) => student.id));
 
   const countsByTurma = new Map<string, { activeStudentIds: Set<string>; deliveredStudentIds: Set<string>; failed: number; bounced: number; delayed: number }>();
   for (const turma of turmas) countsByTurma.set(turma.id, { activeStudentIds: new Set(), deliveredStudentIds: new Set(), failed: 0, bounced: 0, delayed: 0 });
@@ -87,6 +112,7 @@ export async function GET(request: NextRequest) {
   });
 
   const issues: DeliveryStatusIssue[] = deliveries
+    .filter((delivery) => studentsWithMonthlyData.has(delivery.studentId))
     .filter((delivery): delivery is typeof delivery & { status: "FAILED" | "BOUNCED" | "DELAYED" } => delivery.status === "FAILED" || delivery.status === "BOUNCED" || delivery.status === "DELAYED")
     .filter((delivery) => !delivery.student.parents.some((parent) =>
       parent.name.trim().toLowerCase() === delivery.recipientName?.trim().toLowerCase()
@@ -112,7 +138,7 @@ export async function GET(request: NextRequest) {
 
   const turmaNames = new Map(turmas.map((turma) => [turma.id, turma.name]));
   const trackedEmails = new Set(deliveries.map((delivery) => `${delivery.studentId}:${delivery.recipientEmail.trim().toLowerCase()}`));
-  const untrackedIssues = activeStudents.flatMap((student) => {
+  const untrackedIssues = activeStudents.filter((student) => studentsWithMonthlyData.has(student.id)).flatMap((student) => {
     const turmaName = turmaNames.get(student.turmaId);
     if (!turmaName) return [];
     return student.parents.flatMap((parent) => {

@@ -241,8 +241,10 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Não foi possível enviar os relatórios.");
 
-      setStatus(data.failed ? "error" : "success");
-      setMessage(`${data.sent ?? 0} de ${data.total ?? 0} envio(s) concluído(s) por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}. Taxa de sucesso: ${data.successRate ?? 0}%.`);
+      const skippedNames = (data.skippedStudents ?? []).map((student: { studentName: string }) => student.studentName);
+      setStatus(data.failed || skippedNames.length ? "error" : "success");
+      const blockedMessage = skippedNames.length ? ` Envio bloqueado sem dados mensais para: ${skippedNames.join(", ")}.` : "";
+      setMessage(`${data.sent ?? 0} de ${data.total ?? 0} envio(s) concluído(s) por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}. Taxa de sucesso: ${data.successRate ?? 0}%.${blockedMessage}`);
       setDeliveryResults(data.results ?? []);
       if (channel === "EMAIL" && monthlyPeriod) setDeliverySummaryRefresh((value) => value + 1);
       if (!studentId) setSelectedTurmas([]);
