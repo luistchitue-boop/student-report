@@ -3,8 +3,9 @@
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { importMiniPautaGrades, MiniPautaImportValidationError } from "@/lib/mini-pauta-import";
 
 type Turma = {
   id: string;
@@ -39,6 +40,9 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importValidationError, setImportValidationError] = useState<MiniPautaImportValidationError | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportStart, setExportStart] = useState("");
   const [exportEnd, setExportEnd] = useState("");
@@ -88,6 +92,9 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
 
   const isTrimesterAssessment = assessmentType !== "";
   const gradePeriodSelected = isTrimesterAssessment ? Boolean(trimester) : Boolean(weekStart && weekEnd);
+  const canImport = Boolean(subject && gradePeriodSelected)
+    && (isTrimesterAssessment || !isFuturePeriod(weekStart))
+    && !isLoading && !isImporting;
 
   useEffect(() => {
     if (!subject || !gradePeriodSelected) return;
@@ -171,6 +178,45 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       setStatus(error instanceof Error ? error.message : "Não foi possível guardar a mini pauta.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function importGrades(file: File) {
+    setIsImporting(true);
+    setStatus("");
+    setImportValidationError(null);
+    try {
+      const result = importMiniPautaGrades(await file.arrayBuffer(), {
+        educationType: turma.educationType,
+        assessmentType,
+        trimester,
+        gradeScale: turma.gradeScale,
+        roster: turma.roster.map(({ id, name }) => ({ id, name })),
+      });
+      if (!result.grades.length) {
+        setStatus(`Nenhuma nota foi importada da coluna ${result.source}. Verifique os nomes, valores e limites da escala.`);
+        return;
+      }
+
+      setGrades((current) => ({
+        ...current,
+        ...Object.fromEntries(result.grades.map(({ studentId, value }) => [studentId, String(value)])),
+      }));
+      const details = [
+        result.unmatched ? `${result.unmatched} aluno(s) sem correspondência` : "",
+        result.invalid ? `${result.invalid} valor(es) inválido(s) ou fora da escala` : "",
+        result.ambiguous ? `${result.ambiguous} correspondência(s) ambígua(s)` : "",
+      ].filter(Boolean);
+      setStatus(`${result.grades.length} nota(s) importada(s) de ${result.source}. Revise os valores e clique em “Guardar notas” para os registar.${details.length ? ` ${details.join("; ")}.` : ""}`);
+    } catch (error) {
+      if (error instanceof MiniPautaImportValidationError) {
+        setImportValidationError(error);
+      } else {
+        setStatus(error instanceof Error ? error.message : "Não foi possível ler o ficheiro XLSX.");
+      }
+    } finally {
+      setIsImporting(false);
+      if (importInputRef.current) importInputRef.current.value = "";
     }
   }
 
@@ -316,8 +362,8 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
         </div>
 
         <div className="mini-pauta-footer">
-          <span>{isLoading ? "A carregar notas..." : `${Object.values(grades).filter(Boolean).length} de ${turma.roster.length} alunos avaliados`}</span>
-          <div className="mini-pauta-footer-actions"><button type="button" className="mini-pauta-export-button" onClick={() => { setExportSubject(subject); setExportAssessmentType(assessmentType); setExportTrimester(trimester); setShowExportModal(true); }}>Export</button><button type="button" className="mini-pauta-save-button" onClick={saveGrades} disabled={isSaving || isLoading || !gradePeriodSelected || (!isTrimesterAssessment && isFuturePeriod(weekStart))}>{isSaving ? "A guardar..." : "Guardar notas"}</button></div>
+          <span>{isLoading ? "A carregar notas..." : isImporting ? "A importar notas..." : `${Object.values(grades).filter((value) => value.trim() !== "").length} de ${turma.roster.length} alunos avaliados`}</span>
+          <div className="mini-pauta-footer-actions"><button type="button" className="mini-pauta-export-button" onClick={() => { setExportSubject(subject); setExportAssessmentType(assessmentType); setExportTrimester(trimester); setShowExportModal(true); }}>Export</button><input ref={importInputRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void importGrades(file); }} /><button type="button" className="mini-pauta-export-button" onClick={() => importInputRef.current?.click()} disabled={!canImport}>{isImporting ? "A importar..." : "Importar"}</button><button type="button" className="mini-pauta-save-button" onClick={saveGrades} disabled={isSaving || isLoading || isImporting || !gradePeriodSelected || (!isTrimesterAssessment && isFuturePeriod(weekStart))}>{isSaving ? "A guardar..." : "Guardar notas"}</button></div>
         </div>
         {status ? <p className="mini-pauta-status">{status}</p> : null}
       </section>
@@ -325,6 +371,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
             const isClosed = closedPeriods.has(period.key);
             return <option key={period.key} value={period.key} disabled={isClosed}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isClosed ? " (fechado)" : ""}</option>;
           })}</select></label>}<p className="mini-pauta-export-help">A média será calculada com as notas da classificação e do período selecionados.</p>{exportStatus ? <p className="mini-pauta-status">{exportStatus}</p> : null}<button type="submit" className="mini-pauta-save-button" disabled={isExporting || Boolean(exportAssessmentType ? !exportTrimester : !exportStart)}>{isExporting ? "A gerar..." : "Exportar PDF"}</button></form></div> : null}
+          {importValidationError ? <div className="mini-pauta-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setImportValidationError(null); }}><section className="mini-pauta-export-modal" role="dialog" aria-modal="true" aria-labelledby="import-validation-title"><div className="mini-pauta-modal-heading"><div><p className="eyebrow">IMPORTAÇÃO DE NPP</p><h2 id="import-validation-title">Trimestre não corresponde</h2></div><button type="button" className="mini-pauta-modal-close" onClick={() => setImportValidationError(null)} aria-label="Fechar">×</button></div><p>{importValidationError.message}</p><p>Trimestre escolhido na mini pauta: <strong>{importValidationError.selectedTrimester}</strong>.</p>{importValidationError.latestPopulatedTrimester ? <p>Trimestre mais recente com notas numéricas válidas (0–{turma.gradeScale}): <strong>{importValidationError.latestPopulatedTrimester}</strong>. Foram encontradas notas em {importValidationError.populatedStudentCount} aluno(s) nesse trimestre.</p> : <p>Não foi encontrada nenhuma nota numérica válida (0–{turma.gradeScale}) nas colunas AC1, AC2, NPP ou NPT dos trimestres I, II e III.</p>}<p>Folha analisada: <strong>{importValidationError.sheetName}</strong>.</p><p>Para evitar importar NPP do trimestre errado, escolha o trimestre mais recente indicado acima e tente importar novamente. O ficheiro não alterou as notas da mini pauta.</p><button type="button" className="mini-pauta-save-button" onClick={() => setImportValidationError(null)}>Entendi</button></section></div> : null}
     </main>
   );
 }
