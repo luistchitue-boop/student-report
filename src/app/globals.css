@@ -2,6 +2,45 @@
 .add-report { display:flex; gap:8px; margin-top:16px; } .add-report input { min-width:0; flex:1; border:1px solid #ccd7cc; background:#fbfcf8; padding:10px 12px; outline:none; font-size:11px; } .add-report .send-button { padding:0 14px; }
 .channel-switch { display:flex; gap:3px; width:max-content; margin-top:20px; padding:3px; background:#dfe6dc; } .channel-switch button { border:0; background:transparent; color:#748077; padding:7px 13px; font-size:10px; font-weight:800; } .channel-switch button.active { color:var(--ink); background:#fbfcf8; box-shadow:0 1px 3px #cbd3c9; }
 .admin-shell { max-width:900px; margin-top:18px; }
+.schools-manager { max-width:900px; margin-top:24px; padding:24px; border:1px solid #dfe8e1; border-radius:22px; background:linear-gradient(145deg,#fff 0%,#f7faf7 100%); box-shadow:0 16px 38px rgba(18,32,27,0.055); }
+.schools-manager-heading { display:flex; align-items:flex-start; gap:14px; margin-bottom:20px; }
+.schools-manager-heading-icon { display:grid; place-items:center; flex:0 0 42px; height:42px; border:1px solid #d3e5d6; border-radius:13px; background:#e9f4eb; color:var(--green); }
+.schools-manager-heading h2 { margin-top:5px; color:var(--navy); font-size:1.35rem; letter-spacing:-.05em; }
+.schools-manager-heading p:last-child { margin-top:5px; color:#718078; font-size:.78rem; line-height:1.5; }
+.schools-manager-grid { display:grid; grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr); gap:14px; align-items:start; }
+.schools-list-panel,.schools-create-panel { min-width:0; padding:18px; border:1px solid #e0e8e1; border-radius:16px; background:#fff; }
+.schools-create-panel { display:grid; gap:13px; background:linear-gradient(160deg,#f9fcf8 0%,#f0f7f1 100%); }
+.schools-panel-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+.schools-panel-title h3 { margin-top:5px; color:var(--navy); font-size:.94rem; letter-spacing:-.025em; }
+.schools-panel-kicker { display:inline-flex; align-items:center; gap:6px; color:#7c8981; font: .6rem 'DM Mono',monospace; letter-spacing:.09em; }
+.schools-count { display:grid; place-items:center; width:30px; height:30px; border-radius:50%; background:#edf4ee; color:var(--green); font-size:.78rem; font-weight:800; }
+.schools-list { display:grid; gap:8px; padding:0; list-style:none; }
+.schools-list-item { display:flex; align-items:center; gap:10px; min-width:0; padding:10px; border:1px solid #e6ece7; border-radius:12px; background:#fff; }
+.schools-list-item.active { border-color:#bfd9c3; background:#f4faf4; }
+.schools-list-icon { display:grid; place-items:center; flex:0 0 34px; height:34px; border-radius:10px; background:#edf4ee; color:var(--green); }
+.schools-list-details { display:grid; min-width:0; flex:1; gap:3px; }
+.schools-list-details strong { overflow:hidden; color:var(--navy); font-size:.78rem; text-overflow:ellipsis; white-space:nowrap; }
+.schools-list-details small { color:#7b887f; font-size:.66rem; }
+.schools-active-badge,.schools-activate-button { display:inline-flex; align-items:center; justify-content:center; gap:5px; flex:0 0 auto; min-height:28px; padding:5px 8px; border-radius:8px; font-size:.64rem; font-weight:800; }
+.schools-active-badge { background:#e1f1e4; color:#2f704d; }
+.schools-activate-button { border:1px solid #d5e2d7; background:#fff; color:#52695b; }
+.schools-activate-button:hover { border-color:#a9c8af; background:#f4faf4; color:var(--green); }
+.schools-empty { padding:18px 10px; color:#7a887f; font-size:.76rem; text-align:center; }
+.schools-create-decoration { color:#91a298; }
+.schools-create-description { margin-top:-9px; color:#748178; font-size:.7rem; line-height:1.55; }
+.schools-field { display:grid; gap:6px; }
+.schools-field > span { display:flex; align-items:baseline; gap:6px; color:#56675f; font-size:.66rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.schools-field > span b { color:#a14a3a; }
+.schools-field > span small { color:#89958d; font-size:.59rem; font-weight:600; letter-spacing:0; text-transform:none; }
+.schools-field input { width:100%; min-height:40px; padding:9px 11px; border:1px solid #d3ded5; border-radius:10px; background:#fff; color:var(--navy); font-size:.75rem; outline:none; }
+.schools-field input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,.11); }
+.schools-field input::placeholder { color:#a0aaa3; }
+.schools-feedback { padding:9px 10px; border-radius:9px; font-size:.7rem; font-weight:700; line-height:1.45; }
+.schools-feedback.error { border:1px solid #efd0c9; background:#fff5f2; color:#984b3d; }
+.schools-feedback.success { border:1px solid #cce4d0; background:#f0faf1; color:#286c48; }
+.schools-create-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:42px; width:100%; padding:10px 14px; border:0; border-radius:11px; background:linear-gradient(180deg,#39755d 0%,#2e664f 100%); color:#fff; font-size:.75rem; font-weight:800; box-shadow:0 9px 16px rgba(57,117,93,.15); }
+.schools-create-button:hover:not(:disabled) { background:#285b45; }
+.schools-create-button:disabled { cursor:not-allowed; opacity:.55; }
 .admin-heading { margin-bottom:18px; }
 .admin-form { display:grid; gap:22px; padding:28px; background:linear-gradient(180deg, #ffffff 0%, #f7faf7 100%); border:1px solid #dfe8e1; border-radius:24px; box-shadow:0 18px 40px rgba(18,32,27,0.06); }
 .admin-form-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:18px; }
@@ -528,6 +567,11 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 .student-record-empty, .student-record-status { color:#68756d; font-size:0.85rem; font-weight:700; }
 .student-record-status { color:var(--green); }
 @media (max-width: 700px) {
+  .schools-manager { margin-top:18px; padding:16px; border-radius:17px; }
+  .schools-manager-grid { grid-template-columns:1fr; }
+  .schools-list-panel,.schools-create-panel { padding:14px; }
+  .schools-list-item { gap:8px; padding:8px; }
+  .schools-list-details strong { font-size:.73rem; }
   .pagination { width:100%; justify-content:space-between; gap:0.5rem; }
   .pagination-compact { flex:1 1 auto; justify-content:center; gap:0.35rem; }
   .page-button { flex:1 1 auto; min-width:0; }
@@ -648,6 +692,12 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 }
 
 @media (max-width: 480px) {
+  .schools-manager { padding:13px; }
+  .schools-manager-heading { gap:10px; }
+  .schools-manager-heading-icon { flex-basis:36px; height:36px; }
+  .schools-manager-heading h2 { font-size:1.2rem; }
+  .schools-manager-heading p:last-child { font-size:.7rem; }
+  .schools-active-badge,.schools-activate-button { font-size:.59rem; padding:5px 6px; }
   .sidebar-header { padding: 10px 12px; }
   .brand { font-size: 12px; gap: 6px; }
   .brand-mark { width: 22px; height: 22px; font-size: 11px; }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   BookOpen,
   Building2,
@@ -21,8 +21,6 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
   const [schoolMemberships, setSchoolMemberships] = useState<Array<{ schoolId: string; role: string; school: { id: string; name: string } }>>([]);
   const [activeSchoolId, setActiveSchoolId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
-  const [newSchoolName, setNewSchoolName] = useState("");
-  const [schoolError, setSchoolError] = useState("");
   const isAdmin = role === "ADMIN";
 
   useEffect(() => {
@@ -48,22 +46,6 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
       body: JSON.stringify({ schoolId }),
     });
     if (response.ok) window.location.reload();
-  }
-
-  async function createSchool(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSchoolError("");
-    const response = await fetch("/api/schools", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newSchoolName }),
-    });
-    if (response.ok) {
-      window.location.reload();
-      return;
-    }
-    const result = await response.json().catch(() => null);
-    setSchoolError(result?.error ?? "Não foi possível registar a escola.");
   }
 
   return (
@@ -94,21 +76,6 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
               </select>
             </label>
           )}
-          {role === "ADMIN" && (
-            <form onSubmit={createSchool} className="school-create-form">
-              <input
-                aria-label="Nome da nova escola"
-                value={newSchoolName}
-                onChange={(event) => setNewSchoolName(event.target.value)}
-                placeholder="Nome de outra escola"
-                maxLength={160}
-                required
-              />
-              <button type="submit">Adicionar escola</button>
-              {schoolError && <p role="alert">{schoolError}</p>}
-            </form>
-          )}
-
           <button
             className="mobile-menu-toggle"
             onClick={() => setMenuOpen(!menuOpen)}

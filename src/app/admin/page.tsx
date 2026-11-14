@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { AdminClient } from "./admin-client";
 import { getSchoolContext } from "@/lib/school-context";
+import { SchoolsManager } from "./schools-manager";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -19,7 +20,7 @@ export default async function AdminPage() {
         <header className="topbar">
           <div>
             <p className="eyebrow">ADMINISTRAÇÃO</p>
-            <h1>Gestão da plataforma</h1>
+            <h1>Gestão da escola</h1>
           </div>
         </header>
 
@@ -79,6 +80,7 @@ export default async function AdminPage() {
           </Link>
         </nav>
 
+        <SchoolsManager />
         <AdminClient />
       </main>
     </AppShell>
