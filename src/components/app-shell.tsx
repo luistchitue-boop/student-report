@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
@@ -21,6 +22,7 @@ const sectionTitles = {
 } as const;
 
 export function AppShell({ children, active }: { children: ReactNode; active: keyof typeof sectionTitles }) {
+  const router = useRouter();
   const { data: session } = useSession();
   const [schoolMemberships, setSchoolMemberships] = useState<Array<{ schoolId: string; role: string; school: { id: string; name: string } }>>([]);
   const [activeSchoolId, setActiveSchoolId] = useState<string | null>(null);
@@ -56,7 +58,8 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
       });
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(result?.error ?? "Não foi possível mudar de escola.");
-      window.location.reload();
+      router.replace("/");
+      router.refresh();
     } catch (error) {
       setSchoolSwitchError(error instanceof Error ? error.message : "Não foi possível mudar de escola.");
       setSwitchingSchool(false);
