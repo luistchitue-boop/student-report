@@ -81,7 +81,7 @@ export default async function TurmasPage({
   return (
     <AppShell active="turmas">
       <main className="main-content mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 sm:px-6 lg:gap-8 lg:px-8">
-        <header className="flex flex-col justify-between gap-4 border-b pb-5 sm:flex-row sm:items-end">
+        <header className="flex flex-col justify-between gap-4 pb-5 sm:flex-row sm:items-end">
           <div className="space-y-2">
             <Badge variant="secondary" className="gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
               <GraduationCap className="size-3.5" /> Coordenação

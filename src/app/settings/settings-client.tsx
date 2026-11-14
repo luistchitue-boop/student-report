@@ -105,7 +105,7 @@ export function SettingsClient() {
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
-      <header className="border-b pb-5">
+      <header className="pb-5">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">Conta</p>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Definições da conta</h1>

@@ -788,7 +788,6 @@ button { font-weight:500; }
     min-height: 4.25rem;
     margin: 0 0 1.5rem;
     padding: 0 0 1.2rem;
-    border-bottom: 1px solid var(--border);
   }
 
   .main-content > .topbar .eyebrow,
