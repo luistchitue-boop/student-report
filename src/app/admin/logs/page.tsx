@@ -244,10 +244,10 @@ export default async function ActivityLogsPage({
               <nav className="flex flex-wrap items-center justify-center gap-2" aria-label="Paginação dos registos de atividade">
                 <Button
                   variant="outline"
-                  render={<Link href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} />}
+                  render={<Link href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)} aria-label="Anterior" aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} />}
                   className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                 >
-                  <ArrowLeft /> Anterior
+                  <ArrowLeft />
                 </Button>
                 <div className="flex items-center gap-1" aria-label="Páginas dos registos">
                   {pageItems.map((page, index) => typeof page === "number" ? (
@@ -263,10 +263,10 @@ export default async function ActivityLogsPage({
                 </div>
                 <Button
                   variant="outline"
-                  render={<Link href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} />}
+                  render={<Link href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)} aria-label="Próxima" aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} />}
                   className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
                 >
-                  Próxima <ArrowRight />
+                  <ArrowRight />
                 </Button>
               </nav>
             )}

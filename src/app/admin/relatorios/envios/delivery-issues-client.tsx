@@ -514,8 +514,8 @@ export function DeliveryIssuesClient() {
             </div>
             {totalPages > 1 && (
               <nav className="flex flex-wrap items-center justify-center gap-2 border-t px-4 py-4" aria-label="Paginação dos registos de envio">
-                <Button type="button" variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
-                  <ArrowLeft /> Anterior
+                <Button type="button" variant="outline" aria-label="Anterior" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
+                  <ArrowLeft />
                 </Button>
                 <div className="flex items-center gap-1" aria-label="Páginas dos registos de envio">
                   {pageItems.map((item, index) => typeof item === "number" ? (
@@ -524,8 +524,8 @@ export function DeliveryIssuesClient() {
                     </Button>
                   ) : <span key={item} className="px-2 text-sm text-muted-foreground" aria-hidden="true">…</span>)}
                 </div>
-                <Button type="button" variant="outline" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)}>
-                  Próxima <ArrowRight />
+                <Button type="button" variant="outline" aria-label="Próxima" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)}>
+                  <ArrowRight />
                 </Button>
               </nav>
             )}

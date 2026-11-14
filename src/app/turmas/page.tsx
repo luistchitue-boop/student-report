@@ -250,10 +250,11 @@ export default async function TurmasPage({
           <nav className="flex flex-wrap items-center justify-center gap-2" aria-label="Paginação de turmas">
             <Button
               variant="outline"
+              aria-label="Anterior"
               render={<Link href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} />}
               className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
             >
-              <ArrowLeft /> Anterior
+              <ArrowLeft />
             </Button>
             <div className="flex items-center gap-1" aria-label="Páginas de turmas">
               {pageItems.map((page, index) => typeof page === "number" ? (
@@ -269,10 +270,11 @@ export default async function TurmasPage({
             </div>
             <Button
               variant="outline"
+              aria-label="Próxima"
               render={<Link href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} />}
               className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
             >
-              Próxima <ArrowRight />
+              <ArrowRight />
             </Button>
           </nav>
         )}

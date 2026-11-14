@@ -152,13 +152,13 @@ export default async function TurmaDetailPage({
 
         {totalPages > 1 && (
           <nav className="flex flex-wrap items-center justify-center gap-2" aria-label="Paginação dos alunos da turma">
-            <Button variant="outline" className={currentPage === 1 ? "pointer-events-none opacity-50" : ""} render={<Link href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} />}><ArrowLeft /> Anterior</Button>
+            <Button variant="outline" aria-label="Anterior" className={currentPage === 1 ? "pointer-events-none opacity-50" : ""} render={<Link href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)} aria-label="Anterior" aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} />}><ArrowLeft /></Button>
             <div className="flex items-center gap-1" aria-label="Páginas de alunos">
               {pageItems.map((page, index) => typeof page === "number" ? (
                 <Button key={`${page}-${index}`} variant={page === currentPage ? "default" : "ghost"} size="icon" render={<Link href={buildPageHref(page)} aria-current={page === currentPage ? "page" : undefined} aria-label={`Página ${page}`} />}>{page}</Button>
               ) : <span key={`ellipsis-${index}`} className="px-2 text-sm text-muted-foreground" aria-hidden="true">…</span>)}
             </div>
-            <Button variant="outline" className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""} render={<Link href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} />}>Próxima <ArrowRight /></Button>
+            <Button variant="outline" aria-label="Próxima" className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""} render={<Link href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)} aria-label="Próxima" aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} />}><ArrowRight /></Button>
           </nav>
         )}
       </main>
