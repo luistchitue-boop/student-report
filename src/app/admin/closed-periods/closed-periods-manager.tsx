@@ -268,7 +268,7 @@ export function ClosedPeriodsManager() {
             const closedBy = period.closedInfo?.closedBy.name || period.closedInfo?.closedBy.email;
 
             return (
-              <Card key={startStr} className="overflow-hidden shadow-none">
+              <Card key={startStr} className="gap-0 overflow-hidden py-0 shadow-none">
                 <CardContent className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3">
                     <span className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg ${period.isClosed ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`} aria-hidden="true">
@@ -391,8 +391,8 @@ export function ClosedPeriodsManager() {
             {selectedMonthlyClosures.length ? (
               <div className="grid gap-2">
                 {selectedMonthlyClosures.map((closure) => (
-                  <Card key={closure.id} className="border-destructive/20 bg-destructive/[0.03] shadow-none">
-                    <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <Card key={closure.id} className="gap-0 border-destructive/20 bg-destructive/[0.03] py-0 shadow-none">
+                    <CardContent className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-start gap-3">
                         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive" aria-hidden="true"><LockKeyhole className="size-4" /></span>
                         <div className="grid min-w-0 gap-1">
