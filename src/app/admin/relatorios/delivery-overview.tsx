@@ -2,12 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, ArrowRight, Mail } from "lucide-react";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type TurmaDeliverySummary = {
   id: string;
   name: string;
   studentCount: number;
+  sentEmailCount: number;
   deliveredCount: number;
   percentage: number;
   failedCount: number;
@@ -31,9 +41,10 @@ export function DeliveryOverview() {
   const [error, setError] = useState("");
   const totals = summary.reduce((result, turma) => ({
     students: result.students + turma.studentCount,
+    sentEmails: result.sentEmails + turma.sentEmailCount,
     delivered: result.delivered + turma.deliveredCount,
     issues: result.issues + turma.failedCount + turma.bouncedCount + turma.delayedCount,
-  }), { students: 0, delivered: 0, issues: 0 });
+  }), { students: 0, sentEmails: 0, delivered: 0, issues: 0 });
   const totalPercentage = totals.students ? Math.round((totals.delivered / totals.students) * 100) : 0;
 
   useEffect(() => {
@@ -58,77 +69,114 @@ export function DeliveryOverview() {
   }, [periodKey]);
 
   return (
-    <section className="delivery-overview" aria-labelledby="delivery-overview-title">
-      <header className="delivery-overview-header">
-        <div>
-          <p className="eyebrow">ACOMPANHAMENTO DE E-MAILS</p>
-          <h2 id="delivery-overview-title">Relatórios entregues por turma</h2>
-          <p>Percentagem de alunos cujo e-mail foi confirmado como entregue pelo Resend.</p>
-        </div>
-        <Link href="/admin/relatorios/envios" className="delivery-details-link">Ver falhas e devoluções <span aria-hidden="true">→</span></Link>
-      </header>
-
-      <div className="delivery-period-row">
-        <label htmlFor="delivery-month">Período mensal</label>
-        <select id="delivery-month" value={periodKey} onChange={(event) => setPeriodKey(event.target.value)}>
-          {months.map((month) => <option key={month.key} value={month.key}>{getPeriodLabel(month)}</option>)}
-        </select>
-      </div>
-
-      {error ? <p className="delivery-overview-message error" role="alert">{error}</p> : loading ? <p className="delivery-overview-message">A carregar dados do período...</p> : (
-        <>
-          <div className="delivery-summary-cards">
-            <article><span>Relatórios entregues</span><strong>{totals.delivered} <small>/ {totals.students} alunos</small></strong></article>
-            <article><span>Percentagem global</span><strong>{totalPercentage}%</strong></article>
-            <article><span>Envios com problemas</span><strong>{totals.issues}</strong></article>
+    <Card className="overflow-hidden shadow-sm">
+      <CardHeader className="flex flex-col gap-4 border-b bg-muted/20 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Badge variant="secondary" className="gap-1.5"><Mail className="size-3.5" /> Acompanhamento de e-mails</Badge>
+          <div className="space-y-1">
+            <CardTitle className="text-xl" id="delivery-overview-title">Relatórios entregues por turma</CardTitle>
+            <CardDescription>Confirmações de entrega de e-mail recebidas pelo Resend.</CardDescription>
           </div>
-          {!summary.length ? <p className="delivery-overview-message">Não existem turmas registadas.</p> : <div className="delivery-summary-table-wrap">
-            <table className="delivery-summary-table">
-              <thead><tr><th>Turma</th><th>Relatórios entregues</th><th>Percentagem</th><th>Problemas</th></tr></thead>
-              <tbody>{summary.map((turma) => {
-                const issues = turma.failedCount + turma.bouncedCount + turma.delayedCount;
-                return <tr key={turma.id}>
-                  <th scope="row">{turma.name}</th>
-                  <td>{turma.deliveredCount} / {turma.studentCount}</td>
-                  <td><div className="delivery-progress-cell"><div className="delivery-progress" role="progressbar" aria-label={`E-mails entregues de ${turma.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={turma.percentage}><span style={{ width: `${turma.percentage}%` }} /></div><strong>{turma.percentage}%</strong></div></td>
-                  <td>{issues ? <span className="delivery-issue-count">{issues}</span> : <span className="delivery-no-issues">—</span>}</td>
-                </tr>;
-              })}</tbody>
-            </table>
-          </div>}
-          <p className="delivery-overview-footnote">Um aluno conta como entregue quando pelo menos um e-mail do encarregado recebe confirmação de entrega do Resend. E-mails aceites para envio, mas ainda sem confirmação, não entram nesta contagem. Configure o webhook do Resend para atualizar os estados.</p>
-        </>
-      )}
+        </div>
+        <Button variant="outline" className="w-full sm:w-fit" render={<Link href="/admin/relatorios/envios" />}>
+          Ver falhas e devoluções <ArrowRight />
+        </Button>
+      </CardHeader>
 
-      <style>{`
-        .delivery-overview { display:grid; gap:1rem; padding:1.3rem; background:#fff; border:1px solid #dbe3ec; border-radius:18px; box-shadow:0 8px 24px rgba(15,23,42,.04); }
-        .delivery-overview-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
-        .delivery-overview-header h2 { margin:.2rem 0 .35rem; color:#173044; font-size:1.2rem; }
-        .delivery-overview-header p:not(.eyebrow) { margin:0; color:#64748b; font-size:.85rem; }
-        .delivery-details-link { display:inline-flex; align-items:center; gap:.4rem; padding:.65rem .85rem; color:#1d4ed8; background:#eff6ff; border-radius:9px; text-decoration:none; font-size:.82rem; font-weight:800; white-space:nowrap; }
-        .delivery-period-row { display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; color:#334155; font-size:.85rem; font-weight:700; }
-        .delivery-period-row select { min-width:220px; padding:.65rem .75rem; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#1e293b; }
-        .delivery-summary-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; }
-        .delivery-summary-cards article { display:grid; gap:.35rem; padding:.9rem 1rem; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0; }
-        .delivery-summary-cards article span { color:#64748b; font-size:.77rem; font-weight:700; }
-        .delivery-summary-cards article strong { color:#173044; font-size:1.35rem; }
-        .delivery-summary-cards article small { color:#64748b; font-size:.75rem; font-weight:600; }
-        .delivery-summary-table-wrap { overflow-x:auto; }
-        .delivery-summary-table { width:100%; border-collapse:collapse; font-size:.84rem; text-align:left; }
-        .delivery-summary-table th,.delivery-summary-table td { padding:.72rem .6rem; border-bottom:1px solid #e2e8f0; }
-        .delivery-summary-table thead th { color:#64748b; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; }
-        .delivery-summary-table tbody th { color:#1e293b; font-weight:800; }
-        .delivery-progress-cell { display:flex; align-items:center; gap:.55rem; min-width:150px; }
-        .delivery-progress-cell strong { min-width:2.5rem; color:#334155; font-size:.78rem; }
-        .delivery-progress { flex:1; height:8px; overflow:hidden; border-radius:99px; background:#e2e8f0; }
-        .delivery-progress span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#0f766e,#34d399); }
-        .delivery-issue-count { display:inline-flex; min-width:1.6rem; justify-content:center; padding:.2rem .45rem; border-radius:999px; color:#9f1239; background:#fff1f2; font-weight:800; }
-        .delivery-no-issues { color:#94a3b8; }
-        .delivery-overview-message { margin:0; color:#64748b; font-size:.88rem; }
-        .delivery-overview-message.error { color:#b91c1c; }
-        .delivery-overview-footnote { margin:0; color:#64748b; font-size:.76rem; line-height:1.5; }
-        @media (max-width:700px) { .delivery-overview-header { flex-direction:column; } .delivery-summary-cards { grid-template-columns:1fr; } }
-      `}</style>
-    </section>
+      <CardContent className="grid gap-5 p-5 sm:p-6">
+        <div className="grid gap-2 sm:max-w-xs">
+          <Label htmlFor="delivery-month">Período mensal</Label>
+          <Select value={periodKey || null} disabled={!months.length} onValueChange={(value) => { if (value) setPeriodKey(value); }}>
+            <SelectTrigger id="delivery-month" className="h-10 w-full data-[size=default]:h-10">
+              <SelectValue placeholder="Selecione um mês" />
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false}>
+              {months.map((month) => <SelectItem key={month.key} value={month.key}>{getPeriodLabel(month)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {error ? (
+          <Card role="alert" className="border-destructive/30 bg-destructive/5 shadow-none">
+            <CardContent className="flex items-start gap-2 p-4 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</CardContent>
+          </Card>
+        ) : loading ? (
+          <div className="grid gap-3 md:grid-cols-3">
+            {Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-24 rounded-xl" />)}
+            <Skeleton className="h-48 rounded-xl md:col-span-3" />
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <Card className="border-border/70 shadow-none">
+                <CardContent className="grid gap-1 p-4">
+                  <CardDescription>E-mails enviados</CardDescription>
+                  <CardTitle className="text-2xl tabular-nums">{totals.sentEmails}</CardTitle>
+                </CardContent>
+              </Card>
+              <Card className="border-border/70 shadow-none">
+                <CardContent className="grid gap-1 p-4">
+                  <CardDescription>Alunos com entrega confirmada</CardDescription>
+                  <CardTitle className="text-2xl tabular-nums">{totals.delivered} <span className="text-sm font-normal text-muted-foreground">/ {totals.students} alunos</span></CardTitle>
+                </CardContent>
+              </Card>
+              <Card className="border-border/70 shadow-none">
+                <CardContent className="grid gap-1 p-4">
+                  <CardDescription>Percentagem global</CardDescription>
+                  <CardTitle className="text-2xl tabular-nums">{totalPercentage}%</CardTitle>
+                </CardContent>
+              </Card>
+              <Card className="border-border/70 shadow-none sm:col-span-2 xl:col-span-1">
+                <CardContent className="flex items-center justify-between gap-3 p-4">
+                  <div className="grid gap-1"><CardDescription>Envios com problemas</CardDescription><CardTitle className="text-2xl tabular-nums">{totals.issues}</CardTitle></div>
+                  <Badge variant={totals.issues ? "destructive" : "secondary"}>{totals.issues ? "Requer atenção" : "Sem problemas"}</Badge>
+                </CardContent>
+              </Card>
+            </div>
+
+            {!summary.length ? (
+              <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Não existem turmas registadas neste período.</div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border">
+                <Table className="min-w-[820px]">
+                  <TableHeader className="bg-muted/50">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">Turma</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">E-mails enviados</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">Alunos entregues</TableHead>
+                      <TableHead className="min-w-[220px] text-xs uppercase tracking-wide text-muted-foreground">Entrega</TableHead>
+                      <TableHead className="text-right text-xs uppercase tracking-wide text-muted-foreground">Problemas</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {summary.map((turma) => {
+                      const issues = turma.failedCount + turma.bouncedCount + turma.delayedCount;
+                      return (
+                        <TableRow key={turma.id}>
+                          <TableCell className="font-medium text-foreground">{turma.name}</TableCell>
+                          <TableCell className="tabular-nums">{turma.sentEmailCount}</TableCell>
+                          <TableCell className="tabular-nums">{turma.deliveredCount} / {turma.studentCount}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Progress value={turma.percentage} aria-label={`E-mails entregues de ${turma.name}`} />
+                              <span className="w-10 text-right text-xs font-semibold tabular-nums">{turma.percentage}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant={issues ? "destructive" : "secondary"}>{issues}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            <p className="text-xs leading-relaxed text-muted-foreground">Um aluno conta como entregue quando pelo menos um e-mail do encarregado recebe confirmação de entrega do Resend. E-mails aceites para envio, mas ainda sem confirmação, não entram nesta contagem. Configure o webhook do Resend para atualizar os estados.</p>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

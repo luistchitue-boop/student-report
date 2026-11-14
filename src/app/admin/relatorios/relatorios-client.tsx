@@ -1,6 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AlertCircle, ArrowDownToLine, Check, ChevronDown, CircleCheck, Eye, Mail, MessageCircle, Search, Send, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatPeriodDate, getPeriodLabel, getReportPeriods, isDateInPeriod } from "@/lib/weekly-coordination";
 import { DeliveryOverview } from "./delivery-overview";
 
@@ -13,7 +24,7 @@ type Turma = {
 };
 
 type DeliveryResult = { email: string; studentName: string; success: boolean; error?: string };
-type MonthlyDeliverySummary = { id: string; deliveredCount: number; studentCount: number; percentage: number };
+type MonthlyDeliverySummary = { id: string; sentEmailCount: number; deliveredCount: number; studentCount: number; percentage: number };
 type FailedDelivery = { id: string; studentName: string; recipientName?: string | null; recipientEmail: string; error?: string | null; attemptedAt: string };
 type Completeness = { turmaId: string; turmaName: string; subjectCount: number; missingSubjects: string[]; activeStudentCount: number; missingBehaviorStudents: Array<{ id: string; name: string }>; complete: boolean };
 
@@ -71,7 +82,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
   function selectStudent(student: (typeof studentsForSelection)[number]) {
     setSelectedStudentId(student.id);
     setSelectedParentIds([]);
-    setStudentSearch(`${student.name} · ${student.turmaName}`);
+    setStudentSearch("");
     setShowStudentSuggestions(false);
     resetFeedback();
   }
@@ -132,7 +143,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
       .then(async (response) => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Não foi possível consultar os envios do período.");
-        return data as { summary?: Array<{ id: string; deliveredCount: number; studentCount: number; percentage: number }> };
+        return data as { summary?: MonthlyDeliverySummary[] };
       })
       .then((data) => {
         if (!cancelled) {
@@ -201,6 +212,7 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
     } catch (error) {
       setFailedDeliveries([]);
       setAuditStatus("error");
+      setStatus("error");
       setMessage(error instanceof Error ? error.message : "Não foi possível consultar os envios.");
     }
   }
@@ -260,245 +272,369 @@ export function RelatoriosClient({ turmas, canSend }: { turmas: Turma[]; canSend
   const completenessReady = selectedCompleteness.length === selectedTurmas.length && selectedTurmas.length > 0;
   const allSelectedTurmasComplete = completenessReady && selectedCompleteness.every((item) => item.complete);
 
+  const selectedStudentLabel = selectedStudent
+    ? `${selectedStudent.name} · ${selectedStudent.turmaName}`
+    : studentSearch || "Pesquisar aluno...";
+
   return (
-    <section className="admin-shell workspace">
+    <section className="space-y-6">
       {canSend && <DeliveryOverview />}
-      <div className="section-heading admin-heading">
-        <div>
-          <p className="eyebrow">SELECIONE AS TURMAS</p>
-          <h3>{canSend ? "Gerar e enviar relatórios" : "Visualizar relatórios e completude"}{canSend ? ` por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}` : ""}</h3>
-        </div>
-      </div>
 
-      {canSend && (
-        <div className="admin-channel-tabs" role="tablist" aria-label="Canal de envio">
-          <button type="button" className={channel === "EMAIL" ? "active" : ""} onClick={() => { setChannel("EMAIL"); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>E-mail</button>
-          <button type="button" className={channel === "WHATSAPP" ? "active" : ""} onClick={() => { setChannel("WHATSAPP"); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>WhatsApp</button>
-        </div>
-      )}
-
-      <div className="weekly-period-selector admin-report-period">
-        <label>Período de relatório
-          <select value={selectedPeriod} onChange={(event) => { setSelectedPeriod(event.target.value); setSelectedTurmas([]); setCompleteness([]); setSelectedStudentId(""); setSelectedParentIds([]); setStudentSearch(""); setFailedDeliveries([]); setAuditStatus("idle"); resetFeedback(); }}>
-            <option value="">Selecione um período</option>
-            {reportPeriods.map((period) => {
-              const isClosed = closedPeriods.has(period.key);
-              const isFuture = isFuturePeriod(period.key);
-              const isDisabled = period.type === "WEEKLY" && (isFuture || isClosed);
-              const label = `${period.type === "WEEKLY" ? "Semanal" : "Mensal"}: ${getPeriodLabel(period)}${isFuture ? " (futuro)" : ""}${period.type === "WEEKLY" && isClosed ? " (fechado)" : ""}`;
-              return <option key={period.key} value={period.key} disabled={isDisabled}>{label}</option>;
-            })}
-          </select>
-        </label>
-      </div>
-
-      <div className="admin-turma-panel">
-        <div className="admin-turma-grid">
-          {turmas.map((turma) => {
-            const item = currentCompleteness.find((entry) => entry.turmaId === turma.id);
-            const completionDenominator = item ? item.subjectCount + item.activeStudentCount : 0;
-            const completionNumerator = item ? item.subjectCount - item.missingSubjects.length + item.activeStudentCount - item.missingBehaviorStudents.length : 0;
-            const completionPercentage = completionDenominator ? Math.round((completionNumerator / completionDenominator) * 100) : item?.complete ? 100 : 0;
-            const delivery = currentDeliverySummary.find((entry) => entry.id === turma.id);
-            return <label key={turma.id} className={`admin-checkbox ${selectedTurmas.includes(turma.id) ? "selected" : ""} ${!selectedPeriod ? "disabled" : ""}`}>
-            <input type="checkbox" disabled={!selectedPeriod || status === "sending"} checked={selectedTurmas.includes(turma.id)} onChange={() => toggleTurma(turma.id)} />
-            {monthlyPeriod && channel === "EMAIL" && delivery && delivery.deliveredCount > 0 && <span className="turma-sent-indicator" title={`${delivery.deliveredCount} de ${delivery.studentCount} alunos com relatório entregue`} aria-label={`${delivery.deliveredCount} de ${delivery.studentCount} alunos com relatório entregue`}><span aria-hidden="true">✓</span><small>{delivery.deliveredCount}/{delivery.studentCount}</small></span>}
-            <span className="admin-checkbox-content"><strong>{turma.name}</strong><small>{turma.students} alunos</small>
-              {monthlyPeriod && <span className="turma-completion">
-                <span className="turma-completion-label"><span>{completenessLoading && completenessPeriodKey !== selectedPeriod ? "A calcular completude..." : item ? "Completude dos dados" : "A aguardar dados"}</span>{item && <strong>{completionPercentage}%</strong>}</span>
-                <span className="turma-completion-track" role="progressbar" aria-label={`Completude dos dados de ${turma.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={item ? completionPercentage : 0}><span style={{ width: `${item ? completionPercentage : 0}%` }} /></span>
-                {channel === "EMAIL" && (deliverySummaryLoading && deliverySummaryPeriodKey !== selectedPeriod ? <small className="turma-delivery-count">A consultar entregas...</small> : delivery && <small className="turma-delivery-count">E-mails entregues: {delivery.deliveredCount}/{delivery.studentCount}</small>)}
-              </span>}
-            </span>
-          </label>;
-          })}
-        </div>
-      </div>
-
-      {selectedPeriod && selectedTurmas.length > 0 && (
-        <div className="admin-completeness-panel">
-          <div className="admin-completeness-heading">
-            <div><strong>Completude dos dados</strong><small>Notas por disciplina e comportamento por aluno</small></div>
-            <span className={`admin-completeness-status ${!completenessReady ? "checking" : allSelectedTurmasComplete ? "ready" : "blocked"}`}>{!completenessReady ? "A verificar" : allSelectedTurmasComplete ? "Pronto para enviar" : "Envio bloqueado"}</span>
-          </div>
-          {completenessReady && selectedCompleteness.map((item) => (
-            <div key={item.turmaId} className={`admin-completeness-row ${item.complete ? "complete" : "incomplete"}`}>
-              <div className="admin-completeness-row-heading"><strong>{item.turmaName}</strong><span>{item.complete ? "Completo" : "Incompleto"}</span></div>
-              <div className="admin-completeness-metrics"><span>{item.subjectCount - item.missingSubjects.length}/{item.subjectCount} disciplinas</span><span>{item.activeStudentCount - item.missingBehaviorStudents.length}/{item.activeStudentCount} comportamentos</span></div>
-              {item.complete ? <p>Todos os dados necessários estão preenchidos.</p> : <div className="admin-completeness-missing">
-                {item.missingSubjects.length > 0 && <div><strong>Disciplinas sem notas</strong><span>{item.missingSubjects.join(", ")}</span></div>}
-                {item.missingBehaviorStudents.length > 0 && <div><strong>Alunos sem comportamento</strong><span>{item.missingBehaviorStudents.map((student) => student.name).join(", ")}</span></div>}
-              </div>}
+      <Card className="shadow-sm">
+        <CardHeader className="border-b bg-muted/20">
+          <Badge variant="secondary" className="w-fit">SELECIONE AS TURMAS</Badge>
+          <CardTitle className="text-xl">{canSend ? "Gerar e enviar relatórios" : "Visualizar relatórios e completude"}</CardTitle>
+          <CardDescription>{canSend ? "Escolha o canal, o período e as turmas que pretende processar." : "Escolha um período e as turmas para consultar relatórios e completude."}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 p-5 sm:p-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+            {canSend && (
+              <div className="grid min-w-0 gap-2">
+                <Label htmlFor="admin-report-channel">Canal de envio</Label>
+                <Select value={channel} onValueChange={(value) => {
+                  if (value !== "EMAIL" && value !== "WHATSAPP") return;
+                  setChannel(value);
+                  setFailedDeliveries([]);
+                  setAuditStatus("idle");
+                  resetFeedback();
+                }}>
+                  <SelectTrigger id="admin-report-channel" className="h-10 w-full data-[size=default]:h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectItem value="EMAIL"><span className="flex items-center gap-2"><Mail /> E-mail</span></SelectItem>
+                    <SelectItem value="WHATSAPP"><span className="flex items-center gap-2"><MessageCircle /> WhatsApp</span></SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor="admin-report-period">Período de relatório</Label>
+              <Select value={selectedPeriod || null} onValueChange={(value) => {
+                const nextPeriod = value === "__none__" ? "" : value;
+                if (!nextPeriod) {
+                  setSelectedPeriod("");
+                  setSelectedTurmas([]);
+                  setCompleteness([]);
+                  setSelectedStudentId("");
+                  setSelectedParentIds([]);
+                  setStudentSearch("");
+                  setFailedDeliveries([]);
+                  setAuditStatus("idle");
+                  resetFeedback();
+                  return;
+                }
+                setSelectedPeriod(nextPeriod);
+                setSelectedTurmas([]);
+                setCompleteness([]);
+                setSelectedStudentId("");
+                setSelectedParentIds([]);
+                setStudentSearch("");
+                setFailedDeliveries([]);
+                setAuditStatus("idle");
+                resetFeedback();
+              }}>
+                <SelectTrigger id="admin-report-period" className="h-10 w-full data-[size=default]:h-10">
+                  <SelectValue placeholder="Selecione um período" />
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>
+                  <SelectItem value="__none__">Selecione um período</SelectItem>
+                  {reportPeriods.map((period) => {
+                    const isClosed = closedPeriods.has(period.key);
+                    const isFuture = isFuturePeriod(period.key);
+                    const isDisabled = period.type === "WEEKLY" && (isFuture || isClosed);
+                    const label = `${period.type === "WEEKLY" ? "Semanal" : "Mensal"}: ${getPeriodLabel(period)}${isFuture ? " (futuro)" : ""}${period.type === "WEEKLY" && isClosed ? " (fechado)" : ""}`;
+                    return <SelectItem key={period.key} value={period.key} disabled={isDisabled}>{label}</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
             </div>
-          ))}
-        </div>
+          </div>
+
+          <div className="grid gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="space-y-1">
+                <h2 className="font-semibold">Turmas</h2>
+                <p className="text-sm text-muted-foreground">Selecione uma ou mais turmas para pré-visualizar ou enviar os relatórios.</p>
+              </div>
+              <Badge variant={selectedTurmas.length ? "secondary" : "outline"}>{selectedTurmas.length} selecionada(s)</Badge>
+            </div>
+
+            {turmas.length ? (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {turmas.map((turma) => {
+                  const item = currentCompleteness.find((entry) => entry.turmaId === turma.id);
+                  const completionDenominator = item ? item.subjectCount + item.activeStudentCount : 0;
+                  const completionNumerator = item ? item.subjectCount - item.missingSubjects.length + item.activeStudentCount - item.missingBehaviorStudents.length : 0;
+                  const completionPercentage = completionDenominator ? Math.round((completionNumerator / completionDenominator) * 100) : item?.complete ? 100 : 0;
+                  const delivery = currentDeliverySummary.find((entry) => entry.id === turma.id);
+                  const checkboxId = `report-turma-${turma.id}`;
+                  const isSelected = selectedTurmas.includes(turma.id);
+
+                  return (
+                    <Card key={turma.id} className={`transition-colors ${isSelected ? "border-primary/50 bg-primary/5 shadow-sm" : "border-border/70"}`}>
+                      <CardContent className="flex items-start gap-3 p-4">
+                        <Checkbox
+                          id={checkboxId}
+                          className="mt-0.5"
+                          disabled={!selectedPeriod || status === "sending"}
+                          checked={isSelected}
+                          onCheckedChange={() => toggleTurma(turma.id)}
+                        />
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <Label htmlFor={checkboxId} className="flex cursor-pointer flex-col gap-1">
+                            <span className="flex flex-wrap items-center justify-between gap-2 font-semibold text-foreground">{turma.name}{monthlyPeriod && channel === "EMAIL" && delivery ? <Badge variant="secondary" className="gap-1"><Check /> {delivery.sentEmailCount} e-mail(s) enviado(s)</Badge> : null}</span>
+                            <span className="text-xs font-normal text-muted-foreground">{turma.students} alunos</span>
+                          </Label>
+                          {monthlyPeriod && (
+                            <div className="grid gap-2">
+                              <div className="flex items-center justify-between gap-2 text-xs">
+                                <span className="text-muted-foreground">{completenessLoading && completenessPeriodKey !== selectedPeriod ? "A calcular completude..." : item ? "Completude dos dados" : "A aguardar dados"}</span>
+                                {item && <span className="font-semibold tabular-nums">{completionPercentage}%</span>}
+                              </div>
+                              <Progress value={item ? completionPercentage : 0} aria-label={`Completude dos dados de ${turma.name}`} className="h-1.5" />
+                              {channel === "EMAIL" && (deliverySummaryLoading && deliverySummaryPeriodKey !== selectedPeriod
+                                ? <p className="text-xs text-muted-foreground">A consultar entregas...</p>
+                                : delivery && <p className="text-xs text-muted-foreground">Entrega confirmada: {delivery.deliveredCount}/{delivery.studentCount} alunos</p>)}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Não existem turmas disponíveis para esta conta.</div>
+            )}
+          </div>
+
+          {selectedPeriod && selectedTurmas.length > 0 && (
+            <Card className="border-border/70 shadow-none">
+              <CardHeader className="flex flex-wrap items-start justify-between gap-3 pb-3">
+                <div className="space-y-1">
+                  <CardTitle className="text-base">Completude dos dados</CardTitle>
+                  <CardDescription>Notas por disciplina e comportamento por aluno.</CardDescription>
+                </div>
+                <Badge variant={!completenessReady ? "outline" : allSelectedTurmasComplete ? "secondary" : "destructive"}>
+                  {!completenessReady ? "A verificar" : allSelectedTurmasComplete ? "Pronto para enviar" : "Envio bloqueado"}
+                </Badge>
+              </CardHeader>
+              <CardContent className="grid gap-3 px-4 pb-4">
+                {!completenessReady ? (
+                  <p className="text-sm text-muted-foreground">{completenessLoading ? "A verificar os dados das turmas selecionadas..." : "Aguarde a verificação dos dados do período."}</p>
+                ) : selectedCompleteness.map((item) => (
+                  <Card key={item.turmaId} className="border-border/70 shadow-none">
+                    <CardContent className="grid gap-3 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="text-sm font-semibold">{item.turmaName}</strong>
+                        <Badge variant={item.complete ? "secondary" : "destructive"}>{item.complete ? <><CircleCheck /> Completo</> : "Incompleto"}</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline">{item.subjectCount - item.missingSubjects.length}/{item.subjectCount} disciplinas</Badge>
+                        <Badge variant="outline">{item.activeStudentCount - item.missingBehaviorStudents.length}/{item.activeStudentCount} comportamentos</Badge>
+                      </div>
+                      {!item.complete && (
+                        <div className="grid gap-3 border-t pt-3 sm:grid-cols-2">
+                          {item.missingSubjects.length > 0 && <div className="grid content-start gap-1"><span className="text-xs font-medium text-muted-foreground">Disciplinas sem notas</span><p className="text-sm">{item.missingSubjects.join(", ")}</p></div>}
+                          {item.missingBehaviorStudents.length > 0 && <div className="grid content-start gap-1"><span className="text-xs font-medium text-muted-foreground">Alunos sem comportamento</span><p className="text-sm">{item.missingBehaviorStudents.map((student) => student.name).join(", ")}</p></div>}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+            <Button type="button" variant="outline" onClick={handleTurmasPreview} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>
+              <Eye /> Pré-visualizar PDF
+            </Button>
+            {canSend && (
+              <Button type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>
+                <Send /> {status === "sending" ? "A enviar..." : `Enviar por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm">
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Users className="size-5" /></span>
+            <div className="space-y-1">
+              <CardTitle className="text-lg">Testar um caso individual</CardTitle>
+              <CardDescription>Pré-visualize ou envie o relatório de um aluno específico.</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          <div className="grid max-w-lg gap-2">
+            <Label htmlFor="admin-student-select">Aluno</Label>
+            <Popover open={showStudentSuggestions} onOpenChange={setShowStudentSuggestions}>
+              <PopoverTrigger
+                render={
+                  <Button
+                    id="admin-student-select"
+                    type="button"
+                    variant="outline"
+                    className="h-10 w-full justify-start gap-2 font-normal"
+                    disabled={!selectedPeriod || status === "sending"}
+                    aria-expanded={showStudentSuggestions}
+                    aria-haspopup="listbox"
+                  />
+                }
+              >
+                <Search className="text-muted-foreground" />
+                <span className="flex-1 truncate text-left">{selectedStudentLabel}</span>
+                <ChevronDown className="text-muted-foreground" />
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[min(90vw,28rem)] space-y-2 p-2">
+                <Input
+                  id="admin-student-search"
+                  type="search"
+                  autoComplete="off"
+                  placeholder="Pesquisar aluno..."
+                  value={studentSearch}
+                  onChange={(event) => { setStudentSearch(event.target.value); setSelectedStudentId(""); setSelectedParentIds([]); resetFeedback(); }}
+                />
+                <div role="listbox" aria-label="Resultados de alunos" className="grid max-h-64 gap-1 overflow-y-auto">
+                  {filteredStudents.length ? filteredStudents.slice(0, 12).map((student) => (
+                    <Button key={student.id} type="button" variant="ghost" role="option" aria-selected={selectedStudentId === student.id} className="h-auto w-full justify-start whitespace-normal px-3 py-2 text-left" onClick={() => selectStudent(student)}>
+                      <span className="grid gap-0.5"><span className="font-medium">{student.name}</span><span className="text-xs text-muted-foreground">{student.turmaName}</span></span>
+                    </Button>
+                  )) : <p className="px-3 py-5 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</p>}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {selectedStudent && (
+            <Card className="border-border/70 bg-muted/20 shadow-none">
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="grid gap-1"><span className="text-sm font-semibold">{selectedStudent.name}</span><span className="text-xs text-muted-foreground">{selectedStudent.turmaName} · {selectedStudent.parents.length} encarregado(s)</span></div>
+                <Badge variant="outline">Aluno selecionado</Badge>
+              </CardContent>
+            </Card>
+          )}
+
+          {canSend && channel === "EMAIL" && selectedStudent && (
+            <Card className="border-border/70 shadow-none">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Destinatários do relatório {monthlyPeriod ? "mensal" : "selecionado"}</CardTitle>
+                <CardDescription>Selecione um ou mais encarregados. O envio será feito apenas para os contactos escolhidos.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-2 px-4 pb-4">
+                {selectedStudent.parents.length ? selectedStudent.parents.map((parent) => {
+                  const parentCheckboxId = `report-parent-${parent.id}`;
+                  return (
+                    <div key={parent.id} className="flex items-start gap-3 rounded-lg border p-3">
+                      <Checkbox id={parentCheckboxId} className="mt-0.5" disabled={status === "sending"} checked={selectedParentIds.includes(parent.id)} onCheckedChange={() => toggleParent(parent.id)} />
+                      <Label htmlFor={parentCheckboxId} className="grid min-w-0 flex-1 cursor-pointer gap-0.5">
+                        <span className="font-medium">{parent.name}</span>
+                        <span className="break-all text-xs font-normal text-muted-foreground">{parent.email || "Sem e-mail registado"}</span>
+                      </Label>
+                    </div>
+                  );
+                }) : <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Este aluno não tem encarregados registados.</p>}
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={handlePreview} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>
+              <Eye /> Pré-visualizar PDF
+            </Button>
+            {canSend && (
+              <Button type="button" onClick={() => handleSendReports(selectedStudentId)} disabled={status === "sending" || !selectedPeriod || !selectedStudentId || (channel === "EMAIL" && selectedParentIds.length === 0)}>
+                <Send /> {status === "sending" ? "A enviar..." : `Enviar caso individual por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {message && (
+        <Card role={status === "error" ? "alert" : "status"} className={status === "error" ? "border-destructive/30 bg-destructive/5 shadow-none" : status === "success" ? "border-primary/30 bg-primary/5 shadow-none" : "bg-muted/30 shadow-none"}>
+          <CardContent className={`flex items-start gap-2 p-4 text-sm ${status === "error" ? "text-destructive" : status === "success" ? "text-primary" : "text-muted-foreground"}`}>
+            {status === "error" ? <AlertCircle className="mt-0.5 size-4 shrink-0" /> : status === "success" ? <CircleCheck className="mt-0.5 size-4 shrink-0" /> : null}
+            <span>{message}</span>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="admin-actions">
-        <button className="admin-preview-button" type="button" onClick={handleTurmasPreview} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>Pré-visualizar PDF</button>
-        {canSend && (
-          <button className="admin-submit" type="button" onClick={() => handleSendReports()} disabled={status === "sending" || !selectedPeriod || selectedTurmas.length === 0}>{status === "sending" ? "A enviar..." : `Enviar por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
-        )}
-      </div>
+      {previewUrl && (
+        <Card className="overflow-hidden shadow-sm">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1"><CardTitle className="text-base">Pré-visualização do relatório</CardTitle><CardDescription>Confirme o conteúdo antes de descarregar ou enviar.</CardDescription></div>
+            <Button variant="outline" className="w-full sm:w-fit" render={<a href={previewUrl} download="relatorios-preview.pdf" />}><ArrowDownToLine /> Descarregar PDF</Button>
+          </CardHeader>
+          <CardContent className="p-0"><iframe className="h-[75vh] min-h-[480px] w-full border-t bg-muted" title="Pré-visualização do relatório PDF" src={previewUrl} /></CardContent>
+        </Card>
+      )}
 
-      <div className="admin-individual-panel">
-        <label>Testar um caso individual
-          <div className="admin-student-combobox">
-            <input
-              className="admin-student-search"
-              type="search"
-              role="combobox"
-              aria-expanded={showStudentSuggestions}
-              aria-controls="admin-student-suggestions"
-              value={studentSearch}
-              placeholder="Pesquisar aluno..."
-              disabled={!selectedPeriod || status === "sending"}
-              onFocus={() => setShowStudentSuggestions(true)}
-              onChange={(event) => { setStudentSearch(event.target.value); setSelectedStudentId(""); setSelectedParentIds([]); setShowStudentSuggestions(true); resetFeedback(); }}
-            />
-            {showStudentSuggestions && selectedPeriod && status !== "sending" && <div id="admin-student-suggestions" className="admin-student-suggestions" role="listbox">
-              {filteredStudents.length ? filteredStudents.slice(0, 12).map((student) => <button key={student.id} type="button" role="option" aria-selected={selectedStudentId === student.id} onMouseDown={(event) => event.preventDefault()} onClick={() => selectStudent(student)}>
-                <strong>{student.name}</strong><small>{student.turmaName}</small>
-              </button>) : <span className="admin-student-empty">Nenhum aluno encontrado.</span>}
-            </div>}
-          </div>
-        </label>
-        {canSend && channel === "EMAIL" && selectedStudent && (
-          <fieldset className="admin-parent-selector" disabled={status === "sending"}>
-            <legend>Destinatários do relatório {monthlyPeriod ? "mensal" : "selecionado"}</legend>
-            {selectedStudent.parents.length ? selectedStudent.parents.map((parent) => (
-              <label key={parent.id} className="admin-parent-option">
-                <input type="checkbox" checked={selectedParentIds.includes(parent.id)} onChange={() => toggleParent(parent.id)} />
-                <span><strong>{parent.name}</strong><small>{parent.email || "Sem e-mail registado"}</small></span>
-              </label>
-            )) : <p className="admin-parent-empty">Este aluno não tem encarregados registados.</p>}
-            <small className="admin-parent-help">Selecione um ou mais encarregados. O relatório será enviado apenas para os contactos selecionados.</small>
-          </fieldset>
-        )}
-        <button type="button" onClick={handlePreview} disabled={status === "sending" || !selectedPeriod || !selectedStudentId}>Pré-visualizar PDF</button>
-        {canSend && (
-          <button type="button" onClick={() => handleSendReports(selectedStudentId)} disabled={status === "sending" || !selectedPeriod || !selectedStudentId || (channel === "EMAIL" && selectedParentIds.length === 0)}>{status === "sending" ? "A enviar..." : `Enviar caso individual por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}`}</button>
-        )}
-      </div>
-
-      {previewUrl && <div className="admin-preview-panel">
-        <div className="admin-preview-heading"><strong>Pré-visualização do relatório</strong><a href={previewUrl} download="relatorios-preview.pdf">Descarregar PDF</a></div>
-        <iframe title="Pré-visualização do relatório PDF" src={previewUrl} />
-      </div>}
-
-      {message && <p className={`admin-status ${status}`}>{message}</p>}
-
-      {canSend && deliveryResults.length > 0 && <div className="admin-delivery-results">
-        <strong>Resultado do envio</strong>
-        {deliveryResults.map((result) => <div key={`${result.studentName}-${result.email}`} className={result.success ? "delivery-success" : "delivery-failure"}><span>{result.studentName} · {result.email}</span><span>{result.success ? "Enviado" : `Falhou: ${result.error ?? "erro desconhecido"}`}</span></div>)}
-      </div>}
+      {canSend && deliveryResults.length > 0 && (
+        <Card className="shadow-sm">
+          <CardHeader><CardTitle className="text-base">Resultado do envio</CardTitle><CardDescription>{deliveryResults.length} resultado(s) por destinatário.</CardDescription></CardHeader>
+          <CardContent className="px-0 pb-4 sm:px-4">
+            <div className="overflow-hidden rounded-xl border">
+              <Table className="min-w-[620px]">
+                <TableHeader className="bg-muted/50"><TableRow className="hover:bg-transparent"><TableHead>Aluno</TableHead><TableHead>Destinatário</TableHead><TableHead className="text-right">Estado</TableHead></TableRow></TableHeader>
+                <TableBody>{deliveryResults.map((result) => (
+                  <TableRow key={`${result.studentName}-${result.email}`}>
+                    <TableCell className="font-medium">{result.studentName}</TableCell>
+                    <TableCell className="text-muted-foreground">{result.email}</TableCell>
+                    <TableCell className="text-right"><Badge variant={result.success ? "secondary" : "destructive"}>{result.success ? "Enviado" : `Falhou: ${result.error ?? "erro desconhecido"}`}</Badge></TableCell>
+                  </TableRow>
+                ))}</TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {canSend && (
-        <div className="admin-audit-panel">
-          <strong>Consultar relatórios não enviados por {channel === "EMAIL" ? "e-mail" : "WhatsApp"}</strong>
-          <div className="admin-audit-controls">
-            <select value={auditTurmaId} disabled={!selectedPeriod || auditStatus === "loading"} onChange={(event) => { setAuditTurmaId(event.target.value); setFailedDeliveries([]); setAuditStatus("idle"); }}>
-              <option value="">Selecione uma turma</option>
-              {turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
-            </select>
-            <button type="button" onClick={loadFailedDeliveries} disabled={!selectedPeriod || !auditTurmaId || auditStatus === "loading"}>{auditStatus === "loading" ? "A consultar..." : "Ver falhas"}</button>
-          </div>
-          {auditStatus === "loaded" && !failedDeliveries.length && <p className="audit-empty">Não foram encontradas falhas para este período e turma.</p>}
-          {failedDeliveries.length > 0 && <div className="audit-failures">{failedDeliveries.map((delivery) => <div className="audit-failure" key={delivery.id}><strong>{delivery.studentName}</strong><span>{delivery.recipientName ? `${delivery.recipientName} · ` : ""}{delivery.recipientEmail}</span><small>{delivery.error || "Motivo não informado"}</small></div>)}</div>}
-        </div>
-      )}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base">Consultar envios com problemas</CardTitle>
+            <CardDescription>Consulte falhas de entrega e devoluções por período, turma e canal.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <div className="grid min-w-0 gap-2">
+                <Label htmlFor="audit-turma">Turma</Label>
+                <Select value={auditTurmaId || null} disabled={!selectedPeriod || auditStatus === "loading"} onValueChange={(value) => { setAuditTurmaId(value ?? ""); setFailedDeliveries([]); setAuditStatus("idle"); }}>
+                  <SelectTrigger id="audit-turma" className="h-10 w-full data-[size=default]:h-10"><SelectValue placeholder="Selecione uma turma" /></SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>{turmas.map((turma) => <SelectItem key={turma.id} value={turma.id}>{turma.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <Button type="button" variant="outline" className="h-10" onClick={loadFailedDeliveries} disabled={!selectedPeriod || !auditTurmaId || auditStatus === "loading"}>
+                {auditStatus === "loading" ? "A consultar..." : "Ver falhas"}
+              </Button>
+            </div>
 
-      <style>{`
-        .admin-shell { display:flex; flex-direction:column; gap:1.5rem; }
-        .admin-channel-tabs { display:flex; gap:.5rem; border-bottom:1px solid #dbe3ec; }
-        .admin-channel-tabs button { background:transparent; border:0; border-bottom:3px solid transparent; padding:.75rem 1rem; color:#64748b; font-weight:800; cursor:pointer; }
-        .admin-channel-tabs button.active { color:#1d4ed8; border-bottom-color:#1d4ed8; }
-        .admin-heading { margin-bottom:0; }
-        .admin-turma-panel, .admin-individual-panel, .admin-delivery-results { background:#f8fafc; border:1px solid #e2e8f0; border-radius:18px; padding:1.2rem; }
-        .admin-completeness-panel { display:grid; gap:.75rem; background:#fff; border:1px solid #dbe3ec; border-radius:18px; padding:1.2rem; }
-        .admin-completeness-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; color:#334155; }
-        .admin-completeness-heading > div { display:grid; gap:.2rem; }
-        .admin-completeness-heading small { color:#64748b; font-size:.78rem; font-weight:500; }
-        .admin-completeness-status { display:inline-flex; align-items:center; padding:.38rem .65rem; border-radius:999px; font-size:.72rem; font-weight:800; white-space:nowrap; }
-        .admin-completeness-status.checking { background:#f1f5f9; color:#475569; }
-        .admin-completeness-status.ready { background:#dcfce7; color:#166534; }
-        .admin-completeness-status.blocked { background:#ffedd5; color:#9a3412; }
-        .admin-completeness-row { display:grid; gap:.55rem; padding:.85rem .9rem; border:1px solid transparent; border-radius:12px; font-size:.84rem; }
-        .admin-completeness-row.complete { background:#ecfdf5; color:#166534; }
-        .admin-completeness-row.incomplete { background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
-        .admin-completeness-row-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
-        .admin-completeness-row-heading > span { font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
-        .admin-completeness-metrics { display:flex; gap:.5rem; flex-wrap:wrap; }
-        .admin-completeness-metrics span { padding:.28rem .5rem; border-radius:6px; background:rgba(255,255,255,.72); font-size:.74rem; font-weight:700; }
-        .admin-completeness-row p { margin:0; font-size:.8rem; }
-        .admin-completeness-missing { display:grid; gap:.45rem; }
-        .admin-completeness-missing div { display:grid; gap:.1rem; }
-        .admin-completeness-missing strong { font-size:.75rem; }
-        .admin-completeness-missing span { line-height:1.45; }
-        .admin-report-period { max-width:520px; }
-        .admin-preview-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
-        .admin-preview-heading a { color:#1d4ed8; font-size:.85rem; font-weight:800; text-decoration:none; }
-        .admin-preview-heading a:hover { text-decoration:underline; }
-        .admin-turma-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.9rem; }
-        .admin-checkbox { position:relative; display:flex; align-items:center; gap:.7rem; background:#fff; border:1px solid #dbe3ec; border-radius:12px; padding:.9rem 1rem; cursor:pointer; }
-        .admin-checkbox.selected { border-color:#1d4ed8; background:#eff6ff; }
-        .admin-checkbox.disabled { opacity:.55; cursor:not-allowed; }
-        .admin-checkbox input { accent-color:#2563eb; }
-        .admin-checkbox span { display:flex; flex-direction:column; gap:.18rem; }
-        .admin-checkbox-content { flex:1; min-width:0; padding-right:2rem; }
-        .turma-sent-indicator { position:absolute; top:.62rem; right:.7rem; display:flex!important; flex-direction:row!important; align-items:center; gap:.2rem!important; color:#15803d; }
-        .turma-sent-indicator > span { display:grid!important; place-items:center; width:1.2rem; height:1.2rem; border-radius:999px; background:#dcfce7; font-size:.8rem; font-weight:900; }
-        .turma-sent-indicator small { color:#166534; font-size:.63rem; font-weight:800; }
-        .turma-completion { display:grid!important; gap:.35rem!important; width:100%; margin-top:.45rem; }
-        .turma-completion-label { display:flex!important; flex-direction:row!important; justify-content:space-between; align-items:center; gap:.5rem!important; color:#64748b; font-size:.68rem; }
-        .turma-completion-label strong { color:#334155; font-size:.72rem; }
-        .turma-completion-track { display:block!important; width:100%; height:7px; overflow:hidden; border-radius:999px; background:#e2e8f0; }
-        .turma-completion-track > span { display:block!important; height:100%; border-radius:inherit; background:linear-gradient(90deg,#0f766e,#34d399); transition:width .25s ease; }
-        .turma-delivery-count { color:#64748b; font-size:.66rem; font-weight:600; }
-        .admin-checkbox small { color:#64748b; }
-        .admin-actions { display:flex; justify-content:flex-start; }
-        .admin-submit, .admin-preview-button, .admin-individual-panel button { background:#1d4ed8; color:#fff; border:0; border-radius:10px; padding:.8rem 1.2rem; font-size:.95rem; font-weight:700; cursor:pointer; }
-        .admin-preview-button { background:#0f766e; }
-        .admin-submit:disabled, .admin-preview-button:disabled, .admin-individual-panel button:disabled { opacity:.6; cursor:not-allowed; }
-        .admin-individual-panel { display:flex; align-items:end; gap:1rem; flex-wrap:wrap; }
-        .admin-individual-panel label { display:grid; gap:.45rem; flex:0 1 360px; min-width:220px; font-weight:700; }
-        .admin-student-combobox { position:relative; }
-        .admin-student-search { width:100%; padding:.7rem; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
-        .admin-student-search:focus { border-color:#1d4ed8; outline:2px solid rgba(29,78,216,.12); }
-        .admin-student-suggestions { position:absolute; z-index:10; top:calc(100% + .35rem); left:0; right:0; max-height:260px; overflow:auto; padding:.35rem; background:#fff; border:1px solid #cbd5e1; border-radius:10px; box-shadow:0 12px 28px rgba(15,23,42,.14); }
-        .admin-student-suggestions button { display:flex; flex-direction:column; align-items:flex-start; width:100%; padding:.6rem .7rem; background:#fff; color:#1e293b; border:0; border-radius:7px; text-align:left; cursor:pointer; }
-        .admin-student-suggestions button:hover, .admin-student-suggestions button[aria-selected="true"] { background:#eff6ff; }
-        .admin-student-suggestions small { margin-top:.15rem; color:#64748b; font-size:.75rem; font-weight:500; }
-        .admin-student-empty { display:block; padding:.7rem; color:#64748b; font-size:.82rem; font-weight:500; }
-        .admin-individual-panel select { width:100%; padding:.7rem; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
-        .admin-parent-selector { display:grid; gap:.55rem; flex:1 1 100%; min-width:240px; margin:0; padding:.85rem; border:1px solid #cbd5e1; border-radius:10px; background:#fff; }
-        .admin-parent-selector legend { padding:0 .35rem; color:#334155; font-weight:800; }
-        .admin-parent-option { display:flex; align-items:center; gap:.6rem; padding:.55rem .65rem; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; }
-        .admin-parent-option input { accent-color:#2563eb; }
-        .admin-parent-option span { display:grid; gap:.15rem; }
-        .admin-parent-option small, .admin-parent-help { color:#64748b; font-size:.78rem; font-weight:500; }
-        .admin-parent-empty { margin:0; color:#9f1239; font-size:.84rem; }
-        .admin-preview-panel { display:grid; gap:.8rem; background:#fff; border:1px solid #dbe3ec; border-radius:18px; padding:1.2rem; }
-        .admin-preview-panel iframe { width:100%; min-height:760px; border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc; }
-        .admin-status { margin:0; padding:.85rem 1rem; border-radius:10px; font-size:.92rem; }
-        .admin-status.success { background:#dcfce7; color:#166534; }
-        .admin-status.error { background:#fee2e2; color:#991b1b; }
-        .admin-status.sending { background:#dbeafe; color:#1d4ed8; }
-        .admin-delivery-results { display:grid; gap:.65rem; }
-        .admin-delivery-results > strong { color:#1e293b; }
-        .admin-delivery-results > div { display:flex; justify-content:space-between; gap:1rem; padding:.65rem .75rem; border-radius:8px; font-size:.86rem; }
-        .delivery-success { background:#ecfdf5; color:#166534; }
-        .delivery-failure { background:#fff1f2; color:#9f1239; }
-        .admin-audit-panel { display:grid; gap:.8rem; background:#fff; border:1px solid #dbe3ec; border-radius:18px; padding:1.2rem; }
-        .admin-audit-controls { display:flex; gap:.8rem; flex-wrap:wrap; }
-        .admin-audit-controls select { flex:1; min-width:220px; padding:.7rem; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
-        .admin-audit-controls button { background:#475569; color:#fff; border:0; border-radius:8px; padding:.7rem 1rem; font-weight:700; cursor:pointer; }
-        .admin-audit-controls button:disabled { opacity:.6; cursor:not-allowed; }
-        .audit-empty { margin:0; color:#166534; }
-        .audit-failures { display:grid; gap:.55rem; }
-        .audit-failure { display:grid; gap:.15rem; padding:.75rem; background:#fff1f2; color:#881337; border-radius:8px; }
-        .audit-failure span, .audit-failure small { color:#9f1239; }
-      `}</style>
+            {auditStatus === "error" && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{message || "Não foi possível consultar os envios."}</p>}
+            {auditStatus === "loaded" && !failedDeliveries.length && <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Não foram encontradas falhas para este período e turma.</p>}
+            {failedDeliveries.length > 0 && (
+              <div className="overflow-hidden rounded-xl border">
+                <Table className="min-w-[720px]">
+                  <TableHeader className="bg-muted/50"><TableRow className="hover:bg-transparent"><TableHead>Aluno</TableHead><TableHead>Destinatário</TableHead><TableHead>Motivo</TableHead><TableHead>Data</TableHead></TableRow></TableHeader>
+                  <TableBody>{failedDeliveries.map((delivery) => (
+                    <TableRow key={delivery.id}>
+                      <TableCell className="font-medium">{delivery.studentName}</TableCell>
+                      <TableCell><div className="grid gap-0.5"><span>{delivery.recipientName || "Encarregado"}</span><span className="text-xs text-muted-foreground">{delivery.recipientEmail}</span></div></TableCell>
+                      <TableCell className="max-w-[360px] whitespace-normal text-muted-foreground">{delivery.error || "Motivo não informado"}</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{new Date(delivery.attemptedAt).toLocaleString("pt-AO")}</TableCell>
+                    </TableRow>
+                  ))}</TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </section>
   );
 }
