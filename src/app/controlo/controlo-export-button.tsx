@@ -2,6 +2,7 @@
 
 import { Download } from "lucide-react";
 import { jsPDF } from "jspdf";
+import { Button } from "@/components/ui/button";
 
 type ExportPeriod = {
   start: string;
@@ -125,13 +126,13 @@ export function ControloExportButton({
   }
 
   return (
-    <div className="controlo-export-actions">
-      <button type="button" className="controlo-export-button" onClick={exportPdf}>
-        <Download size={16} strokeWidth={2.2} /> Exportar PDF
-      </button>
-      <button type="button" className="controlo-report-button" onClick={exportReportPdf}>
-        <Download size={16} strokeWidth={2.2} /> Relatorio
-      </button>
+    <div className="flex flex-wrap justify-end gap-2">
+      <Button type="button" variant="outline" onClick={exportPdf}>
+        <Download aria-hidden="true" /> Exportar PDF
+      </Button>
+      <Button type="button" onClick={exportReportPdf}>
+        <Download aria-hidden="true" /> Relatório
+      </Button>
     </div>
   );
 }

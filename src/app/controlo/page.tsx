@@ -1,7 +1,14 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { ControloExportButton } from "./controlo-export-button";
 import { getSchoolContext } from "@/lib/school-context";
@@ -41,6 +48,49 @@ export default async function ControloPage({
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const visiblePeriods = filteredPeriods.slice(startIndex, startIndex + PAGE_SIZE);
+  const buildPageHref = (page: number) => {
+    const search = new URLSearchParams();
+    if (selectedTurma) search.set("turmaId", selectedTurma.id);
+    if (requestedMonth) search.set("month", requestedMonth);
+    if (page > 1) search.set("page", String(page));
+    const queryString = search.toString();
+    return queryString ? `/controlo?${queryString}` : "/controlo";
+  };
+  const getMobilePageItems = (page: number, pageCount: number) => {
+    if (pageCount <= 4) {
+      return Array.from({ length: pageCount }, (_, index) => index + 1);
+    }
+
+    let start = Math.max(1, page - 1);
+    let end = Math.min(pageCount, page + 1);
+
+    if (page <= 2) {
+      start = 1;
+      end = 3;
+    }
+
+    if (page >= pageCount - 1) {
+      start = pageCount - 2;
+      end = pageCount;
+    }
+
+    const items = Array.from({ length: end - start + 1 }, (_, index) => start + index);
+
+    if (start > 1 && end < pageCount) {
+      return [...items, "ellipsis"];
+    }
+
+    if (start > 1) {
+      return ["ellipsis", ...items];
+    }
+
+    if (end < pageCount) {
+      return [...items, "ellipsis"];
+    }
+
+    return items;
+  };
+  const pageItems = getMobilePageItems(currentPage, totalPages);
   const mainCoordinator = selectedTurma?.teacherAssignments.find((assignment) => assignment.isMain && assignment.teacher.user.schoolMemberships[0]?.role === "COORDENADOR")?.teacher;
   const reportRangeStart = periods[0]?.start;
   const reportRangeEnd = periods[periods.length - 1]?.end;
@@ -67,76 +117,112 @@ export default async function ControloPage({
           </div>
         </header>
 
-        <section className="controlo-shell workspace">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">BIOMÉTRICO</p>
-              <h3>Verificação da coordenação semanal</h3>
-            </div>
-          </div>
-
-          <form method="get" className="controlo-turma-switcher">
-            <label htmlFor="controlo-turma">Turma</label>
-            <select id="controlo-turma" name="turmaId" defaultValue={selectedTurma?.id ?? ""}>
-              {!turmas.length && <option value="">Nenhuma turma disponível</option>}
-              {turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
-            </select>
-            <label htmlFor="controlo-month">Mês</label>
-            <select id="controlo-month" name="month" defaultValue={requestedMonth}>
-              <option value="">Todos os meses</option>
-              {monthOptions.map((month) => <option key={month} value={month}>{new Date(new Date().getFullYear(), month - 1, 1).toLocaleDateString("pt-AO", { month: "long" })}</option>)}
-            </select>
-            <button type="submit" className="admin-submit" disabled={!turmas.length}>Verificar</button>
-          </form>
-
-          {selectedTurma ? (
-            <>
-              <div className="controlo-summary">
-                <span>Coordenador(a)</span>
-                <strong>{coordinatorNames || "Sem coordenador atribuído"}</strong>
+        <Card className="controlo-shell w-full max-w-none gap-0 overflow-visible py-0">
+          <CardHeader className="border-b px-5 py-5 sm:px-6">
+            <p className="text-xs font-semibold tracking-widest text-muted-foreground">BIOMÉTRICO</p>
+            <CardTitle className="text-lg">Verificação da coordenação semanal</CardTitle>
+            <CardDescription>Consulte os registos semanais por turma e período.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-5 p-5 sm:p-6">
+            <form method="get" className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <div className="grid min-w-0 gap-2">
+                <Label htmlFor="controlo-turma">Turma</Label>
+                <Select name="turmaId" defaultValue={selectedTurma?.id ?? null} disabled={!turmas.length}>
+                  <SelectTrigger id="controlo-turma" className="h-10 w-full">
+                    <SelectValue placeholder="Selecione uma turma" />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    {turmas.map((turma) => <SelectItem key={turma.id} value={turma.id}>{turma.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="controlo-actions">
-                <ControloExportButton
-                  turmaName={selectedTurma.name}
-                  coordinatorName={coordinatorNames || "Sem coordenador atribuído"}
-                  year={new Date().getFullYear()}
-                  periods={filteredPeriods.map((period) => ({
-                    start: period.start.toISOString(),
-                    end: period.end.toISOString(),
-                    isTest: period.isTest,
-                    title: reportsByWeek.get(period.key)?.map((report) => `${report.user.name ?? report.user.email}: ${report.title}`).join(", ") ?? "",
-                    description: reportsByWeek.get(period.key)?.map((report) => report.description).join("\n\n") ?? "",
-                    registered: reportsByWeek.has(period.key),
-                  }))}
-                />
+              <div className="grid min-w-0 gap-2">
+                <Label htmlFor="controlo-month">Mês</Label>
+                <Select name="month" defaultValue={requestedMonth || null}>
+                  <SelectTrigger id="controlo-month" className="h-10 w-full">
+                    <SelectValue placeholder="Todos os meses" />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    {monthOptions.map((month) => <SelectItem key={month} value={String(month)}>{new Date(new Date().getFullYear(), month - 1, 1).toLocaleDateString("pt-AO", { month: "long" })}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="controlo-list">
-                {visiblePeriods.map((period) => {
-                  const periodReports = reportsByWeek.get(period.key) ?? [];
-                  return (
-                    <div key={period.key} className="controlo-period">
-                      <div><span className="controlo-period-date">{period.start.toLocaleDateString("pt-AO", { day: "2-digit", month: "short" })} - {period.end.toLocaleDateString("pt-AO", { day: "2-digit", month: "short" })}</span><strong>{periodReports.length ? periodReports.map((report) => `${report.user.name ?? report.user.email}: ${report.title}`).join(", ") : "Sem registo semanal"}</strong></div>
-                      <span className={`biometrico-status ${periodReports.length ? "registado" : mainCoordinator ? "ausente" : "sem-coordenador"}`}>{periodReports.length ? "Registado" : mainCoordinator ? "Ausente" : "Sem coordenador principal"}</span>
+              <Button type="submit" className="h-10" disabled={!turmas.length}>Verificar</Button>
+            </form>
+
+            {selectedTurma ? (
+              <>
+                <div className="flex flex-col gap-1 rounded-lg border bg-muted/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <span className="text-xs font-medium text-muted-foreground">Coordenador(a)</span>
+                  <strong className="text-sm font-semibold text-foreground">{coordinatorNames || "Sem coordenador atribuído"}</strong>
+                </div>
+                <div className="flex justify-end">
+                  <ControloExportButton
+                    turmaName={selectedTurma.name}
+                    coordinatorName={coordinatorNames || "Sem coordenador atribuído"}
+                    year={new Date().getFullYear()}
+                    periods={filteredPeriods.map((period) => ({
+                      start: period.start.toISOString(),
+                      end: period.end.toISOString(),
+                      isTest: period.isTest,
+                      title: reportsByWeek.get(period.key)?.map((report) => `${report.user.name ?? report.user.email}: ${report.title}`).join(", ") ?? "",
+                      description: reportsByWeek.get(period.key)?.map((report) => report.description).join("\n\n") ?? "",
+                      registered: reportsByWeek.has(period.key),
+                    }))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  {visiblePeriods.map((period) => {
+                    const periodReports = reportsByWeek.get(period.key) ?? [];
+                    return (
+                      <div key={period.key} className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                        <div className="grid min-w-0 gap-1">
+                          <span className="text-xs text-muted-foreground">{period.start.toLocaleDateString("pt-AO", { day: "2-digit", month: "short" })} - {period.end.toLocaleDateString("pt-AO", { day: "2-digit", month: "short" })}</span>
+                          <strong className="break-words text-sm font-medium text-foreground">{periodReports.length ? periodReports.map((report) => `${report.user.name ?? report.user.email}: ${report.title}`).join(", ") : "Sem registo semanal"}</strong>
+                        </div>
+                        <Badge variant={periodReports.length ? "secondary" : "outline"} className="h-auto w-fit max-w-full whitespace-normal text-left">
+                          {periodReports.length ? "Registado" : mainCoordinator ? "Ausente" : "Sem coordenador principal"}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+                {totalPages > 1 && (
+                  <nav className="flex flex-wrap items-center justify-center gap-2" aria-label="Paginação dos períodos de coordenação">
+                    <Button
+                      variant="outline"
+                      render={<Link href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} />}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    >
+                      <ArrowLeft /> Anterior
+                    </Button>
+                    <div className="flex items-center gap-1" aria-label="Páginas dos períodos">
+                      {pageItems.map((page, index) => typeof page === "number" ? (
+                        <Button
+                          key={`${page}-${index}`}
+                          variant={page === currentPage ? "default" : "ghost"}
+                          size="icon"
+                          render={<Link href={buildPageHref(page)} aria-current={page === currentPage ? "page" : undefined} aria-label={`Página ${page}`} />}
+                        >
+                          {page}
+                        </Button>
+                      ) : <span key={`ellipsis-${index}`} className="px-2 text-sm text-muted-foreground" aria-hidden="true">…</span>)}
                     </div>
-                  );
-                })}
-              </div>
-              {totalPages > 1 && (
-                <nav className="pagination" aria-label="Paginação dos períodos de coordenação">
-                  <a href={`/controlo?turmaId=${selectedTurma.id}${requestedMonth ? `&month=${requestedMonth}` : ""}&page=${Math.max(1, currentPage - 1)}`} className={currentPage === 1 ? "page-button disabled" : "page-button"} aria-disabled={currentPage === 1}>Anterior</a>
-                  <div className="pagination-compact" aria-label="Páginas dos períodos">
-                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                      <a key={page} href={`/controlo?turmaId=${selectedTurma.id}${requestedMonth ? `&month=${requestedMonth}` : ""}&page=${page}`} className={page === currentPage ? "page-button active" : "page-button"} aria-current={page === currentPage ? "page" : undefined}>{page}</a>
-                    ))}
-                  </div>
-                  <a href={`/controlo?turmaId=${selectedTurma.id}${requestedMonth ? `&month=${requestedMonth}` : ""}&page=${Math.min(totalPages, currentPage + 1)}`} className={currentPage === totalPages ? "page-button disabled" : "page-button"} aria-disabled={currentPage === totalPages}>Seguinte</a>
-                </nav>
-              )}
+                    <Button
+                      variant="outline"
+                      render={<Link href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} />}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    >
+                      Próxima <ArrowRight />
+                    </Button>
+                  </nav>
+                )}
             </>
           ) : (
-            <p className="admin-status idle">Não existem turmas disponíveis para controlo.</p>
+            <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Não existem turmas disponíveis para controlo.</p>
           )}
-        </section>
+          </CardContent>
+        </Card>
       </main>
     </AppShell>
   );
