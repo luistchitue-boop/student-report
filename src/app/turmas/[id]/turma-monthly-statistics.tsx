@@ -1,14 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useId } from "react";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
 import { AlertCircle, Award, TrendingDown, TrendingUp } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  LabelList,
+  XAxis,
+  YAxis,
+  type LabelProps,
+} from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 type RankedStudent = {
   id: string;
@@ -47,6 +62,57 @@ function getAvailableMonths() {
 }
 
 function StudentRanking({ title, students, emptyText, criterion }: { title: string; students: RankedStudent[]; emptyText: string; criterion: "grades" | "absences" }) {
+  const chartId = useId().replace(/:/g, "");
+  const data = students.map((student) => ({
+    ...student,
+    rankingValue: criterion === "grades" ? student.gradeAverage : student.absenceCount,
+  }));
+  const chartConfig = {
+    rankingValue: {
+      label: criterion === "grades" ? "Média" : "Faltas",
+      color: "var(--chart-1)",
+    },
+  } satisfies ChartConfig;
+
+  function renderAvatarLabel(label: LabelProps) {
+    const index = label.index;
+    const student = typeof index === "number" ? data[index] : undefined;
+    if (!student) return null;
+
+    const viewBox = label.viewBox;
+    const barX = viewBox && "x" in viewBox && typeof viewBox.x === "number" ? viewBox.x : Number(label.x ?? 0);
+    const barWidth = viewBox && "width" in viewBox && typeof viewBox.width === "number" ? viewBox.width : 0;
+    const x = barX + barWidth / 2;
+    const y = typeof label.y === "number" ? label.y : Number(label.y ?? 0);
+    const centerY = Math.max(27, y - 26);
+    const clipId = `${chartId}-avatar-${index}`;
+
+    return (
+      <g aria-label={`Fotografia de ${student.name}`}>
+        <defs>
+          <clipPath id={clipId}>
+            <circle cx={x} cy={centerY} r={22} />
+          </clipPath>
+        </defs>
+        {student.avatarUrl ? (
+          <image
+            href={student.avatarUrl}
+            x={x - 22}
+            y={centerY - 22}
+            width={44}
+            height={44}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#${clipId})`}
+          />
+        ) : (
+          <text x={x} y={centerY} fill="var(--muted-foreground)" fontSize={14} fontWeight={600} textAnchor="middle" dominantBaseline="central">
+            {student.name.trim().slice(0, 1).toLocaleUpperCase()}
+          </text>
+        )}
+      </g>
+    );
+  }
+
   return (
     <Card className="min-w-0 shadow-none">
       <CardHeader className="flex-row items-center justify-between gap-3 pb-3">
@@ -55,23 +121,52 @@ function StudentRanking({ title, students, emptyText, criterion }: { title: stri
       </CardHeader>
       <CardContent>
         {students.length ? (
-          <ol className="grid gap-2">
-            {students.map((student, index) => (
-              <li key={student.id} className="flex min-w-0 items-center gap-3 rounded-lg border bg-background p-2.5">
-                <Badge variant="outline" className="size-7 shrink-0 justify-center rounded-full p-0">{index + 1}</Badge>
-                <Avatar className="size-12">
-                  {student.avatarUrl && <AvatarImage src={student.avatarUrl} alt={`Fotografia de ${student.name}`} />}
-                  <AvatarFallback className="text-base font-semibold">{student.name.trim().slice(0, 1).toLocaleUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{student.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {criterion === "grades" ? <>{student.gradeAverage?.toFixed(1) ?? "—"} valores · {student.absenceCount} falta(s)</> : <>{student.absenceCount} falta(s) · {student.gradeAverage === null ? "sem média" : `${student.gradeAverage.toFixed(1)} valores`}</>}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
+          <>
+          <ChartContainer
+            id={`ranking-${chartId}`}
+            config={chartConfig}
+            className="h-[280px] w-full aspect-auto sm:h-[320px]"
+            aria-label={`${title}: gráfico de barras com fotografias dos alunos`}
+          >
+            <BarChart accessibilityLayer data={data} barCategoryGap={8} barGap={2} margin={{ top: 62, right: 4, left: -18, bottom: 8 }}>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="name"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={10}
+                interval={0}
+                tick={{ fontSize: 10 }}
+                tickFormatter={(value: string) => {
+                  const parts = value.trim().split(/\s+/);
+                  return parts.length > 1 ? `${parts[0]} ${parts.at(-1)?.slice(0, 1)}.` : parts[0]?.slice(0, 10) ?? value;
+                }}
+              />
+              <YAxis hide domain={[0, "dataMax"]} />
+              <ChartTooltip content={<ChartTooltipContent formatter={(_value, _name, item) => {
+                const student = item.payload as RankedStudent;
+                return (
+                  <div className="grid flex-1 gap-1.5">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Média</span>
+                      <span className="font-mono font-medium tabular-nums text-foreground">{student.gradeAverage?.toFixed(1) ?? "Sem média"}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Faltas</span>
+                      <span className="font-mono font-medium tabular-nums text-foreground">{student.absenceCount}</span>
+                    </div>
+                  </div>
+                );
+              }} />} />
+              <Bar dataKey="rankingValue" name={criterion === "grades" ? "Média" : "Faltas"} fill="var(--color-rankingValue)" radius={[4, 4, 0, 0]} maxBarSize={58} minPointSize={1} isAnimationActive={false}>
+                <LabelList dataKey="rankingValue" position="top" offset={6} content={renderAvatarLabel} />
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            A altura representa {criterion === "grades" ? "a média" : "o número de faltas"}. Passe sobre a barra para ver ambos os valores.
+          </p>
+          </>
         ) : (
           <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">{emptyText}</p>
         )}
