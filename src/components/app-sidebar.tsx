@@ -198,9 +198,9 @@ export function AppSidebar({
                     type="button"
                     variant="default"
                     className="w-full"
-                    render={<Link href="/admin#schools-manager-title" onClick={() => { setSchoolDialogOpen(false); if (isMobile) setOpenMobile(false); }} />}
+                    render={<Link href="/admin/schools" onClick={() => { setSchoolDialogOpen(false); if (isMobile) setOpenMobile(false); }} />}
                   >
-                    <Plus /> Criar nova escola
+                    <Plus /> Gerir escolas
                   </Button>
                 )}
               </DialogContent>

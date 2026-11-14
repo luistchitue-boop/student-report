@@ -100,16 +100,7 @@ export function SchoolsManager() {
   }
 
   return (
-    <section id="schools-manager-title" className="grid gap-4" aria-labelledby="schools-heading">
-      <header className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary" aria-hidden="true"><Building2 className="size-5" /></span>
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Multi-escola</p>
-          <h2 id="schools-heading" className="text-xl font-semibold tracking-tight">Escolas</h2>
-          <p className="text-sm text-muted-foreground">Adicione escolas e mantenha os respetivos dados e acessos separados.</p>
-        </div>
-      </header>
-
+    <section className="grid gap-4" aria-label="Gestão das escolas">
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-3">

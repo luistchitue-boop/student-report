@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { AdminClient } from "./admin-client";
+import { AdminRouteNav } from "./admin-route-nav";
 import { getSchoolContext } from "@/lib/school-context";
-import { SchoolsManager } from "./schools-manager";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -22,14 +21,7 @@ export default async function AdminPage() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Gestão da escola</h1>
         </header>
 
-        <nav className="admin-route-tabs" aria-label="Administração">
-          <Link className="active" href="/admin">Utilizadores</Link>
-          <Link href="/admin/closed-periods">Fecho de períodos</Link>
-          <Link href="/admin/internships">Turmas de estágio</Link>
-          <Link href="/admin/internship-reports">Relatórios de estágio</Link>
-        </nav>
-
-        <SchoolsManager />
+        <AdminRouteNav current="users" />
         <AdminClient />
       </main>
     </AppShell>

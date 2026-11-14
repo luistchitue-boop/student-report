@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { ClosedPeriodsManager } from "./closed-periods-manager";
+import { AdminRouteNav } from "../admin-route-nav";
 import { getSchoolContext } from "@/lib/school-context";
 
 export default async function ClosedPeriodsPage() {
@@ -23,10 +23,7 @@ export default async function ClosedPeriodsPage() {
           </div>
         </header>
 
-        <nav className="admin-route-tabs" aria-label="Administração">
-          <Link href="/admin">Utilizadores</Link>
-          <Link className="active" href="/admin/closed-periods">Fecho de períodos</Link>
-        </nav>
+        <AdminRouteNav current="closed-periods" />
 
         <ClosedPeriodsManager />
       </main>
