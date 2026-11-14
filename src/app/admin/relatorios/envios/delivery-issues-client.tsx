@@ -3,8 +3,18 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
+import { AlertCircle, ArrowLeft, ArrowRight, ArrowUpRight, CheckCircle2, Clock3, Download, Mail, RefreshCw, RotateCcw, Send, ShieldAlert, TriangleAlert } from "lucide-react";
 import { isSendableEmailAddress } from "@/lib/email-address";
+import { getPaginationItems } from "@/lib/pagination";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type DeliveryIssue = {
   id: string;
@@ -39,6 +49,7 @@ const statusLabels: Record<DeliveryIssue["status"], string> = {
 type DeliveryStatusFilter = "ALL" | DeliveryIssue["status"];
 const RECIPIENTS_PER_BATCH = 5;
 const MAX_PARALLEL_BATCHES = 2;
+const PAGE_SIZE = 10;
 
 const pdfColumns = [
   { label: "Aluno", width: 124 },
@@ -143,6 +154,7 @@ export function DeliveryIssuesClient() {
   const [turmaId, setTurmaId] = useState("all");
   const [statusFilter, setStatusFilter] = useState<DeliveryStatusFilter>("ALL");
   const [validEmailOnly, setValidEmailOnly] = useState(false);
+  const [page, setPage] = useState(1);
   const [issues, setIssues] = useState<DeliveryIssue[]>([]);
   const [summary, setSummary] = useState<TurmaSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -185,6 +197,10 @@ export function DeliveryIssuesClient() {
     (turmaId === "all" || issue.turmaId === turmaId)
     && (statusFilter === "ALL" || issue.status === statusFilter)
     && (!validEmailOnly || isSendableEmailAddress(issue.recipientEmail)));
+  const totalPages = Math.max(1, Math.ceil(filteredIssues.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = getPaginationItems(currentPage, totalPages);
+  const visibleIssues = filteredIssues.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const selectedTurmaName = turmaId === "all" ? "Todas as turmas" : summary.find((turma) => turma.id === turmaId)?.name ?? "Turma";
   const selectedPeriodLabel = getPeriodLabel(months.find((month) => month.key === periodKey) ?? months[0]);
   const counts = filteredIssues.reduce((result, issue) => ({ ...result, [issue.status]: result[issue.status] + 1 }), { FAILED: 0, BOUNCED: 0, DELAYED: 0, NOT_SENT: 0 });
@@ -330,104 +346,199 @@ export function DeliveryIssuesClient() {
   }
 
   return (
-    <section className="delivery-issues-page">
-      <div className="delivery-issues-topline"><Link href="/admin/relatorios">← Voltar aos relatórios</Link><span>DETALHE DE ENTREGA</span></div>
-      <header className="delivery-issues-heading">
-        <div><p className="eyebrow">AUDITORIA DE E-MAIL</p><h2>Falhas e e-mails devolvidos</h2><p>Consulte destinatários com falhas de envio, devoluções ou notificações de atraso do serviço de e-mail.</p></div>
-        <div className="delivery-issues-heading-actions"><button type="button" className="delivery-refresh-button" onClick={refreshDeliveryStatus} disabled={loading || refreshing || exporting || bulkSending}>{refreshing ? "A atualizar..." : "Atualizar lista"}</button><button type="button" className="delivery-export-button" onClick={exportLatestIssuesPdf} disabled={loading || refreshing || exporting || bulkSending}>{exporting ? "A atualizar e exportar..." : "Exportar PDF"}</button></div>
+    <section className="grid gap-6">
+      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div className="space-y-2">
+          <Button variant="ghost" size="sm" className="-ml-2 w-fit" render={<Link href="/admin/relatorios" />}><ArrowLeft /> Voltar aos relatórios</Button>
+          <div className="space-y-1">
+            <Badge variant="secondary" className="w-fit gap-1.5"><Mail className="size-3.5" /> Auditoria de e-mail</Badge>
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Falhas e e-mails devolvidos</h2>
+            <p className="max-w-3xl text-sm text-muted-foreground">Consulte destinatários com falhas de envio, devoluções ou notificações de atraso.</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={refreshDeliveryStatus} disabled={loading || refreshing || exporting || bulkSending}>
+            <RefreshCw className={refreshing ? "animate-spin" : ""} /> {refreshing ? "A atualizar..." : "Atualizar lista"}
+          </Button>
+          <Button type="button" onClick={exportLatestIssuesPdf} disabled={loading || refreshing || exporting || bulkSending}>
+            <Download /> {exporting ? "A atualizar e exportar..." : "Exportar PDF"}
+          </Button>
+        </div>
       </header>
 
-      <div className="delivery-issues-filters">
-        <label>Período mensal<select value={periodKey} disabled={bulkSending} onChange={(event) => setPeriodKey(event.target.value)}>{months.map((month) => <option key={month.key} value={month.key}>{getPeriodLabel(month)}</option>)}</select></label>
-        <label>Turma<select value={turmaId} disabled={bulkSending} onChange={(event) => setTurmaId(event.target.value)}><option value="all">Todas as turmas</option>{summary.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}</select></label>
-        <label>Estado<select value={statusFilter} disabled={bulkSending} onChange={(event) => setStatusFilter(event.target.value as DeliveryStatusFilter)}><option value="ALL">Todos os estados</option><option value="NOT_SENT">Ainda não enviado</option><option value="FAILED">Falhou / não enviado</option><option value="BOUNCED">Devolvido (bounce)</option><option value="DELAYED">Atrasado / não entregue</option></select></label>
-        <label className="delivery-valid-email-filter"><input type="checkbox" checked={validEmailOnly} disabled={bulkSending} onChange={(event) => setValidEmailOnly(event.target.checked)} /> Apenas e-mails válidos</label>
-      </div>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Filtros</CardTitle>
+          <CardDescription>Filtre a lista por período, turma, estado ou validade do endereço.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 px-5 pb-5 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <div className="grid min-w-0 gap-2">
+            <Label htmlFor="issues-period">Período mensal</Label>
+            <Select value={periodKey || null} disabled={bulkSending} onValueChange={(value) => { if (value) { setPeriodKey(value); setPage(1); } }}>
+              <SelectTrigger id="issues-period" className="h-10 w-full data-[size=default]:h-10"><SelectValue placeholder="Selecione um período" /></SelectTrigger>
+              <SelectContent alignItemWithTrigger={false}>{months.map((month) => <SelectItem key={month.key} value={month.key}>{getPeriodLabel(month)}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="grid min-w-0 gap-2">
+            <Label htmlFor="issues-turma">Turma</Label>
+            <Select value={turmaId} disabled={bulkSending} onValueChange={(value) => { if (value) { setTurmaId(value); setPage(1); } }}>
+              <SelectTrigger id="issues-turma" className="h-10 w-full data-[size=default]:h-10"><SelectValue /></SelectTrigger>
+              <SelectContent alignItemWithTrigger={false}>
+                <SelectItem value="all">Todas as turmas</SelectItem>
+                {summary.map((turma) => <SelectItem key={turma.id} value={turma.id}>{turma.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid min-w-0 gap-2">
+            <Label htmlFor="issues-status">Estado</Label>
+            <Select value={statusFilter} disabled={bulkSending} onValueChange={(value) => { setStatusFilter(value as DeliveryStatusFilter); setPage(1); }}>
+              <SelectTrigger id="issues-status" className="h-10 w-full data-[size=default]:h-10"><SelectValue /></SelectTrigger>
+              <SelectContent alignItemWithTrigger={false}>
+                <SelectItem value="ALL">Todos os estados</SelectItem>
+                <SelectItem value="NOT_SENT">Ainda não enviado</SelectItem>
+                <SelectItem value="FAILED">Falhou / não enviado</SelectItem>
+                <SelectItem value="BOUNCED">Devolvido (bounce)</SelectItem>
+                <SelectItem value="DELAYED">Atrasado / não entregue</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2 self-end rounded-lg border px-3 py-2.5 sm:col-span-2 xl:col-span-1">
+            <Checkbox id="issues-valid-email" checked={validEmailOnly} disabled={bulkSending} onCheckedChange={(checked) => { setValidEmailOnly(checked === true); setPage(1); }} />
+            <Label htmlFor="issues-valid-email" className="cursor-pointer text-sm">Apenas e-mails válidos</Label>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="delivery-bulk-send"><button type="button" onClick={sendAllUnsentReports} disabled={loading || refreshing || exporting || bulkSending}>{bulkSending ? `A enviar ${bulkProgress?.completed ?? 0}/${bulkProgress?.total ?? eligibleUnsentIssues.length}...` : `Enviar relatórios não enviados (${eligibleUnsentIssues.length})`}</button><span>Envia apenas para e-mails válidos sem registo de envio no período selecionado, em lotes controlados.</span></div>
-      {bulkProgress && <div className="delivery-bulk-progress" role="status"><span>{bulkProgress.completed} de {bulkProgress.total} processados · {bulkProgress.sent} enviado(s) · {bulkProgress.failed} falhou/falharam · {bulkProgress.blocked} bloqueado(s)</span><progress value={bulkProgress.completed} max={bulkProgress.total} /></div>}
-      {bulkResult && <p className="delivery-retry-feedback success" role="status">{bulkResult}</p>}
+      <Card className="border-primary/20 bg-primary/5 shadow-none">
+        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h3 className="font-semibold">Envio em lote</h3>
+            <p className="text-sm text-muted-foreground">Envia apenas para e-mails válidos sem registo no período selecionado, em lotes controlados.</p>
+          </div>
+          <Button type="button" className="w-full sm:w-fit" onClick={sendAllUnsentReports} disabled={loading || refreshing || exporting || bulkSending}>
+            <Send /> {bulkSending ? `A enviar ${bulkProgress?.completed ?? 0}/${bulkProgress?.total ?? eligibleUnsentIssues.length}...` : `Enviar relatórios não enviados (${eligibleUnsentIssues.length})`}
+          </Button>
+        </CardContent>
+        {bulkProgress && (
+          <CardContent className="grid gap-2 border-t px-5 py-4" role="status">
+            <div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground">
+              <span>{bulkProgress.completed} de {bulkProgress.total} processados</span>
+              <span>{bulkProgress.sent} enviado(s) · {bulkProgress.failed} falhou/falharam · {bulkProgress.blocked} bloqueado(s)</span>
+            </div>
+            <Progress value={bulkProgress.completed} max={bulkProgress.total} />
+          </CardContent>
+        )}
+      </Card>
 
-      <div className="delivery-issue-metrics">
-        <article className="metric-bounced"><span>Devolvidos</span><strong>{counts.BOUNCED}</strong></article>
-        <article className="metric-failed"><span>Falhas de envio</span><strong>{counts.FAILED}</strong></article>
-        <article className="metric-delayed"><span>Atrasados</span><strong>{counts.DELAYED}</strong></article>
-        <article className="metric-not-sent"><span>Ainda não enviados</span><strong>{counts.NOT_SENT}</strong></article>
-      </div>
+      {bulkResult && <Card role="status" className="border-primary/30 bg-primary/5 shadow-none"><CardContent className="flex items-start gap-2 p-4 text-sm text-primary"><CheckCircle2 className="mt-0.5 size-4 shrink-0" />{bulkResult}</CardContent></Card>}
 
-      {retryFeedback && <p className={`delivery-retry-feedback ${retryFeedback.success ? "success" : "error"}`} role={retryFeedback.success ? "status" : "alert"}>{retryFeedback.message}</p>}
-      {error ? <p className="delivery-issues-feedback error" role="alert">{error}</p> : loading ? <p className="delivery-issues-feedback">A carregar o detalhe dos envios...</p> : !filteredIssues.length ? <div className="delivery-issues-empty"><strong>Nenhum registo encontrado</strong><span>Não há envios que correspondam ao período, turma, estado e filtro de e-mail selecionados.</span></div> : (
-        <div className="delivery-issues-table-wrap"><table className="delivery-issues-table">
-          <thead><tr><th>Estado</th><th>Aluno / turma</th><th>Destinatário</th><th>Motivo reportado</th><th>Tentativa</th><th>Ação</th></tr></thead>
-          <tbody>{filteredIssues.map((issue) => <tr key={issue.id}>
-            <td><span className={`delivery-status-badge ${issue.status.toLowerCase()}`}>{statusLabels[issue.status]}</span></td>
-            <td><strong>{issue.studentName}</strong><small>{issue.turmaName}</small></td>
-            <td><strong>{issue.recipientName || "Encarregado"}</strong><small>{issue.recipientEmail}</small></td>
-            <td className="delivery-issue-reason">{issue.error || "O serviço de e-mail não forneceu detalhes adicionais."}</td>
-            <td>{issue.attemptedAt ? new Date(issue.attemptedAt).toLocaleString("pt-AO", { dateStyle: "medium", timeStyle: "short" }) : "—"}</td>
-            <td className="delivery-retry-action">{issue.status === "FAILED" || issue.status === "NOT_SENT" ? <button type="button" onClick={() => retryDelivery(issue)} disabled={retryingId !== null || bulkSending}>{retryingId === issue.id ? "A enviar..." : issue.status === "NOT_SENT" ? "Enviar relatório" : "Reenviar e-mail"}</button> : <span>{issue.status === "BOUNCED" ? "Corrija o endereço antes de reenviar." : "Aguarde a atualização do serviço."}</span>}</td>
-          </tr>)}</tbody>
-        </table></div>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumo dos envios filtrados">
+        {[
+          { label: "Devolvidos", value: counts.BOUNCED, icon: Mail, variant: "destructive" as const },
+          { label: "Falhas de envio", value: counts.FAILED, icon: ShieldAlert, variant: "destructive" as const },
+          { label: "Atrasados", value: counts.DELAYED, icon: Clock3, variant: "outline" as const },
+          { label: "Ainda não enviados", value: counts.NOT_SENT, icon: TriangleAlert, variant: "secondary" as const },
+        ].map((metric) => {
+          const Icon = metric.icon;
+          return (
+            <Card key={metric.label} className="shadow-sm">
+              <CardContent className="flex items-center justify-between gap-3 p-4">
+                <div className="space-y-1"><CardDescription>{metric.label}</CardDescription><CardTitle className="text-2xl tabular-nums">{metric.value}</CardTitle></div>
+                <Badge variant={metric.variant} className="size-9 justify-center rounded-full p-0"><Icon /></Badge>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </section>
+
+      {retryFeedback && (
+        <Card role={retryFeedback.success ? "status" : "alert"} className={retryFeedback.success ? "border-primary/30 bg-primary/5 shadow-none" : "border-destructive/30 bg-destructive/5 shadow-none"}>
+          <CardContent className={`flex items-start gap-2 p-4 text-sm ${retryFeedback.success ? "text-primary" : "text-destructive"}`}>
+            {retryFeedback.success ? <CheckCircle2 className="mt-0.5 size-4 shrink-0" /> : <AlertCircle className="mt-0.5 size-4 shrink-0" />}{retryFeedback.message}
+          </CardContent>
+        </Card>
       )}
 
-      <p className="delivery-issues-note">Os eventos de devolução e atraso são recebidos através do webhook do Resend. Configure o endpoint <strong>/api/webhooks/resend</strong> e a variável <strong>RESEND_WEBHOOK_SECRET</strong> no serviço de e-mail.</p>
-      <style>{`
-        .delivery-issues-page { display:grid; gap:1.2rem; }
-        .delivery-issues-topline { display:flex; justify-content:space-between; align-items:center; color:#64748b; font-size:.72rem; font-weight:800; letter-spacing:.08em; }
-        .delivery-issues-topline a { color:#1d4ed8; text-decoration:none; letter-spacing:normal; font-size:.82rem; }
-        .delivery-issues-heading h2 { margin:.2rem 0 .4rem; color:#173044; font-size:1.65rem; }
-        .delivery-issues-heading { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
-        .delivery-issues-heading-actions { display:flex; flex:0 0 auto; gap:.5rem; }
-        .delivery-refresh-button { padding:.7rem 1rem; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#334155; font-size:.82rem; font-weight:800; cursor:pointer; }
-        .delivery-refresh-button:disabled { opacity:.5; cursor:wait; }
-        .delivery-export-button { flex:0 0 auto; padding:.7rem 1rem; border:0; border-radius:9px; background:#173044; color:#fff; font-size:.82rem; font-weight:800; cursor:pointer; }
-        .delivery-export-button:disabled { opacity:.5; cursor:not-allowed; }
-        .delivery-issues-heading p:not(.eyebrow) { margin:0; color:#64748b; font-size:.9rem; }
-        .delivery-issues-filters { display:flex; gap:.8rem; flex-wrap:wrap; }
-        .delivery-issues-filters label { display:grid; gap:.4rem; min-width:220px; color:#334155; font-size:.8rem; font-weight:800; }
-        .delivery-issues-filters select { min-width:240px; padding:.7rem .8rem; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#1e293b; }
-        .delivery-issues-filters .delivery-valid-email-filter { display:flex; align-items:center; gap:.55rem; min-width:0; align-self:end; min-height:40px; cursor:pointer; }
-        .delivery-valid-email-filter input { width:16px; height:16px; accent-color:#1d4ed8; }
-        .delivery-bulk-send { display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; }
-        .delivery-bulk-send button { padding:.7rem 1rem; border:0; border-radius:9px; background:#0f766e; color:#fff; font-size:.82rem; font-weight:800; cursor:pointer; }
-        .delivery-bulk-send button:disabled { opacity:.5; cursor:not-allowed; }
-        .delivery-bulk-send span { color:#64748b; font-size:.78rem; }
-        .delivery-bulk-progress { display:grid; gap:.4rem; color:#334155; font-size:.82rem; }
-        .delivery-bulk-progress progress { width:100%; height:10px; accent-color:#0f766e; }
-        .delivery-issue-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; }
-        .delivery-issue-metrics article { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.1rem; border-radius:12px; border:1px solid #e2e8f0; background:#fff; }
-        .delivery-issue-metrics span { color:#475569; font-size:.83rem; font-weight:700; }
-        .delivery-issue-metrics strong { font-size:1.35rem; color:#173044; }
-        .delivery-issue-metrics .metric-bounced { background:#fff1f2; border-color:#fecdd3; }
-        .delivery-issue-metrics .metric-failed { background:#fff7ed; border-color:#fed7aa; }
-        .delivery-issue-metrics .metric-delayed { background:#fffbeb; border-color:#fde68a; }
-        .delivery-issue-metrics .metric-not-sent { background:#f1f5f9; border-color:#cbd5e1; }
-        .delivery-issues-table-wrap { overflow:auto; border:1px solid #e2e8f0; border-radius:14px; background:#fff; }
-        .delivery-issues-table { width:100%; border-collapse:collapse; text-align:left; font-size:.82rem; }
-        .delivery-issues-table th,.delivery-issues-table td { padding:.8rem .75rem; border-bottom:1px solid #e2e8f0; vertical-align:top; }
-        .delivery-issues-table thead th { color:#64748b; background:#f8fafc; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; }
-        .delivery-issues-table td strong,.delivery-issues-table td small { display:block; }
-        .delivery-issues-table td small { margin-top:.22rem; color:#64748b; font-size:.76rem; }
-        .delivery-status-badge { display:inline-block; padding:.3rem .5rem; border-radius:999px; font-size:.69rem; font-weight:800; white-space:nowrap; }
-        .delivery-status-badge.bounced { color:#9f1239; background:#ffe4e6; }
-        .delivery-status-badge.failed { color:#9a3412; background:#ffedd5; }
-        .delivery-status-badge.delayed { color:#854d0e; background:#fef3c7; }
-        .delivery-status-badge.not_sent { color:#334155; background:#e2e8f0; }
-        .delivery-issue-reason { min-width:220px; max-width:400px; color:#334155; overflow-wrap:anywhere; }
-        .delivery-retry-action { min-width:145px; }
-        .delivery-retry-action button { padding:.55rem .7rem; border:0; border-radius:8px; background:#1d4ed8; color:#fff; font-size:.75rem; font-weight:800; cursor:pointer; white-space:nowrap; }
-        .delivery-retry-action button:disabled { opacity:.6; cursor:wait; }
-        .delivery-retry-action span { display:block; min-width:145px; color:#64748b; font-size:.73rem; line-height:1.4; }
-        .delivery-retry-feedback { margin:0; padding:.8rem 1rem; border-radius:9px; font-size:.84rem; }
-        .delivery-retry-feedback.success { color:#166534; background:#f0fdf4; border:1px solid #bbf7d0; }
-        .delivery-retry-feedback.error { color:#991b1b; background:#fef2f2; border:1px solid #fecaca; }
-        .delivery-issues-empty { display:grid; gap:.35rem; padding:1.5rem; border:1px solid #bbf7d0; border-radius:14px; background:#f0fdf4; color:#166534; }
-        .delivery-issues-empty span,.delivery-issues-feedback { color:#64748b; font-size:.86rem; }
-        .delivery-issues-feedback.error { color:#b91c1c; }
-        .delivery-issues-note { margin:0; padding:.9rem 1rem; border-radius:10px; background:#f1f5f9; color:#64748b; font-size:.78rem; line-height:1.55; }
-        @media (max-width:900px) { .delivery-issue-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-        @media (max-width:700px) { .delivery-issue-metrics { grid-template-columns:1fr; } .delivery-issues-heading { align-items:flex-start; flex-direction:column; } .delivery-issues-heading-actions { flex-wrap:wrap; } }
-      `}</style>
+      {error ? (
+        <Card role="alert" className="border-destructive/30 bg-destructive/5 shadow-none"><CardContent className="flex items-start gap-2 p-4 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{error}</CardContent></Card>
+      ) : loading ? (
+        <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">A carregar o detalhe dos envios...</CardContent></Card>
+      ) : !filteredIssues.length ? (
+        <Card className="border-dashed shadow-none">
+          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+            <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary"><CheckCircle2 className="size-5" /></span>
+            <div className="space-y-1"><CardTitle className="text-base">Nenhum registo encontrado</CardTitle><CardDescription>Não há envios que correspondam ao período, turma, estado e filtro de e-mail selecionados.</CardDescription></div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="overflow-hidden shadow-sm">
+          <CardHeader className="border-b bg-muted/20">
+            <CardTitle className="text-base">Destinatários com problemas</CardTitle>
+            <CardDescription>{Math.min(filteredIssues.length, (currentPage - 1) * PAGE_SIZE + 1)}–{Math.min(currentPage * PAGE_SIZE, filteredIssues.length)} de {filteredIssues.length} registo(s) · {selectedPeriodLabel} · {selectedTurmaName}</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-hidden">
+              <Table className="min-w-[1080px]">
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">Estado</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">Aluno / turma</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">Destinatário</TableHead>
+                    <TableHead className="min-w-[240px] text-xs uppercase tracking-wide text-muted-foreground">Motivo reportado</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">Tentativa</TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wide text-muted-foreground">Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleIssues.map((issue) => {
+                    const statusVariant = issue.status === "BOUNCED" || issue.status === "FAILED" ? "destructive" : issue.status === "DELAYED" ? "outline" : "secondary";
+                    return (
+                      <TableRow key={issue.id}>
+                        <TableCell><Badge variant={statusVariant}>{statusLabels[issue.status]}</Badge></TableCell>
+                        <TableCell className="whitespace-normal"><div className="grid gap-0.5"><strong className="font-medium text-foreground">{issue.studentName}</strong><span className="text-xs text-muted-foreground">{issue.turmaName}</span></div></TableCell>
+                        <TableCell className="whitespace-normal"><div className="grid gap-0.5"><strong className="font-medium text-foreground">{issue.recipientName || "Encarregado"}</strong><span className="break-all text-xs text-muted-foreground">{issue.recipientEmail}</span></div></TableCell>
+                        <TableCell className="max-w-[360px] whitespace-normal break-words text-sm text-muted-foreground">{issue.error || "O serviço de e-mail não forneceu detalhes adicionais."}</TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{issue.attemptedAt ? new Date(issue.attemptedAt).toLocaleString("pt-AO", { dateStyle: "medium", timeStyle: "short" }) : "—"}</TableCell>
+                        <TableCell className="text-right">
+                          {issue.status === "FAILED" || issue.status === "NOT_SENT" ? (
+                            <Button type="button" size="sm" onClick={() => retryDelivery(issue)} disabled={retryingId !== null || bulkSending}>
+                              <RotateCcw /> {retryingId === issue.id ? "A enviar..." : issue.status === "NOT_SENT" ? "Enviar relatório" : "Reenviar e-mail"}
+                            </Button>
+                          ) : <span className="inline-block max-w-48 whitespace-normal text-left text-xs text-muted-foreground">{issue.status === "BOUNCED" ? "Corrija o endereço antes de reenviar." : "Aguarde a atualização do serviço."}</span>}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            {totalPages > 1 && (
+              <nav className="flex flex-wrap items-center justify-center gap-2 border-t px-4 py-4" aria-label="Paginação dos registos de envio">
+                <Button type="button" variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
+                  <ArrowLeft /> Anterior
+                </Button>
+                <div className="flex items-center gap-1" aria-label="Páginas dos registos de envio">
+                  {pageItems.map((item, index) => typeof item === "number" ? (
+                    <Button key={`${item}-${index}`} type="button" variant={item === currentPage ? "default" : "ghost"} size="icon" aria-current={item === currentPage ? "page" : undefined} aria-label={`Página ${item}`} onClick={() => setPage(item)}>
+                      {item}
+                    </Button>
+                  ) : <span key={item} className="px-2 text-sm text-muted-foreground" aria-hidden="true">…</span>)}
+                </div>
+                <Button type="button" variant="outline" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)}>
+                  Próxima <ArrowRight />
+                </Button>
+              </nav>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="border-border/70 bg-muted/30 shadow-none">
+        <CardContent className="flex items-start gap-3 p-4 text-sm text-muted-foreground">
+          <ArrowUpRight className="mt-0.5 size-4 shrink-0" />
+          <p>Os eventos de devolução e atraso são recebidos através do webhook do Resend. Configure o endpoint <strong className="font-medium text-foreground">/api/webhooks/resend</strong> e a variável <strong className="font-medium text-foreground">RESEND_WEBHOOK_SECRET</strong> no serviço de e-mail.</p>
+        </CardContent>
+      </Card>
     </section>
   );
 }
