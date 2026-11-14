@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 import sharp from "sharp";
+import { makeSchoolWebsiteQrTarget } from "@/lib/school-report-email";
 
 export type InternshipPdfReport = {
   id: string;
@@ -13,21 +15,12 @@ export type InternshipPdfReport = {
   strengths: string;
   improvementAreas: string;
   comments: string;
-  student: { name: string; avatarUrl: string | null; turma: { name: string; school: { id: string; name: string; logoUrl: string | null; address: string | null; website: string | null } } };
+  student: { name: string; avatarUrl: string | null; turma: { name: string; school: { id: string; name: string; logoUrl: string | null; address: string | null; website: string | null; reportEmailTemplate: string | null } } };
   teacher: { name: string } | null;
 };
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-PT", { dateStyle: "long", timeZone: "UTC" }).format(date);
-}
-
-function loadPublicPng(fileName: string) {
-  try {
-    const bytes = readFileSync(path.join(process.cwd(), "public", fileName));
-    return `data:image/png;base64,${bytes.toString("base64")}`;
-  } catch {
-    return null;
-  }
 }
 
 async function loadStudentAvatar(url?: string | null) {
@@ -60,17 +53,27 @@ async function loadSchoolLogo(url: string | null, useLegacyLogo: boolean) {
     } else {
       bytes = readFileSync(path.join(process.cwd(), "public", "school-logo.png"));
     }
-    return `data:image/png;base64,${bytes.toString("base64")}`;
+    const optimized = await sharp(bytes, { limitInputPixels: 25_000_000 })
+      .rotate()
+      .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+      .png({ compressionLevel: 9, palette: true })
+      .toBuffer();
+    return `data:image/png;base64,${optimized.toString("base64")}`;
   } catch {
     return null;
   }
 }
 
 export async function generateInternshipReportPdf(report: InternshipPdfReport) {
+  const school = report.student.turma.school;
+  const qrTarget = makeSchoolWebsiteQrTarget(school.website);
   const [studentAvatar, logo] = await Promise.all([
     loadStudentAvatar(report.student.avatarUrl),
-    loadSchoolLogo(report.student.turma.school.logoUrl, report.student.turma.school.id === "legacy-neph-school"),
+    loadSchoolLogo(school.logoUrl, school.id === "legacy-neph-school"),
   ]);
+  const qrCode = qrTarget
+    ? await QRCode.toDataURL(qrTarget, { errorCorrectionLevel: "M", margin: 1, width: 256, type: "image/png" }).catch(() => null)
+    : null;
   const document = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const pageWidth = document.internal.pageSize.getWidth();
   const pageHeight = document.internal.pageSize.getHeight();
@@ -79,7 +82,6 @@ export async function generateInternshipReportPdf(report: InternshipPdfReport) {
   const paper = [246, 229, 219] as const;
   const terracotta = [181, 132, 112] as const;
   const ink = [102, 68, 55] as const;
-  const qrCode = loadPublicPng("qr-code.png");
   let y = 0;
 
   const drawDotPattern = () => {

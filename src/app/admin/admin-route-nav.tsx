@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { Building2, CalendarDays, Users } from "lucide-react";
+import { Building2, CalendarDays, School, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-type AdminRoute = "users" | "schools" | "closed-periods";
+type AdminRoute = "users" | "schools" | "my-school" | "closed-periods";
 
 const routes = [
   { id: "users", href: "/admin", label: "Utilizadores", icon: Users },
   { id: "schools", href: "/admin/schools", label: "Escolas", icon: Building2 },
+  { id: "my-school", href: "/admin/my-school", label: "Minha escola", icon: School },
   { id: "closed-periods", href: "/admin/closed-periods", label: "Fecho de períodos", icon: CalendarDays },
 ];
 

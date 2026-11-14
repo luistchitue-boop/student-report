@@ -24,7 +24,7 @@ export async function getSchoolContext(userId?: string) {
     where: { userId: effectiveUserId },
     include: {
       school: {
-        select: { id: true, name: true, logoUrl: true, address: true, website: true },
+        select: { id: true, name: true, logoUrl: true, address: true, website: true, reportEmailTemplate: true },
       },
     },
     orderBy: [{ createdAt: "asc" }, { schoolId: "asc" }],

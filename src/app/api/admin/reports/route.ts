@@ -7,6 +7,7 @@ import sharp from "sharp";
 import twilio from "twilio";
 import { put } from "@vercel/blob";
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 import { PDFDocument } from "pdf-lib";
 import { auth } from "@/auth";
 import { proofreadCoordinatorObservation } from "@/lib/proofread-observation";
@@ -14,6 +15,7 @@ import { isSendableEmailAddress } from "@/lib/email-address";
 import { hasMonthlyReportData } from "@/lib/monthly-report-data";
 import { formatPeriodDate, getMonthlyCoordinationPeriods, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { getSchoolContext } from "@/lib/school-context";
+import { makeSchoolWebsiteQrTarget, renderSchoolEmailTemplate, schoolEmailTemplateHtml } from "@/lib/school-report-email";
 
 declare global {
   var prismaAdminReports: PrismaClient | undefined;
@@ -60,13 +62,35 @@ function buildReportEmailHtml({ logoUrl, reportUrl, studentName, firstName }: { 
   return `<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório escolar</title></head><body style="margin:0;padding:0;background:#fff9df;font-family:Arial,Helvetica,sans-serif;color:#173044"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff9df;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff"><tr><td style="background:#d9edf3;padding:24px 32px;border-bottom:4px solid #f3c0bd"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td valign="middle"><img src="${escapeHtml(logoUrl)}" width="56" height="56" alt="Logótipo da Nova Escola Politécnica do Huambo" style="display:block;width:56px;height:56px;object-fit:contain"></td><td valign="middle" style="padding-left:14px"><div style="font-size:18px;font-weight:bold;color:#173044;letter-spacing:.2px">Nova Escola Politécnica do Huambo</div><div style="font-size:10px;letter-spacing:2px;color:#176b8b;margin-top:4px">Garantindo um ensino de qualidade no Huambo</div></td></tr></table></td></tr><tr><td style="padding:38px 40px 34px"><div style="font-size:11px;letter-spacing:2px;color:#176b8b;font-weight:bold">RELATÓRIO ESCOLAR</div><h1 style="font-size:26px;line-height:1.25;color:#173044;margin:12px 0 18px">O seu relatório está pronto para leitura</h1><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 18px">Estimado(a) ${safeFirstName},</p><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 24px">Temos o prazer de partilhar o relatório escolar de <strong>${safeStudentName}</strong>. A nossa equipa preparou este documento com todo o cuidado para lhe dar uma visão clara da aprendizagem e do progresso do seu educando.</p>${linkSection}<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff1c2;border-left:4px solid #f3c0bd;margin:0 0 28px"><tr style="padding:20px 24px"><td style="padding:20px 24px;font-size:12px;line-height:1.5;color:#173044"><div style="margin:0 0 8px"><strong>Informações úteis</strong></div><p style="margin:0">A equipa escolar fica à sua disposição para qualquer dúvida sobre o desempenho do seu educando.</p></td></tr></table><p style="font-size:11px;line-height:1.5;color:#607583;margin:0">Com os melhores cumprimentos,<br>Nova Escola Politécnica do Huambo</p></td></tr><tr><td style="padding:24px 32px;background:#f0f0f0;font-size:10px;line-height:1.4;color:#666;text-align:center"><p style="margin:0">Mensagem automática. Por favor, não responda a este email.</p></td></tr></table></td></tr></table></body></html>`;
 }
 
-function getReportEmailOverride(options: { logoUrl: string; schoolName: string; reportUrl: string; studentName: string; firstName: string; periodLabel: string }): Record<string, string> {
+function getReportEmailOverride(options: { logoUrl: string; schoolName: string; reportUrl: string; studentName: string; firstName: string; periodLabel: string; emailTemplate?: string | null }): Record<string, string> {
+  if (options.emailTemplate?.trim()) {
+    const text = renderSchoolEmailTemplate(options.emailTemplate, {
+      recipientName: options.firstName,
+      studentName: options.studentName,
+      period: options.periodLabel,
+      schoolName: options.schoolName,
+    });
+    return { text, html: schoolEmailTemplateHtml(text, options.schoolName, options.logoUrl) };
+  }
   const safeSchoolName = escapeHtml(options.schoolName);
   const html = buildReportEmailHtml(options)
     .replace(/Logótipo da Nova Escola Politécnica do Huambo/g, `Logótipo de ${safeSchoolName}`)
     .replace(/Nova Escola Politécnica do Huambo/g, safeSchoolName)
     .replace("Garantindo um ensino de qualidade no Huambo", "Acompanhamento do percurso escolar");
   return { html };
+}
+
+async function generateWebsiteQrDataUrl(website?: string | null) {
+  const target = makeSchoolWebsiteQrTarget(website);
+  if (!target) return null;
+  try {
+    return {
+      data: await QRCode.toDataURL(target, { errorCorrectionLevel: "M", margin: 1, width: 256, type: "image/png" }),
+      format: "PNG" as const,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function loadImageDataUrl(url?: string | null, useLegacyLogo = false) {
@@ -83,16 +107,6 @@ async function loadImageDataUrl(url?: string | null, useLegacyLogo = false) {
       .png({ compressionLevel: 9, palette: true, quality: 90 })
       .toBuffer();
     return { data: `data:image/png;base64,${optimizedLogo.toString("base64")}`, format: "PNG" as const };
-  } catch {
-    return null;
-  }
-}
-
-async function loadPublicImageDataUrl(fileName: string) {
-  try {
-    const bytes = await readFile(path.join(process.cwd(), "public", fileName));
-    const isJpeg = /\.jpe?g$/i.test(fileName);
-    return { data: `data:image/${isJpeg ? "jpeg" : "png"};base64,${bytes.toString("base64")}`, format: isJpeg ? "JPEG" as const : "PNG" as const };
   } catch {
     return null;
   }
@@ -171,7 +185,6 @@ async function generateStudentReportPdf({
   hasPreviousPeriod,
   avatarUrl,
   behavior,
-  teacherObservation,
   grades,
   weeklyGrades,
   globalGrades,
@@ -181,7 +194,7 @@ async function generateStudentReportPdf({
   absences,
   weeklyObservations,
 }: {
-  school: { id: string; name: string; logoUrl: string | null; address: string | null; website: string | null };
+  school: { id: string; name: string; logoUrl: string | null; address: string | null; website: string | null; reportEmailTemplate: string | null };
   studentName: string;
   turmaName: string;
   gradeScale: number;
@@ -206,7 +219,7 @@ async function generateStudentReportPdf({
   const [logoDataUrl, avatarDataUrl, qrCodeDataUrl, behaviorImage, absenceImage, gradesImage] = await Promise.all([
     loadImageDataUrl(school.logoUrl, school.id === "legacy-neph-school"),
     loadCircularAvatarDataUrl(avatarUrl),
-    loadPublicImageDataUrl("qr-code.png"),
+    generateWebsiteQrDataUrl(school.website),
     loadMetricCardImage("comportamento.jpeg"),
     loadMetricCardImage("faltas.jpeg"),
     loadMetricCardImage("notas.jpeg"),
@@ -1029,7 +1042,7 @@ export async function POST(request: Request) {
         subject: `O seu relatório escolar está pronto | ${recipient.studentName}`,
         text: `Estimado(a) ${recipient.firstName},\n\nO relatório escolar de ${recipient.studentName}, referente ao período ${periodLabel}, está disponível em anexo.\n\nCom os melhores cumprimentos,\n${schoolContext.school.name}`,
         html: `<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório escolar</title></head><body style="margin:0;padding:0;background:#fff9df;font-family:Arial,Helvetica,sans-serif;color:#173044"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff9df;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff"><tr><td style="background:#d9edf3;padding:24px 32px;border-bottom:4px solid #f3c0bd"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td valign="middle"><img src="${logoUrl}" width="56" height="56" alt="Logótipo da Nova Escola Politécnica do Huambo" style="display:block;width:56px;height:56px;object-fit:contain"></td><td valign="middle" style="padding-left:14px"><div style="font-size:18px;font-weight:bold;color:#173044;letter-spacing:.2px">Nova Escola Politécnica do Huambo</div><div style="font-size:10px;letter-spacing:2px;color:#176b8b;margin-top:4px">Garantindo um ensino de qualidade no Huambo</div></td></tr></table></td></tr><tr><td style="padding:38px 40px 34px"><div style="font-size:11px;letter-spacing:2px;color:#176b8b;font-weight:bold">RELATÓRIO ESCOLAR</div><h1 style="font-size:26px;line-height:1.25;color:#173044;margin:12px 0 18px">O seu relatório está pronto para leitura</h1><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 18px">Caro encarregado de educação,</p><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 24px">Temos o prazer de partilhar o relatório escolar de <strong>${safeStudentName}</strong>. A nossa equipa preparou este documento com todo o cuidado para lhe dar uma visão clara da aprendizagem e do progresso do seu educando.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff1c2;border-left:4px solid #f3c0bd;margin:0 0 28px"><tr><td style="padding:16px 18px;color:#405564;font-size:14px;line-height:1.6"><strong style="color:#173044">Período avaliado:</strong> ${periodLabel}<br><strong style="color:#173044">Documento:</strong> relatório escolar em anexo</td></tr></table><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 24px">Consulte o ficheiro PDF anexado a esta mensagem.</p><p style="font-size:15px;line-height:1.7;color:#405564;margin:0">Com os melhores cumprimentos,<br><strong>Nova Escola Politécnica do Huambo</strong></p></td></tr><tr><td style="background:#173044;padding:18px 40px;color:#d9edf3;font-size:11px;line-height:1.5">Este é um envio automático. Para esclarecimentos, contacte a escola.</td></tr></table></td></tr></table></body></html>`,
-        ...getReportEmailOverride({ logoUrl, schoolName: schoolContext.school.name, reportUrl: "relatorio.pdf", studentName: recipient.studentName, firstName: recipient.firstName, periodLabel }),
+        ...getReportEmailOverride({ logoUrl, schoolName: schoolContext.school.name, reportUrl: "relatorio.pdf", studentName: recipient.studentName, firstName: recipient.firstName, periodLabel, emailTemplate: schoolContext.school.reportEmailTemplate }),
         attachments: recipient.pdfBuffer ? [{ content: recipient.pdfBuffer, filename: `relatorio-${safeFileName(recipient.studentName)}.pdf` }] : undefined,
       });
 

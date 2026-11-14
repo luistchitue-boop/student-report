@@ -46,6 +46,18 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
     return () => { activeRequest = false; };
   }, []);
 
+  useEffect(() => {
+    function updateSchoolProfile(event: Event) {
+      const detail = (event as CustomEvent<{ schoolId: string; schoolName: string }>).detail;
+      if (!detail?.schoolId) return;
+      setSchoolMemberships((current) => current.map((membership) => membership.schoolId === detail.schoolId
+        ? { ...membership, school: { ...membership.school, name: detail.schoolName } }
+        : membership));
+    }
+    window.addEventListener("active-school-profile-updated", updateSchoolProfile);
+    return () => window.removeEventListener("active-school-profile-updated", updateSchoolProfile);
+  }, []);
+
   async function changeSchool(schoolId: string): Promise<boolean> {
     if (!schoolId || switchingSchool) return false;
     if (schoolId === activeSchoolId) return true;

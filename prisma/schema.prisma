@@ -63,6 +63,7 @@ model School {
   logoUrl   String?
   address   String?
   website   String?
+  reportEmailTemplate String? @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

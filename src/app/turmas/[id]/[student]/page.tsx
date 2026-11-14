@@ -34,5 +34,5 @@ export default async function StudentDetailPage({ params, searchParams }: { para
 
   const canAddParent = ["ADMIN", "COORDENADOR", "DIRECCAO"].includes(schoolContext.role);
 
-  return <StudentRecordClient turma={turma} student={studentRecord} nextStudent={nextStudent ? { id: nextStudent.id, name: nextStudent.name } : null} initialWeek={initialWeek} canEdit={schoolContext.role === "ADMIN" || schoolContext.role === "COORDENADOR"} canAddParent={canAddParent} />;
+  return <StudentRecordClient turma={turma} student={studentRecord} school={schoolContext.school} nextStudent={nextStudent ? { id: nextStudent.id, name: nextStudent.name } : null} initialWeek={initialWeek} canEdit={schoolContext.role === "ADMIN" || schoolContext.role === "COORDENADOR"} canAddParent={canAddParent} />;
 }

@@ -2,6 +2,7 @@
 
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, CalendarDays, ClipboardList, FileCheck, FileText, GraduationCap, Sparkles, Users } from "lucide-react";
@@ -18,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ContactosTab } from "./contactos-tab";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { makeSchoolWebsiteQrTarget } from "@/lib/school-report-email";
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; assessmentType: "AC2" | "NPP" | "NPT" | null; trimester: "I" | "II" | "III" | null; createdAt: string };
 type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; hasAttachment?: boolean; attachmentName?: string | null; createdAt: string };
@@ -65,7 +67,7 @@ function getShortStudentName(name: string) {
   return `${parts[0]} ${parts[parts.length - 1]}`;
 }
 
-export function StudentRecordClient({ turma, student, nextStudent, initialWeek, canEdit, canAddParent }: { turma: { id: string; name: string; schedule: string; students: number; gradeScale: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; avatarUrl?: string | null; parents: Array<{ id: string; name: string; phone: string; email: string }> }; nextStudent: { id: string; name: string } | null; initialWeek: string; canEdit: boolean; canAddParent: boolean }) {
+export function StudentRecordClient({ turma, student, school, nextStudent, initialWeek, canEdit, canAddParent }: { turma: { id: string; name: string; schedule: string; students: number; gradeScale: number; subjects: string[] }; student: { id: string; name: string; age: number; attendance: string; avatarUrl?: string | null; parents: Array<{ id: string; name: string; phone: string; email: string }> }; school: { id: string; name: string; logoUrl: string | null; address: string | null; website: string | null; reportEmailTemplate: string | null }; nextStudent: { id: string; name: string } | null; initialWeek: string; canEdit: boolean; canAddParent: boolean }) {
   const weeklyPeriods = getWeeklyCoordinationPeriods(new Date().getFullYear());
   const initialReportPeriod = weeklyPeriods.find((period) => period.key === initialWeek);
   const today = new Date();
@@ -402,6 +404,10 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
         notes: fault.notes ?? "",
       }));
 
+      const qrTarget = makeSchoolWebsiteQrTarget(school.website);
+      const schoolQr = qrTarget ? await QRCode.toDataURL(qrTarget, { errorCorrectionLevel: "M", margin: 1, width: 256 }).catch(() => "") : "";
+      const schoolLogo = school.logoUrl || (school.id === "legacy-neph-school" ? "/school-logo.png" : "");
+
       const reportElement = document.createElement("div");
       reportElement.style.position = "fixed";
       reportElement.style.left = "-9999px";
@@ -414,10 +420,10 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
       reportElement.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #1b3d34;padding:0 0 20px;margin-bottom:24px;">
           <div style="display:flex;align-items:center;gap:16px;">
-            <img src="/school-logo.png" alt="Logo da escola" style="width:72px;height:72px;object-fit:contain;" />
-            <div><div style="font-size:22px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#1b3d34;">NEPH RELATÓRIOS</div><div style="margin-top:7px;color:#60716a;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;">Relatório escolar</div></div>
+            ${schoolLogo ? `<img src="${escapeHtml(schoolLogo)}" alt="Logótipo da escola" style="width:72px;height:72px;object-fit:contain;" />` : ""}
+            <div><div style="font-size:22px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#1b3d34;">${escapeHtml(school.name)}</div><div style="margin-top:7px;color:#60716a;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;">Relatório escolar</div></div>
           </div>
-          <div style="text-align:right;color:#60716a;font-size:11px;line-height:1.6;"><strong style="display:block;color:#1b3d34;font-size:12px;">PERÍODO</strong>${escapeHtml(reportStart)} a ${escapeHtml(reportEnd)}</div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="text-align:right;color:#60716a;font-size:11px;line-height:1.6;"><strong style="display:block;color:#1b3d34;font-size:12px;">PERÍODO</strong>${escapeHtml(reportStart)} a ${escapeHtml(reportEnd)}</div>${schoolQr ? `<img src="${schoolQr}" alt="Código QR do website da escola" style="width:56px;height:56px;object-fit:contain;" />` : ""}</div>
         </div>
         <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:12px;margin:18px 0 28px;">
           <div style="background:#1b3d34;color:#fff;border-radius:12px;padding:16px 18px;"><span style="display:block;color:#b9d7c4;font-size:10px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:7px;">Aluno</span><span style="font-size:19px;font-weight:800;">${escapeHtml(student.name)}</span></div>

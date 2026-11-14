@@ -8,6 +8,7 @@ import { isSendableEmailAddress } from "@/lib/email-address";
 import { generateInternshipReportPdf } from "@/lib/internship-report-pdf";
 import { createInternshipReportShareSignature } from "@/lib/internship-report-share";
 import { getSchoolContext } from "@/lib/school-context";
+import { renderSchoolEmailTemplate, schoolEmailTemplateHtml } from "@/lib/school-report-email";
 
 declare global {
   var prismaAdminInternshipReportSend: PrismaClient | undefined;
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
             id: true,
             name: true,
             avatarUrl: true,
-            turma: { select: { name: true, school: { select: { id: true, name: true, logoUrl: true, address: true, website: true } } } },
+            turma: { select: { name: true, school: { select: { id: true, name: true, logoUrl: true, address: true, website: true, reportEmailTemplate: true } } } },
             parents: { where: { id: parentId }, select: { id: true, name: true, email: true, phone: true } },
           },
         },
@@ -89,13 +90,24 @@ export async function POST(request: Request) {
     if (channel === "EMAIL") {
       const firstName = parent.name.trim().split(/\s+/)[0] || "encarregado(a)";
       const period = `${report.periodStart.toISOString().slice(0, 10)} a ${report.periodEnd.toISOString().slice(0, 10)}`;
+      const school = report.student.turma.school;
+      const customMessage = school.reportEmailTemplate?.trim()
+        ? renderSchoolEmailTemplate(school.reportEmailTemplate, {
+            recipientName: firstName,
+            studentName: report.student.name,
+            period,
+            schoolName: school.name,
+          })
+        : null;
       try {
         const result = await new Resend(process.env.RESEND_API_KEY!).emails.send({
           from: process.env.RESEND_FROM_EMAIL!,
           to: recipientContact,
           subject: `Relatório de estágio de ${report.student.name} | ${period}`,
-          text: `Estimado(a) ${firstName},\n\nSegue em anexo o relatório de acompanhamento de estágio de ${report.student.name}, referente ao período ${period}.\n\nCom os melhores cumprimentos,\n${report.student.turma.school.name}`,
-          html: `<p>Estimado(a) ${escapeHtml(firstName)},</p><p>Segue em anexo o relatório de acompanhamento de estágio de <strong>${escapeHtml(report.student.name)}</strong>, referente ao período ${escapeHtml(period)}.</p><p>Com os melhores cumprimentos,<br>${escapeHtml(report.student.turma.school.name)}</p>`,
+          text: customMessage ?? `Estimado(a) ${firstName},\n\nSegue em anexo o relatório de acompanhamento de estágio de ${report.student.name}, referente ao período ${period}.\n\nCom os melhores cumprimentos,\n${school.name}`,
+          html: customMessage
+            ? schoolEmailTemplateHtml(customMessage, school.name, school.logoUrl)
+            : `<p>Estimado(a) ${escapeHtml(firstName)},</p><p>Segue em anexo o relatório de acompanhamento de estágio de <strong>${escapeHtml(report.student.name)}</strong>, referente ao período ${escapeHtml(period)}.</p><p>Com os melhores cumprimentos,<br>${escapeHtml(school.name)}</p>`,
           attachments: [{ content: pdf, filename: `relatorio-estagio-${report.student.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9-]+/g, "-").toLowerCase() || "estagiario"}.pdf` }],
         });
         if (result.error) deliveryError = result.error.message;

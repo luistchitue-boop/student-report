@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
           select: {
             name: true,
             avatarUrl: true,
-            turma: { select: { name: true, school: { select: { id: true, name: true, logoUrl: true, address: true, website: true } } } },
+            turma: { select: { name: true, school: { select: { id: true, name: true, logoUrl: true, address: true, website: true, reportEmailTemplate: true } } } },
           },
         },
         teacher: { select: { name: true } },
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
           select: {
             name: true,
             avatarUrl: true,
-            turma: { select: { name: true, school: { select: { id: true, name: true, logoUrl: true, address: true, website: true } } } },
+            turma: { select: { name: true, school: { select: { id: true, name: true, logoUrl: true, address: true, website: true, reportEmailTemplate: true } } } },
           },
         },
         teacher: { select: { name: true } },
