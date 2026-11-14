@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { KeyRound, UserRound } from "lucide-react";
 
 type User = { id: string; name: string; email: string };
 
@@ -17,22 +22,25 @@ export function SettingsClient() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    fetchProfile();
+    let active = true;
+    fetch("/api/user/profile")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Não foi possível carregar o perfil");
+        return response.json();
+      })
+      .then((data: User) => {
+        if (!active) return;
+        setUser(data);
+        setName(data.name || "");
+      })
+      .catch((loadError: unknown) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : "Erro ao carregar o perfil");
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => { active = false; };
   }, []);
-
-  async function fetchProfile() {
-    try {
-      const response = await fetch("/api/user/profile");
-      if (!response.ok) throw new Error("Não foi possível carregar o perfil");
-      const data = await response.json();
-      setUser(data);
-      setName(data.name || "");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar o perfil");
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -88,194 +96,68 @@ export function SettingsClient() {
 
   if (isLoading) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>
-        A carregar perfil...
-      </div>
+      <main className="main-content settings-page"><div className="settings-loading">A carregar perfil…</div></main>
     );
   }
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "600px" }}>
-          <h1 style={{ color: "var(--navy)", marginBottom: "2rem" }}>Definições da conta</h1>
+    <main className="main-content settings-page">
+      <header className="topbar">
+        <div><p className="eyebrow">CONTA</p><h1>Definições da conta</h1></div>
+      </header>
 
-      {error && (
-        <div
-          style={{
-            padding: "0.75rem 1rem",
-            marginBottom: "1rem",
-            borderRadius: "8px",
-            background: "#fce4e6",
-            color: "#8b3a3a",
-            fontSize: "0.9rem",
-            fontWeight: 600,
-            border: "1px solid #f5c6cc",
-          }}
-        >
-          {error}
+      {error && <p className="settings-feedback error" role="alert">{error}</p>}
+      {success && <p className="settings-feedback success" role="status">{success}</p>}
+
+      <form onSubmit={handleSave} className="settings-form">
+        <Card className="settings-card">
+          <CardHeader>
+            <div className="settings-card-icon"><UserRound className="size-4" /></div>
+            <CardTitle>Perfil</CardTitle>
+            <CardDescription>Atualize o nome apresentado na plataforma.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-5">
+            <div className="grid gap-2">
+              <Label htmlFor="settings-email">E-mail</Label>
+              <Input id="settings-email" value={user?.email ?? ""} readOnly aria-describedby="email-help" />
+              <p id="email-help" className="text-xs text-muted-foreground">O e-mail de acesso não pode ser alterado.</p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nome</Label>
+              <Input id="name" type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder="O seu nome completo" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="settings-card">
+          <CardHeader>
+            <div className="settings-card-icon"><KeyRound className="size-4" /></div>
+            <CardTitle>Segurança</CardTitle>
+            <CardDescription>Para alterar a palavra-passe, confirme primeiro a atual.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="currentPassword">Palavra-passe atual</Label>
+              <Input id="currentPassword" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Introduza a palavra-passe atual" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="newPassword">Nova palavra-passe</Label>
+              <Input id="newPassword" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Mínimo de 6 caracteres" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="confirmPassword">Confirmar palavra-passe</Label>
+              <Input id="confirmPassword" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Repita a nova palavra-passe" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="settings-actions">
+          <p className="text-xs text-muted-foreground">As alterações aplicam-se à sua conta de acesso.</p>
+          <Button type="submit" disabled={isSaving} className="min-h-10">
+            {isSaving ? "A guardar…" : "Guardar alterações"}
+          </Button>
         </div>
-      )}
-
-      {success && (
-        <div
-          style={{
-            padding: "0.75rem 1rem",
-            marginBottom: "1rem",
-            borderRadius: "8px",
-            background: "var(--green-soft)",
-            color: "#254a3d",
-            fontSize: "0.9rem",
-            fontWeight: 600,
-            border: "1px solid #c5e1ce",
-          }}
-        >
-          {success}
-        </div>
-      )}
-
-      <form onSubmit={handleSave} style={{ display: "grid", gap: "1.5rem" }}>
-        {/* Email Display */}
-        <div style={{ display: "grid", gap: "0.5rem" }}>
-          <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--navy)", textTransform: "uppercase" }}>
-            E-mail
-          </label>
-          <div
-            style={{
-              padding: "0.75rem",
-              background: "#f5f6f4",
-              borderRadius: "8px",
-              color: "var(--muted)",
-              fontSize: "0.95rem",
-            }}
-          >
-            {user?.email}
-          </div>
-          <small style={{ color: "var(--muted)", fontSize: "0.75rem" }}>O e-mail não pode ser alterado</small>
-        </div>
-
-        {/* Name Field */}
-        <div style={{ display: "grid", gap: "0.5rem" }}>
-          <label htmlFor="name" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--navy)", textTransform: "uppercase" }}>
-            Nome
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="O seu nome completo"
-            style={{
-              padding: "0.75rem",
-              border: "1px solid #ccd9ce",
-              borderRadius: "8px",
-              fontSize: "0.95rem",
-              outline: "none",
-            }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "#ccd9ce")}
-          />
-        </div>
-
-        {/* Password Section */}
-        <fieldset
-          style={{
-            border: "1px solid #dfe5df",
-            borderRadius: "8px",
-            padding: "1rem",
-            display: "grid",
-            gap: "1rem",
-          }}
-        >
-          <legend style={{ fontWeight: 700, color: "var(--navy)", fontSize: "0.9rem" }}>
-            Alterar palavra-passe
-          </legend>
-
-          <div style={{ display: "grid", gap: "0.5rem" }}>
-            <label htmlFor="currentPassword" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--navy)", textTransform: "uppercase" }}>
-              Palavra-passe atual
-            </label>
-            <input
-              id="currentPassword"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Introduza a sua palavra-passe atual"
-              style={{
-                padding: "0.75rem",
-                border: "1px solid #ccd9ce",
-                borderRadius: "8px",
-                fontSize: "0.95rem",
-                outline: "none",
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "#ccd9ce")}
-            />
-          </div>
-
-          <div style={{ display: "grid", gap: "0.5rem" }}>
-            <label htmlFor="newPassword" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--navy)", textTransform: "uppercase" }}>
-              Nova palavra-passe
-            </label>
-            <input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Introduza uma nova palavra-passe (mín. 6 caracteres)"
-              style={{
-                padding: "0.75rem",
-                border: "1px solid #ccd9ce",
-                borderRadius: "8px",
-                fontSize: "0.95rem",
-                outline: "none",
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "#ccd9ce")}
-            />
-          </div>
-
-          <div style={{ display: "grid", gap: "0.5rem" }}>
-            <label htmlFor="confirmPassword" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--navy)", textTransform: "uppercase" }}>
-              Confirmar nova palavra-passe
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirme a nova palavra-passe"
-              style={{
-                padding: "0.75rem",
-                border: "1px solid #ccd9ce",
-                borderRadius: "8px",
-                fontSize: "0.95rem",
-                outline: "none",
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "#ccd9ce")}
-            />
-          </div>
-        </fieldset>
-
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={isSaving}
-          style={{
-            padding: "0.85rem 2rem",
-            background: "var(--green)",
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            fontWeight: 700,
-            fontSize: "0.9rem",
-            cursor: isSaving ? "not-allowed" : "pointer",
-            opacity: isSaving ? 0.6 : 1,
-            textTransform: "uppercase",
-          }}
-        >
-          {isSaving ? "A guardar..." : "Guardar Alterações"}
-        </button>
       </form>
-    </div>
+    </main>
   );
 }

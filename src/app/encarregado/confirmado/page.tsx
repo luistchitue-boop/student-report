@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { BadgeCheck } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "Contacto confirmado",
@@ -7,13 +9,15 @@ export const metadata: Metadata = {
 
 export default function ParentContactConfirmedPage() {
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "2rem 1rem", background: "#f5f7f4" }}>
-      <section style={{ width: "100%", maxWidth: 560, background: "#fff", borderRadius: 18, padding: "2rem", border: "1px solid #dfe7e1", textAlign: "center" }}>
-        <h1 style={{ margin: "0 0 0.75rem", color: "#163b31", fontSize: "1.8rem" }}>Alteração confirmada</h1>
-        <p style={{ margin: 0, color: "#53645b", lineHeight: 1.6 }}>
-          Os seus contactos foram atualizados com sucesso.
-        </p>
-      </section>
+    <main className="public-page">
+      <Card className="public-card public-confirmed-card">
+        <CardHeader className="items-center text-center">
+          <div className="public-confirmed-icon"><BadgeCheck className="size-7" /></div>
+          <CardTitle className="text-2xl tracking-tight">Alteração confirmada</CardTitle>
+          <CardDescription className="text-sm leading-relaxed">Os seus contactos foram atualizados com sucesso.</CardDescription>
+        </CardHeader>
+        <CardContent className="text-center text-xs text-muted-foreground">Já pode fechar esta página.</CardContent>
+      </Card>
     </main>
   );
 }

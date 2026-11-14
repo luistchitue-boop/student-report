@@ -7,6 +7,8 @@ import TurmaDeleteAction from "./turma-delete-action";
 import TurmasActions from "./turmas-actions";
 import { TopTurmasMonthlyRanking } from "./top-turmas-monthly-ranking";
 import { getSchoolContext } from "@/lib/school-context";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const PAGE_SIZE = 6;
 
@@ -126,9 +128,9 @@ export default async function TurmasPage({
           <form method="get" className="student-global-search-form">
             <label htmlFor="global-student-search">Pesquisar aluno em todas as turmas supervisionadas</label>
             <div className="turma-search-controls">
-              <input id="global-student-search" name="student" type="search" minLength={2} defaultValue={studentQuery} placeholder="Introduza o nome do aluno..." />
+              <Input id="global-student-search" name="student" type="search" minLength={2} defaultValue={studentQuery} placeholder="Introduza o nome do aluno..." />
               {query && <input type="hidden" name="q" value={query} />}
-              <button type="submit" className="turma-search-button">Pesquisar aluno</button>
+              <Button type="submit" className="turma-search-button">Pesquisar aluno</Button>
               {studentQuery && <Link href={query ? `/turmas?q=${encodeURIComponent(query)}` : "/turmas"} className="turma-search-clear">Limpar</Link>}
             </div>
             {studentQuery.length === 1 && <small>Introduza pelo menos 2 caracteres para pesquisar.</small>}
@@ -160,8 +162,8 @@ export default async function TurmasPage({
           <form method="get" className="turma-search-form">
             <label htmlFor="turma-search">Pesquisar turma</label>
             <div className="turma-search-controls">
-              <input id="turma-search" name="q" type="search" defaultValue={query} placeholder="Ex.: 10CEJ" />
-              <button type="submit" className="turma-search-button">Pesquisar</button>
+              <Input id="turma-search" name="q" type="search" defaultValue={query} placeholder="Ex.: 10CEJ" />
+              <Button type="submit" className="turma-search-button">Pesquisar</Button>
               {query && <Link href="/turmas" className="turma-search-clear">Limpar</Link>}
             </div>
           </form>

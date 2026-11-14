@@ -10,6 +10,8 @@ import { GradeScaleClient } from "./grade-scale-client";
 import { TurmaDisciplinasClient } from "./disciplinas-client";
 import { TurmaMonthlyStatistics } from "./turma-monthly-statistics";
 import { getSchoolContext } from "@/lib/school-context";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const PAGE_SIZE = 10;
 
@@ -135,8 +137,8 @@ export default async function TurmaDetailPage({
           <form method="get" className="student-search-form">
             <label htmlFor="student-search">Pesquisar aluno</label>
             <div className="student-search-controls">
-              <input id="student-search" name="q" type="search" defaultValue={query} placeholder="Ex.: Alicia Manuela" />
-              <button type="submit" className="student-search-button">Pesquisar</button>
+              <Input id="student-search" name="q" type="search" defaultValue={query} placeholder="Ex.: Alicia Manuela" />
+              <Button type="submit" className="student-search-button">Pesquisar</Button>
               {query && <Link href={`/turmas/${turma.id}`} className="student-search-clear">Limpar</Link>}
             </div>
           </form>

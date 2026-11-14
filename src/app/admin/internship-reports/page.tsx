@@ -16,9 +16,9 @@ export default async function AdminInternshipReportsPage() {
         <header className="topbar">
           <div><p className="eyebrow">ADMINISTRAÇÃO · ESTÁGIO</p><h1>Relatórios de estágio</h1></div>
         </header>
-        <nav aria-label="Administração de estágio" style={{ display: "flex", flexWrap: "wrap", gap: 10, padding: "14px 20px", borderBottom: "1px solid #e0e7e9", background: "#fafcfc" }}>
-          <Link href="/admin/internships" style={{ color: "#176b8b", fontWeight: 700 }}>Configurar turmas</Link>
-          <span aria-current="page" style={{ color: "#173044", fontWeight: 800 }}>Relatórios e envios</span>
+        <nav className="admin-route-tabs" aria-label="Administração de estágio">
+          <Link href="/admin/internships">Configurar turmas</Link>
+          <span className="active" aria-current="page">Relatórios e envios</span>
         </nav>
         <InternshipReportsAdminClient />
       </main>

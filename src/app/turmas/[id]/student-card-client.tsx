@@ -2,6 +2,24 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function getDisplayName(name: string): string {
   const nameParts = name.trim().split(/\s+/).filter(Boolean);
@@ -154,51 +172,38 @@ export function StudentCardClient({
 
   return (
     <>
-      <Link
-        href={`/turmas/${turmaId}/${encodeURIComponent(student.id)}`}
-        className="student-card-link"
-      >
-        <article className="student-card">
+      <article className="student-card">
           <div className="student-avatar-wrap">
-            {avatarUrl ? <img src={avatarUrl} alt={`Fotografia de ${student.name}`} className="student-avatar-image" /> : <span className="student-avatar" aria-hidden="true">👤</span>}
+            <Link href={`/turmas/${turmaId}/${encodeURIComponent(student.id)}`} className="student-card-link" aria-label={`Ver registo de ${student.name}`}>
+              {avatarUrl ? <img src={avatarUrl} alt={`Fotografia de ${student.name}`} className="student-avatar-image" /> : <span className="student-avatar" aria-hidden="true">👤</span>}
+            </Link>
             {isAdmin && <label className="student-avatar-upload" title="Alterar fotografia" onClick={(event) => event.stopPropagation()}>
               <span aria-hidden="true">+</span>
               <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarChange} disabled={avatarLoading} />
             </label>}
           </div>
-          <div className="student-card-body">
+          <Link href={`/turmas/${turmaId}/${encodeURIComponent(student.id)}`} className="student-card-link student-card-body">
             <strong>{getDisplayName(student.name)}</strong>
-          </div>
-          <button
+          </Link>
+          <Button
             type="button"
             onClick={handleOpenModal}
             disabled={isLoading}
+            variant="outline"
             className={`attendance-pill ${isActive ? "present" : "absent"}`}
             title="Clique para alterar o estado"
           >
             {isActive ? "Ativo" : "Inativo"}
-          </button>
-        </article>
-      </Link>
+          </Button>
+      </article>
 
-      {showModal && (
-        <div
-          className="student-status-modal-backdrop"
-          onClick={handleCloseModal}
-          role="presentation"
-        >
-          <div className="student-status-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Alterar Estado de {getDisplayName(student.name)}</h3>
-              <button
-                type="button"
-                className="modal-close"
-                onClick={handleCloseModal}
-                aria-label="Fechar modal"
-              >
-                ✕
-              </button>
-            </div>
+      <Dialog open={showModal} onOpenChange={(open) => { setShowModal(open); if (!open) setError(null); }}>
+        <DialogContent className="student-status-modal">
+            <DialogCloseButton />
+            <DialogHeader>
+              <DialogTitle>Alterar estado de {getDisplayName(student.name)}</DialogTitle>
+              <DialogDescription>Atualize o estado ou, se necessário, transfira o aluno para outra turma.</DialogDescription>
+            </DialogHeader>
 
             <div className="modal-body">
               <div className="state-options">
@@ -225,47 +230,50 @@ export function StudentCardClient({
               </div>
               {isAdmin && availableTurmas.length > 0 && (
                 <div className="student-transfer-field">
-                  <label htmlFor={`transfer-${student.id}`}>Transferir para</label>
-                  <select
-                    id={`transfer-${student.id}`}
-                    value={destinationTurmaId}
-                    onChange={(event) => setDestinationTurmaId(event.target.value)}
+                  <Label htmlFor={`transfer-${student.id}`}>Transferir para</Label>
+                  <Select
+                    value={destinationTurmaId || null}
+                    onValueChange={(value) => setDestinationTurmaId(value ?? "")}
                     disabled={isTransferring || isLoading}
                   >
-                    <option value="">Selecionar turma</option>
-                    {availableTurmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
-                  </select>
+                    <SelectTrigger id={`transfer-${student.id}`} className="w-full">
+                      <SelectValue placeholder="Selecionar turma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTurmas.map((turma) => <SelectItem key={turma.id} value={turma.id}>{turma.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
-              {error && <div className="modal-error">{error}</div>}
+              {error && <div className="modal-error" role="alert">{error}</div>}
             </div>
 
-            <div className="modal-footer">
-              {isAdmin && <button type="button" className="modal-button danger" onClick={handleDelete} disabled={isDeleting || isLoading || isTransferring}>
+            <DialogFooter className="modal-footer">
+              {isAdmin && <Button type="button" variant="destructive" className="modal-button danger" onClick={handleDelete} disabled={isDeleting || isLoading || isTransferring}>
                 {isDeleting ? "A eliminar..." : "Eliminar aluno"}
-              </button>}
-              <button
+              </Button>}
+              <Button
                 type="button"
+                variant="outline"
                 className="modal-button cancel"
                 onClick={handleCloseModal}
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 className="modal-button save"
                 onClick={handleSaveState}
                 disabled={isLoading || isTransferring || selectedState === isActive}
               >
                 {isLoading ? "A guardar..." : "Guardar"}
-              </button>
-              {isAdmin && availableTurmas.length > 0 && <button type="button" className="modal-button transfer" onClick={handleTransfer} disabled={isLoading || isTransferring || !destinationTurmaId}>
+              </Button>
+              {isAdmin && availableTurmas.length > 0 && <Button type="button" variant="secondary" className="modal-button transfer" onClick={handleTransfer} disabled={isLoading || isTransferring || !destinationTurmaId}>
                 {isTransferring ? "A transferir..." : "Transferir"}
-              </button>}
-            </div>
-          </div>
-        </div>
-      )}
+              </Button>}
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

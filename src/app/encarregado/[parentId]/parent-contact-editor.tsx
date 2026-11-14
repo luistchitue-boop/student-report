@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowRight, CheckCircle2, ContactRound, Mail, Phone, UsersRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type StudentSummary = {
   id: string;
@@ -60,73 +65,53 @@ export function ParentContactEditor({
     .filter((student, index, all) => all.findIndex((item) => item.id === student.id) === index);
 
   return (
-    <main style={{ minHeight: "100vh", padding: "2rem 1rem", background: "#f5f7f4" }}>
-      <section style={{ width: "100%", maxWidth: 680, margin: "0 auto", background: "#fff", borderRadius: 18, boxShadow: "0 10px 30px rgba(25, 52, 45, 0.08)", padding: "2rem", border: "1px solid #dfe7e1" }}>
-        <p style={{ margin: "0 0 0.4rem", color: "#2f7d5a", fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Dados do encarregado</p>
-        <h1 style={{ margin: "0 0 0.25rem", color: "#163b31", fontSize: "1.75rem" }}>{parent.name}</h1>
-        <p style={{ margin: "0 0 1.5rem", color: "#53645b" }}>Atualize os contactos partilhados entre os alunos abaixo.</p>
-
-        {students.length > 0 ? (
-          <div style={{ display: "grid", gap: "1rem", padding: "1rem", borderRadius: 12, background: "#f2f6f3", border: "1px solid #dfe7e1" }}>
-            <div style={{ display: "grid", gap: "0.55rem" }}>
-              <div style={{ color: "#53645b", fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>Alunos associados</div>
-              {students.map((student) => (
-                <div key={student.id} style={{ color: "#163b31", borderLeft: "3px solid #2f7d5a", paddingLeft: "0.7rem" }}>
-                  <div style={{ fontWeight: 700 }}>{student.name}</div>
-                  {student.turma && <div style={{ color: "#53645b", fontSize: "0.85rem" }}>{student.turma.name}</div>}
+    <main className="public-page public-page-top">
+      <Card className="public-card public-card-wide">
+        <CardHeader>
+          <div className="public-card-icon"><ContactRound className="size-5" /></div>
+          <p className="public-overline">Dados do encarregado</p>
+          <CardTitle className="text-2xl tracking-tight">{parent.name}</CardTitle>
+          <CardDescription>Atualize os contactos partilhados entre os alunos associados.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          {students.length > 0 ? (
+            <>
+              <section className="public-associated-students" aria-label="Alunos associados">
+                <h2><UsersRound className="size-4" /> Alunos associados</h2>
+                <div className="public-student-list">
+                  {students.map((student) => (
+                    <div className="public-student-item" key={student.id}>
+                      <strong>{student.name}</strong>
+                      {student.turma && <span>{student.turma.name}</span>}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </section>
 
-            <label style={{ display: "grid", gap: "0.45rem", color: "#163b31", fontWeight: 600 }}>
-              Telefone
-              <input
-                type="tel"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder="912345678"
-                required
-                style={{ width: "100%", minHeight: 46, border: "1px solid #c3d0c8", borderRadius: 10, padding: "0 0.9rem", fontSize: "1rem" }}
-              />
-            </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="guardian-phone"><Phone className="mr-1 inline size-3.5" /> Telefone</Label>
+                  <Input id="guardian-phone" type="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="912345678" required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="guardian-email"><Mail className="mr-1 inline size-3.5" /> E-mail</Label>
+                  <Input id="guardian-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nome@exemplo.pt" />
+                </div>
+              </div>
 
-            <label style={{ display: "grid", gap: "0.45rem", color: "#163b31", fontWeight: 600 }}>
-              E-mail
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="nome@exemplo.pt"
-                style={{ width: "100%", minHeight: 46, border: "1px solid #c3d0c8", borderRadius: 10, padding: "0 0.9rem", fontSize: "1rem" }}
-              />
-            </label>
+              {error && <p className="public-feedback error" role="alert">{error}</p>}
+              {success && <p className="public-feedback success" role="status"><CheckCircle2 className="size-4" /> Contactos confirmados e guardados com sucesso.</p>}
+              {confirmationSent && <p className="public-feedback success" role="status">Foi enviado um e-mail de confirmação. Clique no link recebido para guardar as alterações. Se não o encontrar na caixa de entrada, verifique também o spam.</p>}
 
-            {error && (
-              <p role="alert" style={{ margin: 0, color: "#8a2431", background: "#fff0f3", border: "1px solid #e7b8c3", borderRadius: 8, padding: "0.75rem 0.85rem" }}>
-                {error}
-              </p>
-            )}
-
-            {success && (
-              <p style={{ margin: 0, color: "#254a3d", background: "#eaf7ef", border: "1px solid #c5e1ce", borderRadius: 8, padding: "0.75rem 0.85rem" }}>
-                Contactos confirmados e guardados com sucesso.
-              </p>
-            )}
-
-            {confirmationSent && (
-              <p style={{ margin: 0, color: "#254a3d", background: "#eaf7ef", border: "1px solid #c5e1ce", borderRadius: 8, padding: "0.75rem 0.85rem" }}>
-                Foi enviado um e-mail de confirmação. Clique no link recebido para guardar as alterações. Se não o encontrar na caixa de entrada, verifique também o spam.
-              </p>
-            )}
-
-            <button type="button" onClick={handleSubmit} disabled={isSaving} style={{ minHeight: 46, border: 0, borderRadius: 10, background: "#2f7d5a", color: "#fff", fontWeight: 700, cursor: isSaving ? "wait" : "pointer" }}>
-              {isSaving ? "A enviar confirmação..." : "Guardar contactos"}
-            </button>
-          </div>
-        ) : (
-          <p style={{ margin: 0, color: "#53645b" }}>Este perfil não está associado a nenhum aluno ativo.</p>
-        )}
-      </section>
+              <Button type="button" className="h-11 w-full gap-2 sm:w-auto sm:justify-self-end" onClick={handleSubmit} disabled={isSaving}>
+                {isSaving ? "A enviar confirmação…" : "Guardar contactos"} {!isSaving && <ArrowRight className="size-4" />}
+              </Button>
+            </>
+          ) : (
+            <p className="public-feedback">Este perfil não está associado a nenhum aluno ativo.</p>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }

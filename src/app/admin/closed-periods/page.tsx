@@ -23,36 +23,9 @@ export default async function ClosedPeriodsPage() {
           </div>
         </header>
 
-        <nav style={{ 
-          display: "flex", 
-          gap: "16px", 
-          padding: "16px 20px",
-          borderBottom: "1px solid #e0e0e0",
-          backgroundColor: "#fafafa"
-        }}>
-          <Link href="/admin" style={{
-            padding: "8px 16px",
-            backgroundColor: "transparent",
-            color: "#176b8b",
-            textDecoration: "none",
-            border: "1px solid #176b8b",
-            borderRadius: "4px",
-            fontSize: "14px",
-            fontWeight: 500
-          }}>
-            Utilizadores
-          </Link>
-          <Link href="/admin/closed-periods" style={{
-            padding: "8px 16px",
-            backgroundColor: "#176b8b",
-            color: "white",
-            textDecoration: "none",
-            borderRadius: "4px",
-            fontSize: "14px",
-            fontWeight: 500
-          }}>
-            Fecho de períodos
-          </Link>
+        <nav className="admin-route-tabs" aria-label="Administração">
+          <Link href="/admin">Utilizadores</Link>
+          <Link className="active" href="/admin/closed-periods">Fecho de períodos</Link>
         </nav>
 
         <ClosedPeriodsManager />

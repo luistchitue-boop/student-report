@@ -1,6 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -56,56 +76,63 @@ export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <>
-      <button type="button" className="create-turma-button" onClick={() => setIsOpen(true)}>
-        Nova turma
-      </button>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger
+          render={
+            <Button type="button" className="create-turma-button">
+              Nova turma
+            </Button>
+          }
+        />
+        <DialogContent className="turma-create-modal">
+          <DialogCloseButton />
+          <DialogHeader className="mb-1">
+            <DialogTitle>Nova turma</DialogTitle>
+            <DialogDescription>Preencha os dados para adicionar uma turma à escola.</DialogDescription>
+          </DialogHeader>
 
-      {isOpen && (
-        <div className="turma-modal-backdrop" onClick={() => setIsOpen(false)}>
-          <div className="turma-create-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="turma-create-modal-header">
-              <h3>Nova turma</h3>
-              <button type="button" className="turma-create-modal-close" onClick={() => setIsOpen(false)} aria-label="Fechar">
-                ×
-              </button>
+          <form onSubmit={handleCreateTurma} className="turma-create-form">
+            <div className="turma-create-field">
+              <Label htmlFor="turma-name">Nome da turma</Label>
+              <Input
+                id="turma-name"
+                type="text"
+                required
+                value={form.name}
+                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                placeholder="Ex.: 10CEJ"
+              />
             </div>
 
-            <form onSubmit={handleCreateTurma} className="turma-create-form">
-              <div className="turma-create-field">
-                <label htmlFor="turma-name">Nome da turma</label>
-                <input
-                  id="turma-name"
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                  placeholder="Ex.: 10CEJ"
-                />
-              </div>
+            <div className="turma-create-field">
+              <Label htmlFor="turma-education-type">Tipo de ensino</Label>
+              <Select
+                value={form.educationType || null}
+                onValueChange={(value) => setForm((current) => ({ ...current, educationType: value ?? "" }))}
+              >
+                <SelectTrigger id="turma-education-type" className="w-full">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ENSINO_GERAL">Ensino geral</SelectItem>
+                  <SelectItem value="ENSINO_TECNICO">Ensino Técnico</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="turma-create-field">
-                <label htmlFor="turma-education-type">Tipo de ensino</label>
-                <select id="turma-education-type" required value={form.educationType} onChange={(event) => setForm((current) => ({ ...current, educationType: event.target.value }))}>
-                  <option value="">Selecione</option>
-                  <option value="ENSINO_GERAL">Ensino geral</option>
-                  <option value="ENSINO_TECNICO">Ensino Técnico</option>
-                </select>
-              </div>
+            <DialogFooter className="turma-create-actions">
+              <Button type="button" variant="outline" className="turma-create-cancel" onClick={() => setIsOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="turma-create-submit" disabled={status === "saving"}>
+                {status === "saving" ? "A guardar..." : "Criar turma"}
+              </Button>
+            </DialogFooter>
 
-              <div className="turma-create-actions">
-                <button type="button" className="turma-create-cancel" onClick={() => setIsOpen(false)}>
-                  Cancelar
-                </button>
-                <button type="submit" className="turma-create-submit" disabled={status === "saving"}>
-                  {status === "saving" ? "A guardar..." : "Criar turma"}
-                </button>
-              </div>
-
-              {message && <p className={`turma-create-status ${status}`}>{message}</p>}
-            </form>
-          </div>
-        </div>
-      )}
+            {message && <p className={`turma-create-status ${status}`} role={status === "error" ? "alert" : "status"}>{message}</p>}
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
