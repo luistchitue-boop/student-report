@@ -13,9 +13,10 @@ type SchoolForm = {
   name: string;
   address: string;
   website: string;
+  activationCode: string;
 };
 
-const emptyForm: SchoolForm = { name: "", address: "", website: "" };
+const emptyForm: SchoolForm = { name: "", address: "", website: "", activationCode: "" };
 
 export function SchoolsManager() {
   const [memberships, setMemberships] = useState<SchoolMembership[]>([]);
@@ -62,6 +63,7 @@ export function SchoolsManager() {
           name: form.name.trim(),
           address: form.address.trim(),
           website: form.website.trim(),
+          activationCode: form.activationCode.trim(),
         }),
       });
       const result = await response.json();
@@ -184,11 +186,24 @@ export function SchoolsManager() {
               placeholder="https://escola.ao"
             />
           </label>
+          <label className="schools-field">
+            <span>Código de ativação <b aria-hidden="true">*</b></span>
+            <input
+              type="password"
+              autoComplete="off"
+              value={form.activationCode}
+              onChange={(event) => setForm((current) => ({ ...current, activationCode: event.target.value }))}
+              maxLength={80}
+              placeholder="Código fornecido pelo suporte"
+              required
+            />
+            <small className="schools-code-hint">Cada código permite registar apenas uma escola.</small>
+          </label>
 
           {error && <p className="schools-feedback error" role="alert">{error}</p>}
           {success && <p className="schools-feedback success" role="status">{success}</p>}
 
-          <button className="schools-create-button" type="submit" disabled={saving || !form.name.trim()}>
+          <button className="schools-create-button" type="submit" disabled={saving || !form.name.trim() || !form.activationCode.trim()}>
             <Plus size={17} /> {saving ? "A registar…" : "Adicionar escola"}
           </button>
         </form>

@@ -70,6 +70,19 @@ model School {
   turmas              Turma[]
   activityLogs        ActivityLog[]
   closedWeeklyPeriods ClosedWeeklyPeriod[]
+  creationCodeRedemption SchoolCreationCodeRedemption?
+}
+
+model SchoolCreationCodeRedemption {
+  codeHash        String   @id
+  schoolId        String   @unique
+  redeemedByUserId String
+  redeemedAt      DateTime @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+
+  @@index([redeemedByUserId])
+  @@index([redeemedAt])
 }
 
 model SchoolMembership {
