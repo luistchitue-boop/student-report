@@ -115,7 +115,9 @@ export function AppSidebar({
 
   function renderItems(items: NavItem[]) {
     return items.map(({ label, href, icon: Icon }) => {
-      const active = href === "/" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+      const active = href === "/" || href === "/admin"
+        ? pathname === href
+        : pathname === href || pathname.startsWith(`${href}/`);
       return (
         <SidebarMenuItem key={href}>
           <SidebarMenuButton
