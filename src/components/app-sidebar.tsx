@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentProps } from "react";
 import {
-  Activity,
   BadgeCheck,
   BookOpenCheck,
   Building2,
@@ -150,8 +149,8 @@ export function AppSidebar({
                   />
                 }
               >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-                  <Activity className="size-5" />
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-sm font-bold uppercase text-primary-foreground shadow-sm" aria-hidden="true">
+                  {(school?.school.name ?? "AEPH Relatórios").trim().charAt(0) || "A"}
                 </span>
                 <span className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate text-sm font-bold tracking-tight" title={school?.school.name ?? "AEPH Relatórios"}>
