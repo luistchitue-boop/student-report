@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PrismaClient } from "@prisma/client";
 import { getSchoolContext } from "@/lib/school-context";
+import { getCurrentPage, getPaginationItems } from "@/lib/pagination";
 
 const prisma = new PrismaClient();
 const PAGE_SIZE = 12;
@@ -72,7 +73,6 @@ export default async function ActivityLogsPage({
   const turmaFilter = typeof params.turmaId === "string" ? params.turmaId : "";
   const fromFilter = typeof params.from === "string" ? params.from : "";
   const toFilter = typeof params.to === "string" ? params.to : "";
-  const requestedPage = Number(typeof params.page === "string" ? params.page : "1");
 
   const where = {
     schoolId: schoolContext.schoolId,
@@ -86,7 +86,7 @@ export default async function ActivityLogsPage({
   };
   const totalCount = await prisma.activityLog.count({ where });
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+  const currentPage = getCurrentPage(params.page, totalPages);
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const visibleLogs = await prisma.activityLog.findMany({
     where,
@@ -108,9 +108,7 @@ export default async function ActivityLogsPage({
     return queryString ? `/admin/logs?${queryString}` : "/admin/logs";
   };
 
-  const pageItems = totalPages <= 5
-    ? Array.from({ length: totalPages }, (_, index) => index + 1)
-    : [1, ...(currentPage > 3 ? ["ellipsis-start"] : []), ...Array.from({ length: 3 }, (_, index) => Math.max(2, Math.min(currentPage - 1, totalPages - 3) + index)), ...(currentPage < totalPages - 2 ? ["ellipsis-end"] : []), totalPages];
+  const pageItems = getPaginationItems(currentPage, totalPages);
 
   const turmas = await prisma.turma.findMany({
     where: { schoolId: schoolContext.schoolId },
@@ -175,7 +173,7 @@ export default async function ActivityLogsPage({
               <div className="grid min-w-0 gap-2">
                 <Label htmlFor="logs-turma">Turma</Label>
                 <Select name="turmaId" defaultValue={turmaFilter || null}>
-                  <SelectTrigger id="logs-turma" className="h-10 w-full">
+                  <SelectTrigger id="logs-turma" className="h-10 w-full data-[size=default]:h-10">
                     <SelectValue placeholder="Todas as turmas" />
                   </SelectTrigger>
                   <SelectContent alignItemWithTrigger={false}>

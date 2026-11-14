@@ -7,6 +7,7 @@ import TurmaDeleteAction from "./turma-delete-action";
 import TurmasActions from "./turmas-actions";
 import { TopTurmasMonthlyRanking } from "./top-turmas-monthly-ranking";
 import { getSchoolContext } from "@/lib/school-context";
+import { getCurrentPage, getPaginationItems } from "@/lib/pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,9 +62,8 @@ export default async function TurmasPage({
   const turmas = query
     ? allTurmas.filter((turma) => turma.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     : allTurmas;
-  const requestedPage = Number(Array.isArray(rawPage) ? rawPage[0] : rawPage ?? "1");
   const totalPages = Math.max(1, Math.ceil(turmas.length / PAGE_SIZE));
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+  const currentPage = getCurrentPage(rawPage, totalPages);
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const visibleTurmas = turmas.slice(startIndex, startIndex + PAGE_SIZE);
   const totalStudents = turmas.reduce((sum, turma) => sum + turma.students, 0);
@@ -76,41 +76,7 @@ export default async function TurmasPage({
     const queryString = search.toString();
     return queryString ? `/turmas?${queryString}` : "/turmas";
   };
-  const getMobilePageItems = (currentPage: number, totalPages: number) => {
-    if (totalPages <= 4) {
-      return Array.from({ length: totalPages }, (_, index) => index + 1);
-    }
-
-    let start = Math.max(1, currentPage - 1);
-    let end = Math.min(totalPages, currentPage + 1);
-
-    if (currentPage <= 2) {
-      start = 1;
-      end = 3;
-    }
-
-    if (currentPage >= totalPages - 1) {
-      start = totalPages - 2;
-      end = totalPages;
-    }
-
-    const items = Array.from({ length: end - start + 1 }, (_, index) => start + index);
-
-    if (start > 1 && end < totalPages) {
-      return [...items, "ellipsis"];
-    }
-
-    if (start > 1) {
-      return ["ellipsis", ...items];
-    }
-
-    if (end < totalPages) {
-      return [...items, "ellipsis"];
-    }
-
-    return items;
-  };
-  const mobilePageItems = getMobilePageItems(currentPage, totalPages);
+  const pageItems = getPaginationItems(currentPage, totalPages);
 
   return (
     <AppShell active="turmas">
@@ -294,7 +260,7 @@ export default async function TurmasPage({
               <ArrowLeft /> Anterior
             </Button>
             <div className="flex items-center gap-1" aria-label="Páginas de turmas">
-              {mobilePageItems.map((page, index) => typeof page === "number" ? (
+              {pageItems.map((page, index) => typeof page === "number" ? (
                 <Button
                   key={`${page}-${index}`}
                   variant={page === currentPage ? "default" : "ghost"}

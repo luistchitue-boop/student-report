@@ -67,7 +67,7 @@ export function DateRangePicker({ id, fromName, toName, defaultFrom, defaultTo, 
               id={id}
               type="button"
               variant="outline"
-              className="h-10 w-full justify-start gap-2 overflow-hidden text-left font-normal"
+              className="h-10 min-h-10 w-full justify-start gap-2 overflow-hidden text-left font-normal"
               aria-label={label}
             />
           }

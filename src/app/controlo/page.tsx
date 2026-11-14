@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { getCurrentPage, getPaginationItems } from "@/lib/pagination";
 import { ControloExportButton } from "./controlo-export-button";
 import { getSchoolContext } from "@/lib/school-context";
 
@@ -36,7 +37,6 @@ export default async function ControloPage({
   });
   const params = searchParams ? await searchParams : {};
   const requestedTurmaId = params.turmaId;
-  const requestedPage = Number(params.page ?? "1");
   const requestedMonth = params.month ?? "";
   const selectedTurma = turmas.find((turma) => turma.id === requestedTurmaId) ?? turmas[0];
   const periods = getWeeklyCoordinationPeriods(new Date().getFullYear());
@@ -45,7 +45,7 @@ export default async function ControloPage({
     : periods;
   const monthOptions = [...new Set(periods.map((period) => period.start.getMonth() + 1))];
   const totalPages = Math.max(1, Math.ceil(filteredPeriods.length / PAGE_SIZE));
-  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+  const currentPage = getCurrentPage(params.page, totalPages);
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const visiblePeriods = filteredPeriods.slice(startIndex, startIndex + PAGE_SIZE);
   const buildPageHref = (page: number) => {
@@ -56,41 +56,7 @@ export default async function ControloPage({
     const queryString = search.toString();
     return queryString ? `/controlo?${queryString}` : "/controlo";
   };
-  const getMobilePageItems = (page: number, pageCount: number) => {
-    if (pageCount <= 4) {
-      return Array.from({ length: pageCount }, (_, index) => index + 1);
-    }
-
-    let start = Math.max(1, page - 1);
-    let end = Math.min(pageCount, page + 1);
-
-    if (page <= 2) {
-      start = 1;
-      end = 3;
-    }
-
-    if (page >= pageCount - 1) {
-      start = pageCount - 2;
-      end = pageCount;
-    }
-
-    const items = Array.from({ length: end - start + 1 }, (_, index) => start + index);
-
-    if (start > 1 && end < pageCount) {
-      return [...items, "ellipsis"];
-    }
-
-    if (start > 1) {
-      return ["ellipsis", ...items];
-    }
-
-    if (end < pageCount) {
-      return [...items, "ellipsis"];
-    }
-
-    return items;
-  };
-  const pageItems = getMobilePageItems(currentPage, totalPages);
+  const pageItems = getPaginationItems(currentPage, totalPages);
   const mainCoordinator = selectedTurma?.teacherAssignments.find((assignment) => assignment.isMain && assignment.teacher.user.schoolMemberships[0]?.role === "COORDENADOR")?.teacher;
   const reportRangeStart = periods[0]?.start;
   const reportRangeEnd = periods[periods.length - 1]?.end;
