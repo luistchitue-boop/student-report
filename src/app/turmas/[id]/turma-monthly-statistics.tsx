@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useId } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
 import { AlertCircle, Award, TrendingDown, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +64,8 @@ function getAvailableMonths() {
 
 function StudentRanking({ title, students, emptyText, criterion }: { title: string; students: RankedStudent[]; emptyText: string; criterion: "grades" | "absences" }) {
   const chartId = useId().replace(/:/g, "");
+  const isMobile = useIsMobile();
+  const avatarRadius = isMobile ? 15 : 22;
   const data = students.map((student) => ({
     ...student,
     rankingValue: criterion === "grades" ? student.gradeAverage : student.absenceCount,
@@ -84,28 +87,28 @@ function StudentRanking({ title, students, emptyText, criterion }: { title: stri
     const barWidth = viewBox && "width" in viewBox && typeof viewBox.width === "number" ? viewBox.width : 0;
     const x = barX + barWidth / 2;
     const y = typeof label.y === "number" ? label.y : Number(label.y ?? 0);
-    const centerY = Math.max(27, y - 26);
+    const centerY = Math.max(avatarRadius + 5, y - avatarRadius - 4);
     const clipId = `${chartId}-avatar-${index}`;
 
     return (
       <g aria-label={`Fotografia de ${student.name}`}>
         <defs>
           <clipPath id={clipId}>
-            <circle cx={x} cy={centerY} r={22} />
+            <circle cx={x} cy={centerY} r={avatarRadius} />
           </clipPath>
         </defs>
         {student.avatarUrl ? (
           <image
             href={student.avatarUrl}
-            x={x - 22}
-            y={centerY - 22}
-            width={44}
-            height={44}
+            x={x - avatarRadius}
+            y={centerY - avatarRadius}
+            width={avatarRadius * 2}
+            height={avatarRadius * 2}
             preserveAspectRatio="xMidYMid slice"
             clipPath={`url(#${clipId})`}
           />
         ) : (
-          <text x={x} y={centerY} fill="var(--muted-foreground)" fontSize={14} fontWeight={600} textAnchor="middle" dominantBaseline="central">
+          <text x={x} y={centerY} fill="var(--muted-foreground)" fontSize={isMobile ? 11 : 14} fontWeight={600} textAnchor="middle" dominantBaseline="central">
             {student.name.trim().slice(0, 1).toLocaleUpperCase()}
           </text>
         )}
@@ -125,10 +128,10 @@ function StudentRanking({ title, students, emptyText, criterion }: { title: stri
           <ChartContainer
             id={`ranking-${chartId}`}
             config={chartConfig}
-            className="h-[280px] w-full aspect-auto sm:h-[320px]"
+            className="h-[260px] w-full aspect-auto sm:h-[320px]"
             aria-label={`${title}: gráfico de barras com fotografias dos alunos`}
           >
-            <BarChart accessibilityLayer data={data} barCategoryGap={8} barGap={2} margin={{ top: 62, right: 4, left: -18, bottom: 8 }}>
+            <BarChart accessibilityLayer data={data} barCategoryGap={isMobile ? 12 : 8} barGap={2} margin={{ top: isMobile ? 48 : 62, right: 4, left: -18, bottom: 8 }}>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="name"
@@ -136,9 +139,10 @@ function StudentRanking({ title, students, emptyText, criterion }: { title: stri
                 axisLine={false}
                 tickMargin={10}
                 interval={0}
-                tick={{ fontSize: 10 }}
+                tick={{ fontSize: isMobile ? 8 : 10 }}
                 tickFormatter={(value: string) => {
                   const parts = value.trim().split(/\s+/);
+                  if (isMobile && parts.length > 1) return `${parts[0][0]}. ${parts.at(-1)?.[0]}.`;
                   return parts.length > 1 ? `${parts[0]} ${parts.at(-1)?.slice(0, 1)}.` : parts[0]?.slice(0, 10) ?? value;
                 }}
               />
@@ -158,7 +162,7 @@ function StudentRanking({ title, students, emptyText, criterion }: { title: stri
                   </div>
                 );
               }} />} />
-              <Bar dataKey="rankingValue" name={criterion === "grades" ? "Média" : "Faltas"} fill="var(--color-rankingValue)" radius={[4, 4, 0, 0]} maxBarSize={58} minPointSize={1} isAnimationActive={false}>
+              <Bar dataKey="rankingValue" name={criterion === "grades" ? "Média" : "Faltas"} fill="var(--color-rankingValue)" radius={[4, 4, 0, 0]} maxBarSize={isMobile ? 28 : 58} minPointSize={1} isAnimationActive={false}>
                 <LabelList dataKey="rankingValue" position="top" offset={6} content={renderAvatarLabel} />
               </Bar>
             </BarChart>
