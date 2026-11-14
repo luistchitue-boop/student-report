@@ -531,16 +531,18 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
           </CardContent>
         </Card>
         <Tabs value={tab} onValueChange={(value) => { if (value) setTab(value as StudentTab); }} className="gap-5">
-          <div className="overflow-x-auto pb-1">
-            <TabsList className="h-auto min-w-max gap-1 p-1" aria-label="Secções do aluno">
-              <TabsTrigger value="resumo" className="h-9 px-3"><ClipboardList /> Resumo</TabsTrigger>
-              <TabsTrigger value="notas" className="h-9 px-3"><BookOpen /> Notas</TabsTrigger>
-              <TabsTrigger value="faltas" className="h-9 px-3"><CalendarDays /> Faltas</TabsTrigger>
-              <TabsTrigger value="justificativos" className="h-9 px-3"><FileCheck /> Justificativos</TabsTrigger>
-              <TabsTrigger value="relatorio" className="h-9 px-3"><FileText /> Relatório</TabsTrigger>
-              <TabsTrigger value="contactos" className="h-9 px-3"><Users /> Contactos</TabsTrigger>
-            </TabsList>
-          </div>
+          <Card className="shadow-sm">
+            <CardContent className="px-3 py-1.5 sm:px-4 sm:py-2">
+              <TabsList className="flex h-auto w-full flex-wrap items-center justify-start gap-2 bg-transparent p-0" aria-label="Secções do aluno">
+                <TabsTrigger value="resumo" className="h-10 max-w-full min-w-0 flex-none whitespace-normal border-border bg-background px-3 text-foreground data-active:border-primary/40 data-active:bg-primary/10"><ClipboardList className="size-4 shrink-0" /><span className="min-w-0 break-words">Resumo</span></TabsTrigger>
+                <TabsTrigger value="notas" className="h-10 max-w-full min-w-0 flex-none whitespace-normal border-border bg-background px-3 text-foreground data-active:border-primary/40 data-active:bg-primary/10"><BookOpen className="size-4 shrink-0" /><span className="min-w-0 break-words">Notas</span></TabsTrigger>
+                <TabsTrigger value="faltas" className="h-10 max-w-full min-w-0 flex-none whitespace-normal border-border bg-background px-3 text-foreground data-active:border-primary/40 data-active:bg-primary/10"><CalendarDays className="size-4 shrink-0" /><span className="min-w-0 break-words">Faltas</span></TabsTrigger>
+                <TabsTrigger value="justificativos" className="h-10 max-w-full min-w-0 flex-none whitespace-normal border-border bg-background px-3 text-foreground data-active:border-primary/40 data-active:bg-primary/10"><FileCheck className="size-4 shrink-0" /><span className="min-w-0 break-words">Justificativos</span></TabsTrigger>
+                <TabsTrigger value="relatorio" className="h-10 max-w-full min-w-0 flex-none whitespace-normal border-border bg-background px-3 text-foreground data-active:border-primary/40 data-active:bg-primary/10"><FileText className="size-4 shrink-0" /><span className="min-w-0 break-words">Relatório</span></TabsTrigger>
+                <TabsTrigger value="contactos" className="h-10 max-w-full min-w-0 flex-none whitespace-normal border-border bg-background px-3 text-foreground data-active:border-primary/40 data-active:bg-primary/10"><Users className="size-4 shrink-0" /><span className="min-w-0 break-words">Contactos</span></TabsTrigger>
+              </TabsList>
+            </CardContent>
+          </Card>
           <Card className="shadow-sm"><CardContent>
 
             <TabsContent value="resumo">
