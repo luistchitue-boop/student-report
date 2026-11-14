@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { getMonthlyCoordinationPeriods, getWeeklyCoordinationPeriods, formatPeriodDate, getPeriodLabel } from "@/lib/weekly-coordination";
 
+const dangerColor = "color-mix(in oklch, var(--destructive) 75%, var(--foreground))";
+const successColor = "color-mix(in oklch, var(--green) 65%, var(--foreground))";
+
 type ClosedPeriod = {
   id: string;
   weekStart: string;
@@ -208,10 +211,10 @@ export function ClosedPeriodsManager() {
   const openCount = weeklyPeriods.length - closedCount;
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{ padding: "20px", color: "var(--foreground)" }}>
       <div style={{ marginBottom: "24px" }}>
         <h3 style={{ marginBottom: "8px" }}>Gestão de Períodos Semanais</h3>
-        <p style={{ color: "#666", fontSize: "14px", margin: 0 }}>
+        <p style={{ color: "var(--muted-foreground)", fontSize: "14px", margin: 0 }}>
           {closedCount} períodos fechados · {openCount} períodos abertos
         </p>
       </div>
@@ -222,8 +225,8 @@ export function ClosedPeriodsManager() {
             padding: "12px 16px",
             marginBottom: "16px",
             borderRadius: "6px",
-            backgroundColor: action === "error" ? "#fee" : "#efe",
-            color: action === "error" ? "#c33" : "#3c3",
+            backgroundColor: action === "error" ? "color-mix(in oklch, var(--destructive) 10%, var(--card))" : "color-mix(in oklch, var(--green) 10%, var(--card))",
+            color: action === "error" ? dangerColor : successColor,
             fontSize: "14px",
           }}
         >
@@ -242,10 +245,10 @@ export function ClosedPeriodsManager() {
             <div
               key={startStr}
               style={{
-                border: "1px solid #ddd",
+                border: "1px solid var(--border)",
                 borderRadius: "6px",
                 overflow: "hidden",
-                backgroundColor: period.isClosed ? "#f5f5f5" : "#fff",
+                backgroundColor: period.isClosed ? "var(--muted)" : "var(--card)",
               }}
             >
               <div
@@ -254,18 +257,18 @@ export function ClosedPeriodsManager() {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  backgroundColor: period.isClosed ? "#f0f0f0" : "#fafafa",
-                  borderBottom: isExpanded ? "1px solid #ddd" : "none",
+                  backgroundColor: period.isClosed ? "var(--muted)" : "color-mix(in oklch, var(--muted) 50%, var(--card))",
+                  borderBottom: isExpanded ? "1px solid var(--border)" : "none",
                 }}
               >
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 500, marginBottom: "4px" }}>
                     {startStr} até {endStr}
                   </div>
-                  <div style={{ fontSize: "13px", color: "#666" }}>
+                  <div style={{ fontSize: "13px", color: "var(--muted-foreground)" }}>
                     {period.isClosed ? (
                       <>
-                        <span style={{ color: "#c33", fontWeight: 500 }}>● Fechado</span>
+                        <span style={{ color: dangerColor, fontWeight: 500 }}>● Fechado</span>
                         {period.closedInfo && (
                           <span style={{ marginLeft: "12px" }}>
                             por {period.closedInfo.closedBy.name || period.closedInfo.closedBy.email}
@@ -273,9 +276,9 @@ export function ClosedPeriodsManager() {
                         )}
                       </>
                     ) : isPast ? (
-                      <span style={{ color: "#666" }}>Período passado · Aberto</span>
+                      <span style={{ color: "var(--muted-foreground)" }}>Período passado · Aberto</span>
                     ) : (
-                      <span style={{ color: "#3c3", fontWeight: 500 }}>● Aberto</span>
+                      <span style={{ color: successColor, fontWeight: 500 }}>● Aberto</span>
                     )}
                   </div>
                 </div>
@@ -285,8 +288,8 @@ export function ClosedPeriodsManager() {
                   style={{
                     padding: "8px 16px",
                     marginLeft: "12px",
-                    backgroundColor: period.isClosed ? "#3c3" : "#c33",
-                    color: "white",
+                    backgroundColor: period.isClosed ? successColor : dangerColor,
+                    color: "var(--card)",
                     border: "none",
                     borderRadius: "4px",
                     cursor: action === "saving" ? "not-allowed" : "pointer",
@@ -300,7 +303,7 @@ export function ClosedPeriodsManager() {
               </div>
 
               {isExpanded && !period.isClosed && (
-                <div style={{ padding: "16px", backgroundColor: "#fff", borderTop: "1px solid #ddd" }}>
+                <div style={{ padding: "16px", backgroundColor: "var(--card)", borderTop: "1px solid var(--border)" }}>
                   <div style={{ marginBottom: "12px" }}>
                     <label
                       style={{
@@ -319,8 +322,10 @@ export function ClosedPeriodsManager() {
                       style={{
                         width: "100%",
                         padding: "8px 12px",
-                        border: "1px solid #ddd",
+                        border: "1px solid var(--input)",
                         borderRadius: "4px",
+                        backgroundColor: "var(--card)",
+                        color: "var(--foreground)",
                         fontSize: "13px",
                         fontFamily: "inherit",
                         resize: "vertical",
@@ -338,8 +343,8 @@ export function ClosedPeriodsManager() {
                       disabled={action === "saving"}
                       style={{
                         padding: "8px 16px",
-                        backgroundColor: "#e0e0e0",
-                        color: "#333",
+                        backgroundColor: "var(--secondary)",
+                        color: "var(--secondary-foreground)",
                         border: "none",
                         borderRadius: "4px",
                         cursor: "pointer",
@@ -354,8 +359,8 @@ export function ClosedPeriodsManager() {
                       disabled={action === "saving"}
                       style={{
                         padding: "8px 16px",
-                        backgroundColor: "#c33",
-                        color: "white",
+                        backgroundColor: dangerColor,
+                        color: "var(--card)",
                         border: "none",
                         borderRadius: "4px",
                         cursor: action === "saving" ? "not-allowed" : "pointer",
@@ -374,10 +379,10 @@ export function ClosedPeriodsManager() {
                 <div
                   style={{
                     padding: "12px 16px",
-                    backgroundColor: "#fafafa",
-                    borderTop: "1px solid #ddd",
+                    backgroundColor: "color-mix(in oklch, var(--muted) 50%, var(--card))",
+                    borderTop: "1px solid var(--border)",
                     fontSize: "13px",
-                    color: "#666",
+                    color: "var(--muted-foreground)",
                   }}
                 >
                   <strong>Motivo:</strong> {period.closedInfo.reason}
@@ -388,46 +393,46 @@ export function ClosedPeriodsManager() {
         })}
       </div>
 
-      <section style={{ marginTop: 36, padding: 20, border: "1px solid #d7e2dc", borderRadius: 12, background: "#fff" }}>
+      <section style={{ marginTop: 36, padding: 20, border: "1px solid var(--border)", borderRadius: 12, background: "var(--card)" }}>
         <div style={{ marginBottom: 16 }}>
           <h3 style={{ margin: "0 0 8px" }}>Fecho mensal por turma</h3>
-          <p style={{ color: "#58665f", fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+          <p style={{ color: "var(--muted-foreground)", fontSize: 14, margin: 0, lineHeight: 1.5 }}>
             Ao fechar um mês para uma turma, os professores deixam de poder alterar faltas e justificações desse mês, nem notas, observações ou relatórios semanais dos períodos semanais inteiramente incluídos no mês.
           </p>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 12, marginBottom: 18 }}>
-          <label style={{ display: "grid", gap: 6, color: "#334155", fontSize: 13, fontWeight: 700 }}>
+          <label style={{ display: "grid", gap: 6, color: "var(--foreground)", fontSize: 13, fontWeight: 700 }}>
             Mês
-            <select value={selectedMonthKey} onChange={(event) => setSelectedMonthKey(event.target.value)} style={{ minWidth: 210, padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 6, background: "white" }}>
+            <select value={selectedMonthKey} onChange={(event) => setSelectedMonthKey(event.target.value)} style={{ minWidth: 210, padding: "9px 10px", border: "1px solid var(--input)", borderRadius: 6, background: "var(--card)", color: "var(--foreground)" }}>
               {monthlyPeriods.map((period) => <option key={period.key} value={period.key}>{getPeriodLabel(period)}</option>)}
             </select>
           </label>
-          <label style={{ display: "grid", gap: 6, color: "#334155", fontSize: 13, fontWeight: 700 }}>
+          <label style={{ display: "grid", gap: 6, color: "var(--foreground)", fontSize: 13, fontWeight: 700 }}>
             Turma
-            <select value={selectedTurmaId} onChange={(event) => setSelectedTurmaId(event.target.value)} style={{ minWidth: 210, padding: "9px 10px", border: "1px solid #cbd5e1", borderRadius: 6, background: "white" }}>
+            <select value={selectedTurmaId} onChange={(event) => setSelectedTurmaId(event.target.value)} style={{ minWidth: 210, padding: "9px 10px", border: "1px solid var(--input)", borderRadius: 6, background: "var(--card)", color: "var(--foreground)" }}>
               <option value="">Selecione uma turma</option>
               {turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
             </select>
           </label>
-          <button type="button" onClick={() => toggleMonthlyClosure()} disabled={action === "saving" || !selectedTurmaId || !selectedMonthKey || monthlyClosures.some((closure) => closure.turmaId === selectedTurmaId && `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey)} style={{ padding: "10px 16px", border: 0, borderRadius: 6, background: "#b42318", color: "white", fontWeight: 700, cursor: action === "saving" ? "wait" : "pointer", opacity: action === "saving" || !selectedTurmaId ? .6 : 1 }}>
+          <button type="button" onClick={() => toggleMonthlyClosure()} disabled={action === "saving" || !selectedTurmaId || !selectedMonthKey || monthlyClosures.some((closure) => closure.turmaId === selectedTurmaId && `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey)} style={{ padding: "10px 16px", border: 0, borderRadius: 6, background: dangerColor, color: "var(--card)", fontWeight: 700, cursor: action === "saving" ? "wait" : "pointer", opacity: action === "saving" || !selectedTurmaId ? .6 : 1 }}>
             Fechar mês para turma
           </button>
         </div>
-        <label style={{ display: "grid", gap: 6, marginBottom: 20, color: "#334155", fontSize: 13, fontWeight: 700 }}>
+        <label style={{ display: "grid", gap: 6, marginBottom: 20, color: "var(--foreground)", fontSize: 13, fontWeight: 700 }}>
           Motivo do fecho (opcional)
-          <textarea value={monthlyCloseReason} onChange={(event) => setMonthlyCloseReason(event.target.value)} placeholder="Ex.: Relatórios mensais enviados" rows={2} style={{ width: "100%", maxWidth: 600, padding: 10, border: "1px solid #cbd5e1", borderRadius: 6, resize: "vertical" }} />
+          <textarea value={monthlyCloseReason} onChange={(event) => setMonthlyCloseReason(event.target.value)} placeholder="Ex.: Relatórios mensais enviados" rows={2} style={{ width: "100%", maxWidth: 600, padding: 10, border: "1px solid var(--input)", borderRadius: 6, background: "var(--card)", color: "var(--foreground)", resize: "vertical" }} />
         </label>
-        <h4 style={{ margin: "0 0 10px", color: "#334155" }}>Turmas fechadas no mês selecionado</h4>
+        <h4 style={{ margin: "0 0 10px", color: "var(--foreground)" }}>Turmas fechadas no mês selecionado</h4>
         {monthlyClosures.filter((closure) => `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey).length ? (
           <div style={{ display: "grid", gap: 8 }}>
             {monthlyClosures.filter((closure) => `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey).map((closure) => (
-              <div key={closure.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "11px 13px", border: "1px solid #fecaca", borderRadius: 8, background: "#fff7f7" }}>
-                <div><strong>{closure.turma.name}</strong><div style={{ marginTop: 3, color: "#64748b", fontSize: 12 }}>Fechado por {closure.closedBy.name || closure.closedBy.email}{closure.reason ? ` · ${closure.reason}` : ""}</div></div>
-                <button type="button" onClick={() => toggleMonthlyClosure(closure)} disabled={action === "saving"} style={{ padding: "7px 12px", border: "1px solid #b42318", borderRadius: 6, background: "white", color: "#b42318", fontWeight: 700, cursor: "pointer" }}>Reabrir turma</button>
+              <div key={closure.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "11px 13px", border: "1px solid color-mix(in oklch, var(--destructive) 35%, var(--border))", borderRadius: 8, background: "color-mix(in oklch, var(--destructive) 5%, var(--card))" }}>
+                <div><strong>{closure.turma.name}</strong><div style={{ marginTop: 3, color: "var(--muted-foreground)", fontSize: 12 }}>Fechado por {closure.closedBy.name || closure.closedBy.email}{closure.reason ? ` · ${closure.reason}` : ""}</div></div>
+                <button type="button" onClick={() => toggleMonthlyClosure(closure)} disabled={action === "saving"} style={{ padding: "7px 12px", border: `1px solid ${dangerColor}`, borderRadius: 6, background: "var(--card)", color: dangerColor, fontWeight: 700, cursor: "pointer" }}>Reabrir turma</button>
               </div>
             ))}
           </div>
-        ) : <p style={{ margin: 0, color: "#64748b", fontSize: 13 }}>Ainda não há turmas fechadas para este mês.</p>}
+        ) : <p style={{ margin: 0, color: "var(--muted-foreground)", fontSize: 13 }}>Ainda não há turmas fechadas para este mês.</p>}
       </section>
     </div>
   );

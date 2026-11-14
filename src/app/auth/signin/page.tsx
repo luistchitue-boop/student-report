@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function SignIn() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function SignIn() {
 
   return (
     <main className="auth-page">
+      <div className="fixed top-4 right-4 z-20"><ThemeToggle /></div>
       <div className="auth-layout">
         <section className="auth-brand-panel">
           <div className="auth-brand-mark"><Activity className="size-6" /></div>

@@ -1429,6 +1429,137 @@ button { font-weight:500; }
 .dark { --background:oklch(0.145 0 0); --foreground:oklch(0.985 0 0); --card:oklch(0.205 0 0); --card-foreground:oklch(0.985 0 0); --popover:oklch(0.205 0 0); --popover-foreground:oklch(0.985 0 0); --primary:oklch(0.922 0 0); --primary-foreground:oklch(0.205 0 0); --secondary:oklch(0.269 0 0); --secondary-foreground:oklch(0.985 0 0); --muted:oklch(0.269 0 0); --muted-foreground:oklch(0.708 0 0); --accent:oklch(0.269 0 0); --accent-foreground:oklch(0.985 0 0); --destructive:oklch(0.704 0.191 22.216); --border:oklch(1 0 0 / 10%); --input:oklch(1 0 0 / 15%); --ring:oklch(0.556 0 0); --chart-1:oklch(0.87 0 0); --chart-2:oklch(0.556 0 0); --chart-3:oklch(0.439 0 0); --chart-4:oklch(0.371 0 0); --chart-5:oklch(0.269 0 0); --sidebar:oklch(0.205 0 0); --sidebar-foreground:oklch(0.985 0 0); --sidebar-primary:oklch(0.488 0.243 264.376); --sidebar-primary-foreground:oklch(0.985 0 0); --sidebar-accent:oklch(0.269 0 0); --sidebar-accent-foreground:oklch(0.985 0 0); --sidebar-border:oklch(1 0 0 / 10%); --sidebar-ring:oklch(0.556 0 0);
 }
 
+/* Legacy screens still use these older tokens alongside shadcn components. */
+.dark {
+  --ink: var(--foreground);
+  --navy: var(--foreground);
+  --line: var(--border);
+  --paper: var(--background);
+  --cream: var(--muted);
+  --slate: var(--muted);
+  --green-soft: oklch(0.3 0.04 160);
+  --chart-1: oklch(0.72 0.13 160);
+  --chart-2: oklch(0.75 0.13 70);
+  --chart-3: oklch(0.69 0.14 235);
+  --chart-4: oklch(0.7 0.13 310);
+  --chart-5: oklch(0.7 0.14 30);
+}
+
+/* Surface and text overrides for pages that have not yet been migrated to shadcn. */
+.dark :is(
+  .schools-list-panel, .schools-create-panel, .schools-list-item,
+  .admin-checkbox, .biometrico-modal, .controlo-summary,
+  .new-student-section, .mini-pauta-row, .mini-pauta-export-modal,
+  .attendance-last-absence, .attendance-student-row, .attendance-fault-switch div,
+  .student-profile-banner, .student-summary-metric, .student-chart-panel,
+  .student-tabs, .weekly-period-selector, .student-monthly-summary,
+  .student-monthly-card, .student-record-row, .justification-row,
+  .weekly-report-suggestion
+) {
+  background: var(--muted);
+  border-color: var(--border);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.dark :is(.schools-list-item.active, .admin-checkbox.selected, .attendance-student-row.selected, .justification-row.justified) {
+  background: color-mix(in oklch, var(--primary) 12%, var(--muted));
+  border-color: color-mix(in oklch, var(--primary) 35%, var(--border));
+  color: var(--foreground);
+}
+
+.dark :is(
+  .schools-manager-heading p, .schools-field > span, .schools-create-description,
+  .schools-list-details small, .schools-code-hint, .admin-field span,
+  .admin-log-cell span, .admin-log-item time, .admin-log-empty,
+  .biometrico-turma-switcher label, .biometrico-period-date,
+  .controlo-turma-switcher label, .controlo-period-date,
+  .attendance-book-subtitle, .attendance-last-absence,
+  .attendance-book-toolbar label, .attendance-fault-switch legend,
+  .attendance-student-row small, .attendance-book-footer,
+  .mini-pauta-subtitle, .mini-pauta-toolbar label, .mini-pauta-student small,
+  .mini-pauta-input-wrap, .mini-pauta-footer, .mini-pauta-export-help,
+  .new-student-fields label, .student-profile-copy p:last-child,
+  .student-summary-metric span, .student-summary-metric small,
+  .student-chart-note, .student-bar-label, .student-column strong,
+  .weekly-period-selector label, .student-monthly-summary > header p,
+  .student-monthly-summary-grid li span, .student-monthly-summary-grid article > p,
+  .student-record-row label, .justification-row small
+) { color: var(--muted-foreground); }
+
+.dark :is(
+  .schools-panel-title h3, .schools-list-details strong, .admin-log-cell strong,
+  .student-monthly-card h3, .student-monthly-summary-grid h4,
+  .student-monthly-summary-grid li strong, .report-behavior-field
+) { color: var(--foreground); }
+
+.dark :is(
+  .schools-manager-heading-icon, .schools-list-icon, .schools-count, .schools-active-badge,
+  .admin-assignment-chip, .biometrico-status, .attendance-check,
+  .mini-pauta-range, .student-profile-stat strong, .justification-status
+) {
+  background: var(--accent);
+  border-color: var(--border);
+  color: var(--accent-foreground);
+}
+
+.dark :is(
+  .schools-activate-button, .admin-assignment-add-button, .admin-log-reset,
+  .controlo-export-button, .attendance-select-all, .mini-pauta-export-button,
+  .new-student-cancel, .weekly-report-improve-button, .weekly-report-suggestion button + button
+) {
+  background: var(--secondary);
+  border-color: var(--border);
+  color: var(--secondary-foreground);
+}
+.dark :is(
+  .schools-activate-button, .admin-assignment-add-button, .admin-log-reset,
+  .controlo-export-button, .attendance-select-all, .mini-pauta-export-button,
+  .new-student-cancel, .weekly-report-improve-button
+):hover { background: var(--accent); color: var(--accent-foreground); }
+
+.dark :is(.schools-feedback.error, .admin-status.error, .modal-error) {
+  background: color-mix(in oklch, var(--destructive) 12%, var(--card));
+  border-color: color-mix(in oklch, var(--destructive) 30%, var(--border));
+  color: var(--destructive);
+}
+.dark :is(.schools-feedback.success, .admin-status.success) {
+  background: color-mix(in oklch, var(--primary) 12%, var(--card));
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.dark :is(.biometrico-modal, .mini-pauta-export-modal) :is(input:not([type="checkbox"]), select, textarea) {
+  background: var(--background);
+  border-color: var(--input);
+  color: var(--foreground);
+}
+.dark .student-record-panel {
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+}
+.dark .student-tabs { border-color: var(--border) !important; }
+.dark .student-tab { color: var(--muted-foreground) !important; }
+.dark .student-tab[style*="--green-soft"] { color: var(--foreground) !important; }
+.dark .student-tab:hover { background: var(--accent) !important; }
+.dark .student-record-panel textarea { background: var(--background) !important; color: var(--foreground); border-color: var(--input) !important; }
+.dark .student-record-panel label[style*="color"],
+.dark .student-record-panel div[style*="color: rgb(74, 93, 90)"],
+.dark .student-record-panel div[style*="color: rgb(36, 77, 61)"] { color: var(--muted-foreground) !important; }
+.dark :is(.justification-modal, .justification-preview) {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.dark .justification-modal :is(input, textarea) {
+  background: var(--background);
+  border-color: var(--input);
+  color: var(--foreground);
+}
+.dark .student-bar-track, .dark .student-column-track { background: var(--secondary); }
+.dark .attendance-fault-switch button { color: var(--muted-foreground); }
+.dark .attendance-fault-switch button.active { background: var(--accent); color: var(--accent-foreground); }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

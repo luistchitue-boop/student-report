@@ -2,6 +2,9 @@
 
 import { useState, type FormEvent } from "react";
 
+const greenColor = "color-mix(in oklch, var(--green) 65%, var(--foreground))";
+const dangerColor = "color-mix(in oklch, var(--destructive) 75%, var(--foreground))";
+
 type Parent = {
   id: string;
   name: string;
@@ -121,7 +124,7 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
 
   return (
     <div style={{ display: "grid", gap: "0.85rem" }}>
-      <div style={{ color: "var(--muted)", fontSize: "0.92rem", fontWeight: 600, letterSpacing: "0.05em" }}>
+      <div style={{ color: "var(--muted-foreground)", fontSize: "0.92rem", fontWeight: 600, letterSpacing: "0.05em" }}>
         Contactos dos encarregados de educação
       </div>
 
@@ -131,29 +134,29 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
             <button
               type="button"
               onClick={() => { setShowAddForm(true); setAddError(null); }}
-              style={{ minHeight: "2.5rem", padding: "0.55rem 1rem", border: "0", borderRadius: "9px", background: "var(--green)", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+              style={{ minHeight: "2.5rem", padding: "0.55rem 1rem", border: "0", borderRadius: "9px", background: greenColor, color: "var(--card)", fontWeight: 700, cursor: "pointer" }}
             >
               + Adicionar encarregado
             </button>
           ) : (
-            <form onSubmit={handleAddParent} style={{ display: "grid", gap: "0.75rem", background: "#fff", border: "1.5px solid var(--green)", padding: "1rem", borderRadius: "14px" }}>
-              <h3 style={{ margin: 0, color: "var(--navy)", fontSize: "0.95rem", fontWeight: 700 }}>Novo encarregado</h3>
-              <label style={{ display: "grid", gap: "0.35rem", color: "#53645b", fontSize: "0.75rem", fontWeight: 700 }}>
+            <form onSubmit={handleAddParent} style={{ display: "grid", gap: "0.75rem", background: "var(--card)", border: `1.5px solid ${greenColor}`, padding: "1rem", borderRadius: "14px" }}>
+              <h3 style={{ margin: 0, color: "var(--card-foreground)", fontSize: "0.95rem", fontWeight: 700 }}>Novo encarregado</h3>
+              <label style={{ display: "grid", gap: "0.35rem", color: "var(--foreground)", fontSize: "0.75rem", fontWeight: 700 }}>
                 Nome *
-                <input required value={addName} onChange={(event) => setAddName(event.target.value)} autoComplete="name" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid #ccd9ce", borderRadius: "9px", fontSize: "0.9rem" }} />
+                <input required value={addName} onChange={(event) => setAddName(event.target.value)} autoComplete="name" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid var(--input)", borderRadius: "9px", background: "var(--card)", color: "var(--foreground)", fontSize: "0.9rem" }} />
               </label>
-              <label style={{ display: "grid", gap: "0.35rem", color: "#53645b", fontSize: "0.75rem", fontWeight: 700 }}>
+              <label style={{ display: "grid", gap: "0.35rem", color: "var(--foreground)", fontSize: "0.75rem", fontWeight: 700 }}>
                 Telefone *
-                <input required type="tel" value={addPhone} onChange={(event) => setAddPhone(event.target.value)} autoComplete="tel" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid #ccd9ce", borderRadius: "9px", fontSize: "0.9rem" }} />
+                <input required type="tel" value={addPhone} onChange={(event) => setAddPhone(event.target.value)} autoComplete="tel" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid var(--input)", borderRadius: "9px", background: "var(--card)", color: "var(--foreground)", fontSize: "0.9rem" }} />
               </label>
-              <label style={{ display: "grid", gap: "0.35rem", color: "#53645b", fontSize: "0.75rem", fontWeight: 700 }}>
+              <label style={{ display: "grid", gap: "0.35rem", color: "var(--foreground)", fontSize: "0.75rem", fontWeight: 700 }}>
                 E-mail
-                <input type="email" value={addEmail} onChange={(event) => setAddEmail(event.target.value)} autoComplete="email" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid #ccd9ce", borderRadius: "9px", fontSize: "0.9rem" }} />
+                <input type="email" value={addEmail} onChange={(event) => setAddEmail(event.target.value)} autoComplete="email" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid var(--input)", borderRadius: "9px", background: "var(--card)", color: "var(--foreground)", fontSize: "0.9rem" }} />
               </label>
-              {addError && <div role="alert" style={{ color: "#8b3a3a", fontSize: "0.8rem", fontWeight: 600 }}>{addError}</div>}
+              {addError && <div role="alert" style={{ color: dangerColor, fontSize: "0.8rem", fontWeight: 600 }}>{addError}</div>}
               <div style={{ display: "flex", gap: "0.7rem", justifyContent: "flex-end" }}>
-                <button type="button" disabled={isAdding} onClick={() => { setShowAddForm(false); setAddError(null); }} style={{ minHeight: "2.45rem", padding: "0.5rem 1rem", border: "1px solid #ccd7cc", borderRadius: "9px", background: "#fbfcf8", color: "var(--ink)", fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
-                <button type="submit" disabled={isAdding} style={{ minHeight: "2.45rem", padding: "0.5rem 1rem", border: "0", borderRadius: "9px", background: "var(--green)", color: "#fff", fontWeight: 700, cursor: isAdding ? "not-allowed" : "pointer", opacity: isAdding ? 0.55 : 1 }}>{isAdding ? "A adicionar..." : "Adicionar"}</button>
+                <button type="button" disabled={isAdding} onClick={() => { setShowAddForm(false); setAddError(null); }} style={{ minHeight: "2.45rem", padding: "0.5rem 1rem", border: "1px solid var(--input)", borderRadius: "9px", background: "var(--secondary)", color: "var(--secondary-foreground)", fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
+                <button type="submit" disabled={isAdding} style={{ minHeight: "2.45rem", padding: "0.5rem 1rem", border: "0", borderRadius: "9px", background: greenColor, color: "var(--card)", fontWeight: 700, cursor: isAdding ? "not-allowed" : "pointer", opacity: isAdding ? 0.55 : 1 }}>{isAdding ? "A adicionar..." : "Adicionar"}</button>
               </div>
             </form>
           )}
@@ -165,11 +168,11 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
           style={{
             padding: "0.65rem 0.85rem",
             borderRadius: "10px",
-            background: "var(--green-soft)",
-            color: "#254a3d",
+            background: "color-mix(in oklch, var(--green) 10%, var(--card))",
+            color: greenColor,
             fontSize: "0.75rem",
             fontWeight: 600,
-            border: "1px solid #c5e1ce",
+            border: "1px solid color-mix(in oklch, var(--green) 30%, var(--border))",
           }}
         >
           {success}
@@ -184,14 +187,14 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
               style={{
                 display: "grid",
                 gap: "0.75rem",
-                background: "#fff",
-                border: "1.5px solid var(--green)",
+                background: "var(--card)",
+                border: `1.5px solid ${greenColor}`,
                 padding: "1rem",
                 borderRadius: "14px",
                 boxShadow: "0 2px 8px rgba(57, 117, 93, 0.1)",
               }}
             >
-              <h3 style={{ margin: 0, color: "var(--navy)", fontSize: "0.95rem", fontWeight: 700 }}>
+              <h3 style={{ margin: 0, color: "var(--card-foreground)", fontSize: "0.95rem", fontWeight: 700 }}>
                 Editar Encarregado
               </h3>
 
@@ -199,7 +202,7 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                 <label
                   style={{
                     display: "block",
-                    color: "#53645b",
+                    color: "var(--foreground)",
                     fontSize: "0.7rem",
                     fontWeight: 700,
                     textTransform: "uppercase",
@@ -217,14 +220,15 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                     width: "100%",
                     minHeight: "2.45rem",
                     padding: "0.55rem 0.65rem",
-                    border: "1px solid #ccd9ce",
+                    border: "1px solid var(--input)",
                     borderRadius: "9px",
-                    background: "#fff",
+                    background: "var(--card)",
+                    color: "var(--foreground)",
                     outline: "none",
                     fontSize: "0.9rem",
                   }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "#ccd9ce")}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = greenColor)}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--input)")}
                 />
               </div>
 
@@ -232,7 +236,7 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                 <label
                   style={{
                     display: "block",
-                    color: "#53645b",
+                    color: "var(--foreground)",
                     fontSize: "0.7rem",
                     fontWeight: 700,
                     textTransform: "uppercase",
@@ -250,14 +254,15 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                     width: "100%",
                     minHeight: "2.45rem",
                     padding: "0.55rem 0.65rem",
-                    border: "1px solid #ccd9ce",
+                    border: "1px solid var(--input)",
                     borderRadius: "9px",
-                    background: "#fff",
+                    background: "var(--card)",
+                    color: "var(--foreground)",
                     outline: "none",
                     fontSize: "0.9rem",
                   }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "#ccd9ce")}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = greenColor)}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--input)")}
                 />
               </div>
 
@@ -265,7 +270,7 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                 <label
                   style={{
                     display: "block",
-                    color: "#53645b",
+                    color: "var(--foreground)",
                     fontSize: "0.7rem",
                     fontWeight: 700,
                     textTransform: "uppercase",
@@ -283,14 +288,15 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                     width: "100%",
                     minHeight: "2.45rem",
                     padding: "0.55rem 0.65rem",
-                    border: "1px solid #ccd9ce",
+                    border: "1px solid var(--input)",
                     borderRadius: "9px",
-                    background: "#fff",
+                    background: "var(--card)",
+                    color: "var(--foreground)",
                     outline: "none",
                     fontSize: "0.9rem",
                   }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--green)")}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "#ccd9ce")}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = greenColor)}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--input)")}
                 />
               </div>
 
@@ -299,11 +305,11 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                   style={{
                     padding: "0.65rem 0.85rem",
                     borderRadius: "8px",
-                    background: "#fce4e6",
-                    color: "#8b3a3a",
+                    background: "color-mix(in oklch, var(--destructive) 10%, var(--card))",
+                    color: dangerColor,
                     fontSize: "0.75rem",
                     fontWeight: 600,
-                    border: "1px solid #f5c6cc",
+                    border: "1px solid color-mix(in oklch, var(--destructive) 30%, var(--border))",
                   }}
                 >
                   {error}
@@ -316,10 +322,10 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                   style={{
                     minHeight: "2.45rem",
                     padding: "0.5rem 1rem",
-                    border: "1px solid #ccd7cc",
+                    border: "1px solid var(--input)",
                     borderRadius: "9px",
-                    background: "#fbfcf8",
-                    color: "var(--ink)",
+                    background: "var(--secondary)",
+                    color: "var(--secondary-foreground)",
                     fontWeight: 700,
                     fontSize: "0.75rem",
                     cursor: "pointer",
@@ -336,8 +342,8 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                     padding: "0.5rem 1rem",
                     border: "0",
                     borderRadius: "9px",
-                    background: "var(--green)",
-                    color: "#fff",
+                    background: greenColor,
+                    color: "var(--card)",
                     fontWeight: 700,
                     fontSize: "0.75rem",
                     cursor: isLoading ? "not-allowed" : "pointer",
@@ -355,28 +361,28 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
               style={{
                 display: "grid",
                 gap: "0.75rem",
-                background: "#fff",
-                border: "1px solid #dfe5df",
+                background: "var(--card)",
+                border: "1px solid var(--border)",
                 padding: "1rem",
                 borderRadius: "12px",
                 boxShadow: "0 2px 4px rgba(0, 0, 0, 0.02)",
               }}
             >
               <div style={{ display: "grid", gap: "0.55rem" }}>
-                <strong style={{ color: "var(--navy)", fontSize: "1.05rem", fontWeight: 700 }}>
+                <strong style={{ color: "var(--card-foreground)", fontSize: "1.05rem", fontWeight: 700 }}>
                   {parent.name}
                 </strong>
-                <div style={{ display: "grid", gap: "0.35rem", color: "var(--muted)" }}>
+                <div style={{ display: "grid", gap: "0.35rem", color: "var(--muted-foreground)" }}>
                   <a
                     href={`tel:${parent.phone}`}
-                    style={{ color: "var(--green)", fontWeight: 700, textDecoration: "none" }}
+                    style={{ color: greenColor, fontWeight: 700, textDecoration: "none" }}
                   >
                     {parent.phone || "Telefone não informado"}
                   </a>
                   {parent.email ? (
                     <a
                       href={`mailto:${parent.email}`}
-                      style={{ color: "var(--green)", overflowWrap: "anywhere", textDecoration: "none" }}
+                      style={{ color: greenColor, overflowWrap: "anywhere", textDecoration: "none" }}
                     >
                       {parent.email}
                     </a>
@@ -390,10 +396,10 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                 style={{
                   minHeight: "2rem",
                   padding: "0.4rem 0.8rem",
-                  border: "1px solid #ccd7cc",
+                  border: "1px solid var(--input)",
                   borderRadius: "8px",
-                  background: "#fbfcf8",
-                  color: "var(--green)",
+                  background: "var(--secondary)",
+                  color: greenColor,
                   fontWeight: 700,
                   fontSize: "0.7rem",
                   cursor: "pointer",
@@ -403,12 +409,12 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
                   width: "100%",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "var(--green)";
-                  e.currentTarget.style.background = "var(--green-soft)";
+                  e.currentTarget.style.borderColor = greenColor;
+                  e.currentTarget.style.background = "color-mix(in oklch, var(--green) 10%, var(--card))";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#ccd7cc";
-                  e.currentTarget.style.background = "#fbfcf8";
+                  e.currentTarget.style.borderColor = "var(--input)";
+                  e.currentTarget.style.background = "var(--secondary)";
                 }}
               >
                 Editar
@@ -417,7 +423,7 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
           )
         )
       ) : (
-        <div style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Nenhum contacto registado.</div>
+        <div style={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>Nenhum contacto registado.</div>
       )}
     </div>
   );

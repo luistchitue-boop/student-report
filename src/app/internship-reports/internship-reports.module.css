@@ -65,6 +65,60 @@
 .formFooter button:hover { background: #1c5038; }
 .formFooter button:disabled { opacity: .65; cursor: wait; }
 
+:global(.dark) .studentPanel,
+:global(.dark) .reportPanel { background: var(--card); border-color: var(--border); box-shadow: none; color: var(--card-foreground); }
+:global(.dark) .panelHeading :global(.eyebrow),
+:global(.dark) .studentHeader :global(.eyebrow),
+:global(.dark) .studentInfo small,
+:global(.dark) .empty,
+:global(.dark) .welcome,
+:global(.dark) .studentHeader p:last-child,
+:global(.dark) .historyItem small,
+:global(.dark) .formTitle span,
+:global(.dark) .ratingScale { color: var(--muted-foreground); }
+:global(.dark) .panelHeading strong,
+:global(.dark) .studentButton,
+:global(.dark) .welcome h2,
+:global(.dark) .studentHeader h2,
+:global(.dark) .historyHeading h3,
+:global(.dark) .formTitle h3,
+:global(.dark) .historyItem strong,
+:global(.dark) .form label { color: var(--foreground); }
+:global(.dark) .search,
+:global(.dark) .form input,
+:global(.dark) .form select,
+:global(.dark) .form textarea { background: var(--background); color: var(--foreground); border-color: color-mix(in oklch, var(--foreground) 35%, var(--background)); color-scheme: dark; }
+:global(.dark) .search::placeholder,
+:global(.dark) .form input::placeholder,
+:global(.dark) .form textarea::placeholder { color: var(--muted-foreground); opacity: 1; }
+:global(.dark) .studentButton:hover { background: var(--muted); }
+:global(.dark) .studentButton.selected,
+:global(.dark) .studentButton.selected:hover { background: var(--accent); border-color: var(--primary); color: var(--accent-foreground); }
+:global(.dark) .avatar,
+:global(.dark) .welcome > span,
+:global(.dark) .badge { background: var(--accent); color: var(--accent-foreground); }
+:global(.dark) .reportCount { background: var(--muted); color: var(--foreground); }
+:global(.dark) .studentHeader,
+:global(.dark) .history,
+:global(.dark) .badge { border-color: var(--border); }
+:global(.dark) .historyHeading button,
+:global(.dark) .historyItem { background: var(--background); border-color: color-mix(in oklch, var(--foreground) 35%, var(--background)); color: var(--foreground); }
+:global(.dark) .historyHeading button:hover,
+:global(.dark) .historyItem:hover { background: var(--accent); color: var(--accent-foreground); }
+:global(.dark) .rating,
+:global(.dark) .formFooter p { color: var(--foreground); }
+:global(.dark) .formFooter button { background: var(--primary); color: var(--primary-foreground); }
+:global(.dark) .formFooter button:hover:not(:disabled) { background: color-mix(in oklch, var(--primary) 80%, var(--card)); }
+:global(.dark) .formFooter button:disabled { background: var(--muted); color: var(--muted-foreground); opacity: 1; }
+:global(.dark) .search:focus-visible,
+:global(.dark) .studentButton:focus-visible,
+:global(.dark) .historyHeading button:focus-visible,
+:global(.dark) .historyItem:focus-visible,
+:global(.dark) .form input:focus-visible,
+:global(.dark) .form select:focus-visible,
+:global(.dark) .form textarea:focus-visible,
+:global(.dark) .formFooter button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
 @media (max-width: 900px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .studentPanel { padding: 15px; }

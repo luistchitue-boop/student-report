@@ -37,5 +37,45 @@
 .bulkResults { display: grid; gap: 6px; max-height: 230px; overflow: auto; padding: 10px; border: 1px solid #e8edef; border-radius: 8px; background: #fff; }
 .bulkResults > div { display: grid; gap: 3px; padding: 5px 0; color: #385363; font-size: 11px; }
 .bulkResults small { color: #9b3434; font-size: 10px; }
+
+/* Keep the embedded PDF's background unchanged; only theme its frame. */
+:global(.dark) .toolbar,
+:global(.dark) .card,
+:global(.dark) .bulkCard { background: var(--card); border-color: var(--border); box-shadow: none; color: var(--card-foreground); }
+:global(.dark) .intro,
+:global(.dark) .toolbarNote,
+:global(.dark) .reportMeta,
+:global(.dark) .sendIntro,
+:global(.dark) .delivery small,
+:global(.dark) .loading { color: var(--muted-foreground); }
+:global(.dark) .card h2,
+:global(.dark) .card h3,
+:global(.dark) .bulkCard h2,
+:global(.dark) .field,
+:global(.dark) .delivery strong,
+:global(.dark) .bulkSummary strong,
+:global(.dark) .bulkResults > div { color: var(--foreground); }
+:global(.dark) .field select { background: var(--background); color: var(--foreground); border-color: color-mix(in oklch, var(--foreground) 35%, var(--background)); color-scheme: dark; }
+:global(.dark) .field select:disabled { color: var(--muted-foreground); }
+:global(.dark) .actionLink,
+:global(.dark) .sendButton { background: var(--primary); color: var(--primary-foreground); }
+:global(.dark) .actionLink:hover,
+:global(.dark) .sendButton:hover:not(:disabled) { background: color-mix(in oklch, var(--primary) 80%, var(--card)); }
+:global(.dark) .actionLink.secondary { background: var(--accent); color: var(--accent-foreground); }
+:global(.dark) .actionLink.secondary:hover { background: color-mix(in oklch, var(--accent) 75%, var(--foreground)); }
+:global(.dark) .sendButton:disabled { background: var(--muted); color: var(--muted-foreground); opacity: 1; }
+:global(.dark) .field select:focus-visible,
+:global(.dark) .actionLink:focus-visible,
+:global(.dark) .sendButton:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+:global(.dark) .preview { border-color: var(--border); }
+:global(.dark) .emptyPreview { border-color: color-mix(in oklch, var(--foreground) 35%, var(--card)); color: var(--muted-foreground); }
+:global(.dark) .notice { background: color-mix(in oklch, oklch(0.85 0.11 160) 15%, var(--card)); color: oklch(0.85 0.11 160); }
+:global(.dark) .notice.error { background: color-mix(in oklch, var(--destructive) 15%, var(--card)); color: color-mix(in oklch, var(--destructive) 70%, var(--foreground)); }
+:global(.dark) .delivery { border-color: var(--border); }
+:global(.dark) .status { background: var(--muted); color: var(--foreground); }
+:global(.dark) .bulkSummary { color: var(--muted-foreground); }
+:global(.dark) .bulkResults { background: var(--background); border-color: var(--border); }
+:global(.dark) .bulkResults small { color: color-mix(in oklch, var(--destructive) 70%, var(--foreground)); }
+
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .preview { height: 68vh; } .toolbarNote { margin-left: 0; } }
 @media (max-width: 560px) { .toolbar, .card, .bulkCard { padding: 14px; } .field { width: 100%; } .preview, .emptyPreview { min-height: 340px; } .preview { height: 60vh; } .bulkControls .sendButton { width: 100%; } }

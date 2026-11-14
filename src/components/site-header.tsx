@@ -1,5 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader({ title = "Painel escolar" }: { title?: string }) {
   return (
@@ -11,6 +12,7 @@ export function SiteHeader({ title = "Painel escolar" }: { title?: string }) {
           <p className="app-site-kicker">AEPH · RELATÓRIOS</p>
           <h1 className="truncate text-sm font-semibold tracking-tight text-foreground">{title}</h1>
         </div>
+        <div className="ml-auto shrink-0"><ThemeToggle /></div>
       </div>
     </header>
   )
