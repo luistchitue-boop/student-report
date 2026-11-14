@@ -781,6 +781,17 @@ button { font-weight:500; }
     margin-inline: auto;
   }
 
+  .main-content.admin-page-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .main-content.admin-page-content > .topbar,
+  .main-content.admin-page-content > .admin-route-tabs {
+    margin: 0;
+  }
+
   .main-content > .topbar,
   .main-content > .turma-topbar {
     align-items: flex-end;

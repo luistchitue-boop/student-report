@@ -16,12 +16,10 @@ export default async function AdminPage() {
 
   return (
     <AppShell active="admin">
-      <main className="main-content">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">ADMINISTRAÇÃO</p>
-            <h1>Gestão da escola</h1>
-          </div>
+      <main className="main-content admin-page-content">
+        <header className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Administração</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Gestão da escola</h1>
         </header>
 
         <nav className="admin-route-tabs" aria-label="Administração">
