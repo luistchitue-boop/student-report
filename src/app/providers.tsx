@@ -9,9 +9,9 @@ interface ProvidersProps {
   children: ReactNode
 }
 
-export function Providers({ children }: ProvidersProps) {
+export function Providers({ children, initialTheme }: ProvidersProps & { initialTheme: "light" | "dark" | "system" }) {
   return (
-    <ThemeProvider>
+    <ThemeProvider initialTheme={initialTheme}>
       <SessionProvider>
         <TooltipProvider>{children}</TooltipProvider>
       </SessionProvider>
