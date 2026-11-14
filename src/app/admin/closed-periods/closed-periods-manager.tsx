@@ -1,10 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CalendarDays, Clock3, LockKeyhole, LockOpen, RotateCcw, ShieldCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import { getMonthlyCoordinationPeriods, getWeeklyCoordinationPeriods, formatPeriodDate, getPeriodLabel } from "@/lib/weekly-coordination";
-
-const dangerColor = "color-mix(in oklch, var(--destructive) 75%, var(--foreground))";
-const successColor = "color-mix(in oklch, var(--green) 65%, var(--foreground))";
 
 type ClosedPeriod = {
   id: string;
@@ -57,8 +63,9 @@ export function ClosedPeriodsManager() {
   const [selectedTurmaId, setSelectedTurmaId] = useState("");
   const [monthlyCloseReason, setMonthlyCloseReason] = useState("");
 
-  async function loadPeriods() {
+  async function loadPeriods(preserveMessage = false) {
     setLoading(true);
+    if (!preserveMessage) setMessage("");
     try {
       const response = await fetch("/api/admin/closed-periods");
       if (!response.ok) throw new Error("Não foi possível carregar os períodos.");
@@ -132,7 +139,7 @@ export function ClosedPeriodsManager() {
       setMessage(`Período de ${formatPeriodDate(period.start)} fechado com sucesso.`);
       setExpandedPeriod(null);
       setCloseReason("");
-      loadPeriods();
+      void loadPeriods(true);
     } catch (error) {
       setAction("error");
       setMessage(error instanceof Error ? error.message : "Erro inesperado.");
@@ -162,7 +169,7 @@ export function ClosedPeriodsManager() {
 
       setAction("success");
       setMessage(`Período de ${formatPeriodDate(period.start)} reaberto com sucesso.`);
-      loadPeriods();
+      void loadPeriods(true);
     } catch (error) {
       setAction("error");
       setMessage(error instanceof Error ? error.message : "Erro inesperado.");
@@ -192,9 +199,10 @@ export function ClosedPeriodsManager() {
       if (!response.ok) throw new Error(data.error || "Não foi possível atualizar o fecho mensal.");
       const month = monthlyPeriods.find((period) => period.key === periodKey);
       const turmaName = turmas.find((turma) => turma.id === turmaId)?.name ?? closure?.turma.name ?? "turma";
+      setAction("success");
       setMessage(closure ? `Período mensal reaberto para ${turmaName}.` : `Período mensal fechado para ${turmaName}.`);
       setMonthlyCloseReason("");
-      await loadPeriods();
+      await loadPeriods(true);
       if (!month) setSelectedMonthKey(periodKey);
     } catch (error) {
       setAction("error");
@@ -203,237 +211,210 @@ export function ClosedPeriodsManager() {
   }
 
   if (loading) {
-    return <div style={{ padding: "20px" }}>Carregando períodos...</div>;
+    return (
+      <div className="grid gap-6" role="status" aria-label="A carregar períodos">
+        <Card>
+          <CardHeader className="gap-3">
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-7 w-64 max-w-full" />
+            <Skeleton className="h-4 w-full max-w-xl" />
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            {Array.from({ length: 5 }, (_, index) => <Skeleton key={index} className="h-16 w-full" />)}
+          </CardContent>
+        </Card>
+        <Card><CardHeader><Skeleton className="h-7 w-56" /><Skeleton className="h-4 w-full max-w-2xl" /></CardHeader><CardContent><Skeleton className="h-28 w-full" /></CardContent></Card>
+      </div>
+    );
   }
 
   const today = new Date();
-  const closedCount = weeklyPeriods.filter((p) => p.isClosed).length;
+  const closedCount = weeklyPeriods.filter((period) => period.isClosed).length;
   const openCount = weeklyPeriods.length - closedCount;
+  const selectedMonthlyClosures = monthlyClosures.filter((closure) =>
+    `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey
+  );
+  const selectedMonthIsClosed = selectedMonthlyClosures.some((closure) => closure.turmaId === selectedTurmaId);
 
   return (
-    <div style={{ padding: "20px", color: "var(--foreground)" }}>
-      <div style={{ marginBottom: "24px" }}>
-        <h3 style={{ marginBottom: "8px" }}>Gestão de Períodos Semanais</h3>
-        <p style={{ color: "var(--muted-foreground)", fontSize: "14px", margin: 0 }}>
-          {closedCount} períodos fechados · {openCount} períodos abertos
-        </p>
-      </div>
-
+    <div className="grid gap-6">
       {message && (
-        <div
-          style={{
-            padding: "12px 16px",
-            marginBottom: "16px",
-            borderRadius: "6px",
-            backgroundColor: action === "error" ? "color-mix(in oklch, var(--destructive) 10%, var(--card))" : "color-mix(in oklch, var(--green) 10%, var(--card))",
-            color: action === "error" ? dangerColor : successColor,
-            fontSize: "14px",
-          }}
-        >
-          {message}
-        </div>
+        <Card className={action === "error" ? "border-destructive/30 bg-destructive/5" : "border-primary/20 bg-primary/5"} role={action === "error" ? "alert" : "status"}>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <p className={action === "error" ? "text-sm text-destructive" : "text-sm text-primary"}>{message}</p>
+            {action === "error" && <Button variant="outline" size="sm" onClick={() => void loadPeriods()}><RotateCcw /> Tentar novamente</Button>}
+          </CardContent>
+        </Card>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        {weeklyPeriods.map((period) => {
-          const isExpanded = expandedPeriod === formatPeriodDate(period.start);
-          const startStr = formatPeriodDate(period.start);
-          const endStr = formatPeriodDate(period.end);
-          const isPast = period.end < today;
-
-          return (
-            <div
-              key={startStr}
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: "6px",
-                overflow: "hidden",
-                backgroundColor: period.isClosed ? "var(--muted)" : "var(--card)",
-              }}
-            >
-              <div
-                style={{
-                  padding: "12px 16px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  backgroundColor: period.isClosed ? "var(--muted)" : "color-mix(in oklch, var(--muted) 50%, var(--card))",
-                  borderBottom: isExpanded ? "1px solid var(--border)" : "none",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 500, marginBottom: "4px" }}>
-                    {startStr} até {endStr}
-                  </div>
-                  <div style={{ fontSize: "13px", color: "var(--muted-foreground)" }}>
-                    {period.isClosed ? (
-                      <>
-                        <span style={{ color: dangerColor, fontWeight: 500 }}>● Fechado</span>
-                        {period.closedInfo && (
-                          <span style={{ marginLeft: "12px" }}>
-                            por {period.closedInfo.closedBy.name || period.closedInfo.closedBy.email}
-                          </span>
-                        )}
-                      </>
-                    ) : isPast ? (
-                      <span style={{ color: "var(--muted-foreground)" }}>Período passado · Aberto</span>
-                    ) : (
-                      <span style={{ color: successColor, fontWeight: 500 }}>● Aberto</span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleTogglePeriod(period)}
-                  disabled={action === "saving"}
-                  style={{
-                    padding: "8px 16px",
-                    marginLeft: "12px",
-                    backgroundColor: period.isClosed ? successColor : dangerColor,
-                    color: "var(--card)",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: action === "saving" ? "not-allowed" : "pointer",
-                    opacity: action === "saving" ? 0.6 : 1,
-                    fontSize: "13px",
-                    fontWeight: 500,
-                  }}
-                >
-                  {period.isClosed ? "Reabrir" : "Fechar"}
-                </button>
-              </div>
-
-              {isExpanded && !period.isClosed && (
-                <div style={{ padding: "16px", backgroundColor: "var(--card)", borderTop: "1px solid var(--border)" }}>
-                  <div style={{ marginBottom: "12px" }}>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: "13px",
-                        fontWeight: 500,
-                        marginBottom: "6px",
-                      }}
-                    >
-                      Motivo do encerramento (opcional)
-                    </label>
-                    <textarea
-                      value={closeReason}
-                      onChange={(e) => setCloseReason(e.target.value)}
-                      placeholder="Ex: Fim do período letivo"
-                      style={{
-                        width: "100%",
-                        padding: "8px 12px",
-                        border: "1px solid var(--input)",
-                        borderRadius: "4px",
-                        backgroundColor: "var(--card)",
-                        color: "var(--foreground)",
-                        fontSize: "13px",
-                        fontFamily: "inherit",
-                        resize: "vertical",
-                        minHeight: "60px",
-                        boxSizing: "border-box",
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                    <button
-                      onClick={() => {
-                        setExpandedPeriod(null);
-                        setCloseReason("");
-                      }}
-                      disabled={action === "saving"}
-                      style={{
-                        padding: "8px 16px",
-                        backgroundColor: "var(--secondary)",
-                        color: "var(--secondary-foreground)",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                        fontSize: "13px",
-                        fontWeight: 500,
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={() => handleClosePeriod(period)}
-                      disabled={action === "saving"}
-                      style={{
-                        padding: "8px 16px",
-                        backgroundColor: dangerColor,
-                        color: "var(--card)",
-                        border: "none",
-                        borderRadius: "4px",
-                        cursor: action === "saving" ? "not-allowed" : "pointer",
-                        opacity: action === "saving" ? 0.6 : 1,
-                        fontSize: "13px",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {action === "saving" ? "Fechando..." : "Confirmar encerramento"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {period.isClosed && period.closedInfo?.reason && (
-                <div
-                  style={{
-                    padding: "12px 16px",
-                    backgroundColor: "color-mix(in oklch, var(--muted) 50%, var(--card))",
-                    borderTop: "1px solid var(--border)",
-                    fontSize: "13px",
-                    color: "var(--muted-foreground)",
-                  }}
-                >
-                  <strong>Motivo:</strong> {period.closedInfo.reason}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <section style={{ marginTop: 36, padding: 20, border: "1px solid var(--border)", borderRadius: 12, background: "var(--card)" }}>
-        <div style={{ marginBottom: 16 }}>
-          <h3 style={{ margin: "0 0 8px" }}>Fecho mensal por turma</h3>
-          <p style={{ color: "var(--muted-foreground)", fontSize: 14, margin: 0, lineHeight: 1.5 }}>
-            Ao fechar um mês para uma turma, os professores deixam de poder alterar faltas e justificações desse mês, nem notas, observações ou relatórios semanais dos períodos semanais inteiramente incluídos no mês.
-          </p>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 12, marginBottom: 18 }}>
-          <label style={{ display: "grid", gap: 6, color: "var(--foreground)", fontSize: 13, fontWeight: 700 }}>
-            Mês
-            <select value={selectedMonthKey} onChange={(event) => setSelectedMonthKey(event.target.value)} style={{ minWidth: 210, padding: "9px 10px", border: "1px solid var(--input)", borderRadius: 6, background: "var(--card)", color: "var(--foreground)" }}>
-              {monthlyPeriods.map((period) => <option key={period.key} value={period.key}>{getPeriodLabel(period)}</option>)}
-            </select>
-          </label>
-          <label style={{ display: "grid", gap: 6, color: "var(--foreground)", fontSize: 13, fontWeight: 700 }}>
-            Turma
-            <select value={selectedTurmaId} onChange={(event) => setSelectedTurmaId(event.target.value)} style={{ minWidth: 210, padding: "9px 10px", border: "1px solid var(--input)", borderRadius: 6, background: "var(--card)", color: "var(--foreground)" }}>
-              <option value="">Selecione uma turma</option>
-              {turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
-            </select>
-          </label>
-          <button type="button" onClick={() => toggleMonthlyClosure()} disabled={action === "saving" || !selectedTurmaId || !selectedMonthKey || monthlyClosures.some((closure) => closure.turmaId === selectedTurmaId && `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey)} style={{ padding: "10px 16px", border: 0, borderRadius: 6, background: dangerColor, color: "var(--card)", fontWeight: 700, cursor: action === "saving" ? "wait" : "pointer", opacity: action === "saving" || !selectedTurmaId ? .6 : 1 }}>
-            Fechar mês para turma
-          </button>
-        </div>
-        <label style={{ display: "grid", gap: 6, marginBottom: 20, color: "var(--foreground)", fontSize: 13, fontWeight: 700 }}>
-          Motivo do fecho (opcional)
-          <textarea value={monthlyCloseReason} onChange={(event) => setMonthlyCloseReason(event.target.value)} placeholder="Ex.: Relatórios mensais enviados" rows={2} style={{ width: "100%", maxWidth: 600, padding: 10, border: "1px solid var(--input)", borderRadius: 6, background: "var(--card)", color: "var(--foreground)", resize: "vertical" }} />
-        </label>
-        <h4 style={{ margin: "0 0 10px", color: "var(--foreground)" }}>Turmas fechadas no mês selecionado</h4>
-        {monthlyClosures.filter((closure) => `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey).length ? (
-          <div style={{ display: "grid", gap: 8 }}>
-            {monthlyClosures.filter((closure) => `${formatPeriodDate(new Date(closure.periodStart))}|${formatPeriodDate(new Date(closure.periodEnd))}` === selectedMonthKey).map((closure) => (
-              <div key={closure.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "11px 13px", border: "1px solid color-mix(in oklch, var(--destructive) 35%, var(--border))", borderRadius: 8, background: "color-mix(in oklch, var(--destructive) 5%, var(--card))" }}>
-                <div><strong>{closure.turma.name}</strong><div style={{ marginTop: 3, color: "var(--muted-foreground)", fontSize: 12 }}>Fechado por {closure.closedBy.name || closure.closedBy.email}{closure.reason ? ` · ${closure.reason}` : ""}</div></div>
-                <button type="button" onClick={() => toggleMonthlyClosure(closure)} disabled={action === "saving"} style={{ padding: "7px 12px", border: `1px solid ${dangerColor}`, borderRadius: 6, background: "var(--card)", color: dangerColor, fontWeight: 700, cursor: "pointer" }}>Reabrir turma</button>
-              </div>
-            ))}
+      <Card className="border-primary/20 shadow-sm">
+        <CardHeader className="gap-4 border-b bg-gradient-to-r from-primary/10 via-primary/5 to-transparent sm:flex-row sm:items-center sm:justify-between">
+          <div className="grid gap-1">
+            <Badge variant="outline" className="w-fit gap-1.5"><CalendarDays /> Períodos semanais</Badge>
+            <CardTitle className="pt-1 text-xl">Gestão dos períodos semanais</CardTitle>
+            <CardDescription>Feche períodos para impedir alterações e reabra-os quando necessário.</CardDescription>
           </div>
-        ) : <p style={{ margin: 0, color: "var(--muted-foreground)", fontSize: 13 }}>Ainda não há turmas fechadas para este mês.</p>}
-      </section>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary" className="h-7 gap-1.5 px-2.5"><Clock3 /> {openCount} abertos</Badge>
+            <Badge variant="destructive" className="h-7 gap-1.5 px-2.5"><ShieldCheck /> {closedCount} fechados</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-2 pt-3">
+          {weeklyPeriods.length ? weeklyPeriods.map((period) => {
+            const startStr = formatPeriodDate(period.start);
+            const endStr = formatPeriodDate(period.end);
+            const isExpanded = expandedPeriod === startStr;
+            const isPast = period.end < today;
+            const closedBy = period.closedInfo?.closedBy.name || period.closedInfo?.closedBy.email;
+
+            return (
+              <Card key={startStr} className="overflow-hidden shadow-none">
+                <CardContent className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg ${period.isClosed ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`} aria-hidden="true">
+                      {period.isClosed ? <LockKeyhole className="size-4" /> : <CalendarDays className="size-4" />}
+                    </span>
+                    <div className="grid min-w-0 gap-1">
+                      <p className="font-medium">{startStr} até {endStr}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={period.isClosed ? "destructive" : isPast ? "outline" : "secondary"}>
+                          {period.isClosed ? "Fechado" : isPast ? "Passado · aberto" : "Aberto"}
+                        </Badge>
+                        {closedBy && <span className="text-xs text-muted-foreground">Fechado por {closedBy}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant={period.isClosed ? "outline" : "destructive"}
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => void handleTogglePeriod(period)}
+                    disabled={action === "saving"}
+                  >
+                    {action === "saving" ? <Spinner /> : period.isClosed ? <LockOpen /> : <LockKeyhole />}
+                    {period.isClosed ? "Reabrir período" : "Fechar período"}
+                  </Button>
+                </CardContent>
+
+                {isExpanded && !period.isClosed && (
+                  <div className="grid gap-2 border-t bg-muted/30 p-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor={`weekly-close-reason-${startStr}`}>Motivo do encerramento <span className="font-normal text-muted-foreground">(opcional)</span></Label>
+                      <Textarea
+                        id={`weekly-close-reason-${startStr}`}
+                        value={closeReason}
+                        onChange={(event) => setCloseReason(event.target.value)}
+                        placeholder="Ex.: Fim do período letivo"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                      <Button type="button" variant="outline" onClick={() => { setExpandedPeriod(null); setCloseReason(""); }} disabled={action === "saving"}>
+                        Cancelar
+                      </Button>
+                      <Button type="button" variant="destructive" onClick={() => void handleClosePeriod(period)} disabled={action === "saving"}>
+                        {action === "saving" && <Spinner />}
+                        Confirmar encerramento
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {period.isClosed && period.closedInfo?.reason && (
+                  <CardContent className="border-t bg-muted/20 pt-3 pb-4">
+                    <p className="break-words text-sm text-muted-foreground"><span className="font-medium text-foreground">Motivo:</span> {period.closedInfo.reason}</p>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          }) : (
+            <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Não existem períodos semanais para apresentar.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/20 shadow-sm">
+        <CardHeader className="gap-3 border-b bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+          <Badge variant="outline" className="w-fit gap-1.5"><CalendarDays /> Gestão mensal</Badge>
+          <CardTitle className="text-xl">Fecho mensal por turma</CardTitle>
+          <CardDescription>Quando fecha um mês, os professores deixam de poder alterar faltas, justificações, notas, observações ou relatórios semanais dos períodos inteiramente incluídos nesse mês.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-5 pt-5">
+          <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <div className="grid gap-2">
+              <Label htmlFor="closed-period-month">Mês</Label>
+              <Select value={selectedMonthKey || null} onValueChange={(value) => setSelectedMonthKey(value ?? "")}>
+                <SelectTrigger id="closed-period-month" className="h-10 w-full"><SelectValue placeholder="Selecione um mês" /></SelectTrigger>
+                <SelectContent>
+                  {monthlyPeriods.map((period) => <SelectItem key={period.key} value={period.key}>{getPeriodLabel(period)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="closed-period-turma">Turma</Label>
+              <Select value={selectedTurmaId || null} onValueChange={(value) => setSelectedTurmaId(value ?? "")}>
+                <SelectTrigger id="closed-period-turma" className="h-10 w-full"><SelectValue placeholder="Selecione uma turma" /></SelectTrigger>
+                <SelectContent>
+                  {turmas.map((turma) => <SelectItem key={turma.id} value={turma.id}>{turma.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-10 sm:col-span-2 lg:col-span-1"
+              onClick={() => void toggleMonthlyClosure()}
+              disabled={action === "saving" || !selectedTurmaId || !selectedMonthKey || selectedMonthIsClosed}
+            >
+              {action === "saving" ? <Spinner /> : <LockKeyhole />}
+              Fechar mês para turma
+            </Button>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="monthly-close-reason">Motivo do fecho <span className="font-normal text-muted-foreground">(opcional)</span></Label>
+            <Textarea
+              id="monthly-close-reason"
+              value={monthlyCloseReason}
+              onChange={(event) => setMonthlyCloseReason(event.target.value)}
+              placeholder="Ex.: Relatórios mensais enviados"
+              rows={2}
+            />
+          </div>
+
+          <div className="grid gap-3 border-t pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-semibold">Turmas fechadas no mês selecionado</h3>
+              <Badge variant="secondary">{selectedMonthlyClosures.length} turma(s)</Badge>
+            </div>
+            {selectedMonthlyClosures.length ? (
+              <div className="grid gap-2">
+                {selectedMonthlyClosures.map((closure) => (
+                  <Card key={closure.id} className="border-destructive/20 bg-destructive/[0.03] shadow-none">
+                    <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive" aria-hidden="true"><LockKeyhole className="size-4" /></span>
+                        <div className="grid min-w-0 gap-1">
+                          <p className="font-medium">{closure.turma.name}</p>
+                          <p className="break-words text-xs text-muted-foreground">
+                            Fechado por {closure.closedBy.name || closure.closedBy.email}{closure.reason ? ` · ${closure.reason}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => void toggleMonthlyClosure(closure)} disabled={action === "saving"}>
+                        {action === "saving" ? <Spinner /> : <LockOpen />} Reabrir turma
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">Ainda não há turmas fechadas para este mês.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
