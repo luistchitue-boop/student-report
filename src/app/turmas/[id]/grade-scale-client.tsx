@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogCloseButton,
@@ -49,15 +50,14 @@ export function GradeScaleClient({ turmaId, initialScale, initialEducationType }
 
   return (
     <>
-      <Button type="button" variant="outline" className="grade-scale-button" onClick={() => { setStatus(""); setOpen(true); }}>
+      <Button type="button" variant="outline" onClick={() => { setStatus(""); setOpen(true); }}>
         {educationType === "ENSINO_GERAL" ? "Ensino geral" : educationType === "ENSINO_TECNICO" ? "Ensino Técnico" : "Ensino não definido"} · 0-{scale}
       </Button>
-      {status && <span className="grade-scale-status">{status}</span>}
+      {status && <Badge variant="secondary" role="status">{status}</Badge>}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="grade-scale-modal">
+        <DialogContent className="sm:max-w-md">
           <DialogCloseButton />
           <DialogHeader>
-            <p className="eyebrow">CONFIGURAÇÃO DA TURMA</p>
             <DialogTitle>Classificação da turma</DialogTitle>
             <DialogDescription>Defina a escala de notas e o tipo de ensino da turma. O tipo será identificado nos relatórios.</DialogDescription>
           </DialogHeader>
@@ -83,9 +83,9 @@ export function GradeScaleClient({ turmaId, initialScale, initialEducationType }
               </Select>
             </div>
           </div>
-          <DialogFooter className="grade-scale-actions">
-            <Button type="button" variant="outline" className="new-student-cancel" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button type="button" className="new-student-submit" onClick={saveScale} disabled={saving}>{saving ? "A guardar..." : "Guardar"}</Button>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>Cancelar</Button>
+            <Button type="button" onClick={saveScale} disabled={saving}>{saving ? "A guardar..." : "Guardar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

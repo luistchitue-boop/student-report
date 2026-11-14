@@ -12,6 +12,10 @@ import { TurmaMonthlyStatistics } from "./turma-monthly-statistics";
 import { getSchoolContext } from "@/lib/school-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, ArrowRight, BookOpenCheck, GraduationCap, Search, UserPlus, Users } from "lucide-react";
 
 const PAGE_SIZE = 10;
 
@@ -97,102 +101,104 @@ export default async function TurmaDetailPage({
 
   return (
     <AppShell active="turmas">
-      <main className="main-content turma-detail-shell">
-        <header className="topbar turma-topbar">
-          <div>
-            <p className="eyebrow">ALUNOS</p>
-            <h1>{turma.name}</h1>
-            <p className="eyebrow">{turma.educationType === "ENSINO_GERAL" ? "Ensino geral" : turma.educationType === "ENSINO_TECNICO" ? "Ensino Técnico" : "Tipo de ensino não definido"}</p>
+      <main className="main-content mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 sm:px-6 lg:gap-8 lg:px-8">
+        <header className="flex flex-col justify-between gap-4 border-b pb-5 sm:flex-row sm:items-end">
+          <div className="space-y-2">
+            <Badge variant="secondary" className="gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
+              <GraduationCap className="size-3.5" /> Turma
+            </Badge>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{turma.name}</h1>
+              <Badge variant="outline">
+                {turma.educationType === "ENSINO_GERAL" ? "Ensino geral" : turma.educationType === "ENSINO_TECNICO" ? "Ensino Técnico" : "Tipo de ensino não definido"}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">Consulte os alunos, acompanhe o desempenho e aceda aos registos da turma.</p>
           </div>
-          <Link href="/turmas" className="dashboard-link">
-            ← Voltar às turmas
-          </Link>
+          <Button variant="outline" render={<Link href="/turmas" />}><ArrowLeft /> Voltar às turmas</Button>
         </header>
 
-        <section className="turma-detail-panel">
-          <div className="detail-panel-header">
-            <div className="detail-panel-actions">
-              <span className="detail-count">{turma.students} alunos</span>
-              {(role === "ADMIN" || role === "COORDENADOR") && (
-                <>
-                  <Link href={`/turmas/${turma.id}/livro_de_ponto`} className="attendance-book-button">
-                    Livro de ponto
-                  </Link>
-                  <Link href={`/turmas/${turma.id}/mini_pauta`} className="mini-pauta-button">
-                    Mini pauta
-                  </Link>
-                </>
-              )}
-              <TurmaDisciplinasClient turmaId={turma.id} initialSubjects={turma.subjects} isAdmin={role === "ADMIN"} />
-              {role === "ADMIN" && <StudentImportClient turmaId={turma.id} />}
-              <Link href={`/turmas/${turma.id}/novo_aluno`} className="new-student-button">
-                Novo aluno
-              </Link>
-              {role === "ADMIN" && <GradeScaleClient turmaId={turma.id} initialScale={turma.gradeScale} initialEducationType={turma.educationType} />}
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader className="flex flex-col gap-3 border-b bg-muted/20 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-base">Ferramentas da turma</CardTitle>
+              <CardDescription>Atalhos e ações disponíveis para o seu perfil.</CardDescription>
             </div>
+            <Badge variant="secondary" className="w-fit gap-1.5"><Users className="size-3.5" /> {turma.students} {turma.students === 1 ? "aluno" : "alunos"}</Badge>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-2 pt-4">
+            {(role === "ADMIN" || role === "COORDENADOR") && (
+              <>
+                <Button variant="outline" render={<Link href={`/turmas/${turma.id}/livro_de_ponto`} />}><BookOpenCheck /> Livro de ponto</Button>
+                <Button variant="outline" render={<Link href={`/turmas/${turma.id}/mini_pauta`} />}><BookOpenCheck /> Mini pauta</Button>
+              </>
+            )}
+            <TurmaDisciplinasClient turmaId={turma.id} initialSubjects={turma.subjects} isAdmin={role === "ADMIN"} />
+            {role === "ADMIN" && <StudentImportClient turmaId={turma.id} />}
+            <Button className="ml-auto" render={<Link href={`/turmas/${turma.id}/novo_aluno`} />}><UserPlus /> Novo aluno</Button>
+            {role === "ADMIN" && <GradeScaleClient turmaId={turma.id} initialScale={turma.gradeScale} initialEducationType={turma.educationType} />}
+          </CardContent>
+        </Card>
+
+        <TurmaMonthlyStatistics turmaId={turma.id} />
+
+        <section className="space-y-4" aria-labelledby="student-directory-title">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div className="space-y-1">
+              <h2 id="student-directory-title" className="text-lg font-semibold tracking-tight">Alunos da turma</h2>
+              <p className="text-sm text-muted-foreground">Pesquise e abra um registo individual.</p>
+            </div>
+            <Badge variant="outline">{filteredStudents.length} {filteredStudents.length === 1 ? "resultado" : "resultados"}</Badge>
           </div>
 
-          <TurmaMonthlyStatistics turmaId={turma.id} />
+          <Card className="border-border/70 shadow-sm">
+            <CardContent className="pt-4">
+              <form method="get" className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Label htmlFor="student-search">Pesquisar aluno</Label>
+                  <Input id="student-search" name="q" type="search" defaultValue={query} placeholder="Ex.: Alicia Manuela" />
+                </div>
+                <Button type="submit"><Search /> Pesquisar</Button>
+                {query && <Button type="button" variant="ghost" render={<Link href={`/turmas/${turma.id}`} />}>Limpar</Button>}
+              </form>
+            </CardContent>
+          </Card>
 
-          <form method="get" className="student-search-form">
-            <label htmlFor="student-search">Pesquisar aluno</label>
-            <div className="student-search-controls">
-              <Input id="student-search" name="q" type="search" defaultValue={query} placeholder="Ex.: Alicia Manuela" />
-              <Button type="submit" className="student-search-button">Pesquisar</Button>
-              {query && <Link href={`/turmas/${turma.id}`} className="student-search-clear">Limpar</Link>}
+          {visibleStudents.length ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" aria-label={`Lista de alunos da turma ${turma.name}`}>
+              {visibleStudents.map((student: { id: string; name: string; age: number; attendance: string; active: boolean; parents: unknown[]; avatarUrl?: string | null }) => (
+                <StudentCardClient
+                  key={student.id}
+                  turmaId={turma.id}
+                  student={student}
+                  availableTurmas={role === "ADMIN" ? turmas.filter((candidate) => candidate.id !== turma.id).map((candidate) => ({ id: candidate.id, name: candidate.name })) : []}
+                  isAdmin={role === "ADMIN"}
+                />
+              ))}
             </div>
-          </form>
-
-          <div className="student-grid" aria-label={`Lista de alunos da turma ${turma.name}`}>
-            {visibleStudents.map((student: { id: string; name: string; age: number; attendance: string; active: boolean; parents: unknown[] }) => (
-              <StudentCardClient
-                key={student.id}
-                turmaId={turma.id}
-                student={student}
-                availableTurmas={role === "ADMIN" ? turmas.filter((candidate) => candidate.id !== turma.id).map((candidate) => ({ id: candidate.id, name: candidate.name })) : []}
-                isAdmin={role === "ADMIN"}
-              />
-            ))}
-          </div>
-          {!visibleStudents.length && <p className="student-search-empty">Nenhum aluno encontrado.</p>}
+          ) : (
+            <Card className="border-dashed shadow-none">
+              <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+                <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"><Users className="size-5" /></span>
+                <div className="space-y-1">
+                  <h3 className="font-semibold">{query ? "Nenhum aluno encontrado" : "Ainda não há alunos nesta turma"}</h3>
+                  <p className="max-w-md text-sm text-muted-foreground">{query ? "Experimente outro nome ou limpe a pesquisa para ver todos os alunos." : "Os alunos inscritos nesta turma aparecerão aqui."}</p>
+                </div>
+                {query && <Button variant="outline" render={<Link href={`/turmas/${turma.id}`} />}>Limpar pesquisa</Button>}
+              </CardContent>
+            </Card>
+          )}
         </section>
 
         {totalPages > 1 && (
-          <nav className="pagination" aria-label="Paginação dos alunos da turma">
-            <Link
-              href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)}
-              className={currentPage === 1 ? "page-button disabled" : "page-button"}
-              aria-disabled={currentPage === 1}
-            >
-              Anterior
-            </Link>
-
-            <div className="pagination-compact" aria-label="Páginas de alunos">
-              {mobilePageItems.map((page, index) =>
-                typeof page === "number" ? (
-                  <Link
-                    key={`${page}-${index}`}
-                    href={buildPageHref(page)}
-                    className={page === currentPage ? "page-button active" : "page-button"}
-                    aria-current={page === currentPage ? "page" : undefined}
-                  >
-                    {page}
-                  </Link>
-                ) : (
-                  <span key={`ellipsis-${index}`} className="page-button page-ellipsis" aria-hidden="true">
-                    …
-                  </span>
-                )
-              )}
+          <nav className="flex flex-wrap items-center justify-center gap-2" aria-label="Paginação dos alunos da turma">
+            <Button variant="outline" className={currentPage === 1 ? "pointer-events-none opacity-50" : ""} render={<Link href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} />}><ArrowLeft /> Anterior</Button>
+            <div className="flex items-center gap-1" aria-label="Páginas de alunos">
+              {mobilePageItems.map((page, index) => typeof page === "number" ? (
+                <Button key={`${page}-${index}`} variant={page === currentPage ? "default" : "ghost"} size="icon" render={<Link href={buildPageHref(page)} aria-current={page === currentPage ? "page" : undefined} aria-label={`Página ${page}`} />}>{page}</Button>
+              ) : <span key={`ellipsis-${index}`} className="px-2 text-sm text-muted-foreground" aria-hidden="true">…</span>)}
             </div>
-
-            <Link
-              href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)}
-              className={currentPage === totalPages ? "page-button disabled" : "page-button"}
-              aria-disabled={currentPage === totalPages}
-            >
-              Próxima
-            </Link>
+            <Button variant="outline" className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""} render={<Link href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} />}>Próxima <ArrowRight /></Button>
           </nav>
         )}
       </main>

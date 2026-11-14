@@ -9,6 +9,24 @@ import { TopTurmasMonthlyRanking } from "./top-turmas-monthly-ranking";
 import { getSchoolContext } from "@/lib/school-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  GraduationCap,
+  Image as ImageIcon,
+  Search,
+  Users,
+} from "lucide-react";
 
 const PAGE_SIZE = 6;
 
@@ -96,167 +114,204 @@ export default async function TurmasPage({
 
   return (
     <AppShell active="turmas">
-      <main className="main-content mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
-        <header className="topbar turma-topbar">
-          <div>
-            <p className="eyebrow">COORDENAÇÃO</p>
-            <h1>Turmas</h1>
+      <main className="main-content mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 sm:px-6 lg:gap-8 lg:px-8">
+        <header className="flex flex-col justify-between gap-4 border-b pb-5 sm:flex-row sm:items-end">
+          <div className="space-y-2">
+            <Badge variant="secondary" className="gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
+              <GraduationCap className="size-3.5" /> Coordenação
+            </Badge>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Turmas</h1>
+            <p className="max-w-2xl text-sm text-muted-foreground">Consulte turmas, acompanhe os alunos e aceda aos registos escolares.</p>
           </div>
-          <Link href="/" className="dashboard-link">
-            ← Voltar ao dashboard
-          </Link>
+          <Button variant="outline" render={<Link href="/" />}>
+            <ArrowLeft /> Voltar ao início
+          </Button>
         </header>
 
         {(role === "ADMIN" || role === "DIRECCAO") && <TopTurmasMonthlyRanking />}
 
-        <section className="turma-summary" aria-label="Resumo de turmas">
-          <div className="summary-card">
-            <span className="summary-label">Turmas ativas</span>
-            <strong>{turmas.length}</strong>
-          </div>
-          <div className="summary-card">
-            <span className="summary-label">Alunos</span>
-            <strong>{totalStudents}</strong>
-          </div>
-          <div className="summary-card">
-            <span className="summary-label">Média por turma</span>
-            <strong>{averageStudents}</strong>
-          </div>
-        </section>
-
-        <section className="student-global-search" aria-label="Pesquisar aluno em todas as turmas">
-          <form method="get" className="student-global-search-form">
-            <label htmlFor="global-student-search">Pesquisar aluno em todas as turmas supervisionadas</label>
-            <div className="turma-search-controls">
-              <Input id="global-student-search" name="student" type="search" minLength={2} defaultValue={studentQuery} placeholder="Introduza o nome do aluno..." />
-              {query && <input type="hidden" name="q" value={query} />}
-              <Button type="submit" className="turma-search-button">Pesquisar aluno</Button>
-              {studentQuery && <Link href={query ? `/turmas?q=${encodeURIComponent(query)}` : "/turmas"} className="turma-search-clear">Limpar</Link>}
-            </div>
-            {studentQuery.length === 1 && <small>Introduza pelo menos 2 caracteres para pesquisar.</small>}
-          </form>
-          {studentQuery.length >= 2 && (
-            <div className="global-student-results" aria-live="polite">
-              <strong>{matchingStudents.length ? `${matchingStudents.length} aluno(s) encontrado(s)` : "Nenhum aluno encontrado"}</strong>
-              {matchingStudents.length > 0 && (
-                <ul>
-                  {matchingStudents.map((student) => (
-                    <li key={`${student.turmaId}-${student.id}`}>
-                      <Link href={`/turmas/${student.turmaId}/${encodeURIComponent(student.id)}`}>
-                        <strong>{student.name}</strong><span>{student.turmaName}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="turma-toolbar" aria-label="Navegação de turmas">
-          <div>
-            <p className="eyebrow">VISÃO GERAL</p>
-            <h2>Gestão de turmas</h2>
-          </div>
-
-          <form method="get" className="turma-search-form">
-            <label htmlFor="turma-search">Pesquisar turma</label>
-            <div className="turma-search-controls">
-              <Input id="turma-search" name="q" type="search" defaultValue={query} placeholder="Ex.: 10CEJ" />
-              <Button type="submit" className="turma-search-button">Pesquisar</Button>
-              {query && <Link href="/turmas" className="turma-search-clear">Limpar</Link>}
-            </div>
-          </form>
-
-          <div className="turma-toolbar-actions">
-            <div className="page-meta">
-              {visibleTurmas.length ? `Mostrando ${startIndex + 1}-${Math.min(startIndex + visibleTurmas.length, turmas.length)} de ${turmas.length}` : "Nenhuma turma encontrada"}
-            </div>
-            <TurmasActions isAdmin={role === "ADMIN"} />
-          </div>
-        </section>
-
-        <section className="turma-list">
-          {visibleTurmas.map((turma) => {
-            const subjectSlots = Array.from({ length: 4 }, (_, index) => turma.subjects[index] ?? "—");
-
+        <section aria-label="Resumo de turmas" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[
+            { label: "Turmas", value: turmas.length, detail: "Disponíveis na escola", icon: BookOpen },
+            { label: "Alunos", value: totalStudents, detail: "Inscritos nas turmas", icon: Users },
+            { label: "Média por turma", value: averageStudents, detail: "Alunos por turma", icon: GraduationCap },
+          ].map((stat) => {
+            const Icon = stat.icon;
             return (
-              <div key={turma.id} className="turma-card-wrap">
-                <Link href={`/turmas/${turma.id}`} className="turma-card-link">
-                  <article className="turma-card">
-                    <div className="turma-card-header">
-                      <span className="turma-badge">Turma</span>
-                      <strong>{turma.name}</strong>
-                    </div>
-
-                    <div className="turma-card-body">
-                      <div className="metric-row">
-                        <span className="metric-label">Alunos</span>
-                        <span className="metric-value">{turma.students}</span>
-                      </div>
-                      {role === "ADMIN" && <div className="metric-row">
-                        <span className="metric-label">Avatares</span>
-                        <span className="metric-value">{turma.avatarCoverage}%</span>
-                      </div>}
-                    </div>
-
-                    <div className="subject-list" aria-label={`Disciplinas da turma ${turma.name}`}>
-                      {subjectSlots.map((subject, index) => (
-                        <span
-                          key={`${turma.id}-${subject}-${index}`}
-                          className={subject === "—" ? "subject-pill empty" : "subject-pill"}
-                        >
-                          {subject}
-                        </span>
-                      ))}
-                    </div>
-                  </article>
-                </Link>
-
-                {role === "ADMIN" && (
-                  <TurmaDeleteAction turmaId={turma.id} turmaName={turma.name} />
-                )}
-              </div>
+              <Card key={stat.label} className="border-border/70 shadow-sm transition-shadow hover:shadow-md">
+                <CardHeader className="flex-row items-start justify-between gap-3 pb-2">
+                  <div className="space-y-1">
+                    <CardDescription className="text-sm font-medium">{stat.label}</CardDescription>
+                    <CardTitle className="text-3xl font-semibold tabular-nums tracking-tight">{stat.value.toLocaleString("pt-AO")}</CardTitle>
+                  </div>
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="size-5" /></span>
+                </CardHeader>
+                <CardContent className="pt-0 text-xs text-muted-foreground">{stat.detail}</CardContent>
+              </Card>
             );
           })}
         </section>
 
-        {totalPages > 1 && (
-          <nav className="pagination" aria-label="Paginação de turmas">
-            <Link
-              href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)}
-              className={currentPage === 1 ? "page-button disabled" : "page-button"}
-              aria-disabled={currentPage === 1}
-            >
-              Anterior
-            </Link>
-
-            <div className="pagination-compact" aria-label="Páginas de turmas">
-              {mobilePageItems.map((page, index) =>
-                typeof page === "number" ? (
-                  <Link
-                    key={`${page}-${index}`}
-                    href={buildPageHref(page)}
-                    className={page === currentPage ? "page-button active" : "page-button"}
-                    aria-current={page === currentPage ? "page" : undefined}
-                  >
-                    {page}
-                  </Link>
-                ) : (
-                  <span key={`ellipsis-${index}`} className="page-button page-ellipsis" aria-hidden="true">
-                    …
-                  </span>
-                )
-              )}
+        <Card className="border-border/70 shadow-sm">
+          <CardHeader className="pb-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-base"><Search className="size-4 text-primary" /> Pesquisar aluno</CardTitle>
+              <CardDescription>Encontre um aluno em todas as turmas supervisionadas.</CardDescription>
             </div>
+            <Badge variant="outline" className="w-fit">Pesquisa global</Badge>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form method="get" className="flex flex-col gap-3 sm:flex-row">
+              <div className="min-w-0 flex-1 space-y-2">
+                <Label htmlFor="global-student-search" className="sr-only">Nome do aluno</Label>
+                <Input id="global-student-search" name="student" type="search" minLength={2} defaultValue={studentQuery} placeholder="Introduza o nome do aluno…" />
+                {query && <input type="hidden" name="q" value={query} />}
+              </div>
+              <Button type="submit" className="sm:self-start"><Search /> Pesquisar aluno</Button>
+              {studentQuery && (
+                <Button type="button" variant="ghost" render={<Link href={query ? `/turmas?q=${encodeURIComponent(query)}` : "/turmas"} />}>
+                  Limpar
+                </Button>
+              )}
+            </form>
+            {studentQuery.length === 1 && <p className="text-sm text-muted-foreground">Introduza pelo menos 2 caracteres para pesquisar.</p>}
+            {studentQuery.length >= 2 && (
+              <div className="rounded-lg border bg-muted/30 p-4" aria-live="polite">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{matchingStudents.length ? `${matchingStudents.length} aluno(s) encontrado(s)` : "Nenhum aluno encontrado"}</p>
+                  {matchingStudents.length > 0 && <Badge variant="secondary">{matchingStudents.length} resultados</Badge>}
+                </div>
+                {matchingStudents.length > 0 && (
+                  <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {matchingStudents.map((student) => (
+                      <li key={`${student.turmaId}-${student.id}`}>
+                        <Link href={`/turmas/${student.turmaId}/${encodeURIComponent(student.id)}`} className="flex min-h-14 items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          <span className="min-w-0 truncate font-medium">{student.name}</span>
+                          <Badge variant="outline" className="shrink-0">{student.turmaName}</Badge>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-            <Link
-              href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)}
-              className={currentPage === totalPages ? "page-button disabled" : "page-button"}
-              aria-disabled={currentPage === totalPages}
+        <section className="space-y-4" aria-labelledby="turmas-list-title">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 id="turmas-list-title" className="text-lg font-semibold tracking-tight">Gestão de turmas</h2>
+                <Badge variant="secondary">{turmas.length} {turmas.length === 1 ? "turma" : "turmas"}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">Abra uma turma para consultar os alunos e os registos.</p>
+            </div>
+            {role === "ADMIN" && <TurmasActions isAdmin />}
+          </div>
+
+          <Card className="border-border/70 shadow-sm">
+            <CardContent className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-end sm:justify-between">
+              <form method="get" className="grid min-w-0 flex-1 gap-2 sm:max-w-xl">
+                <Label htmlFor="turma-search">Pesquisar turma</Label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input id="turma-search" name="q" type="search" defaultValue={query} placeholder="Ex.: 10CEJ" />
+                  <Button type="submit" variant="secondary"><Search /> Pesquisar</Button>
+                  {query && <Button type="button" variant="ghost" render={<Link href="/turmas" />}>Limpar</Button>}
+                </div>
+              </form>
+              <p className="shrink-0 text-sm text-muted-foreground" aria-live="polite">
+                {visibleTurmas.length ? `A mostrar ${startIndex + 1}–${Math.min(startIndex + visibleTurmas.length, turmas.length)} de ${turmas.length}` : "Nenhuma turma encontrada"}
+              </p>
+            </CardContent>
+          </Card>
+
+          {visibleTurmas.length ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {visibleTurmas.map((turma) => {
+                const subjects = turma.subjects.filter((subject) => subject.trim());
+                return (
+                  <article key={turma.id} className="group relative min-w-0">
+                    <Link href={`/turmas/${turma.id}`} className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                      <Card className="h-full min-h-56 border-border/70 shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:border-primary/30 group-hover:shadow-md">
+                        <CardHeader className="space-y-3 pr-14">
+                          <Badge variant="outline" className="w-fit gap-1.5"><BookOpen className="size-3.5" /> Turma</Badge>
+                          <div className="space-y-1">
+                            <CardTitle className="text-xl font-semibold tracking-tight">{turma.name}</CardTitle>
+                            <CardDescription>{subjects.length ? `${subjects.length} disciplinas associadas` : "Disciplinas por configurar"}</CardDescription>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="mt-auto space-y-4">
+                          <div className={`grid gap-3 ${role === "ADMIN" ? "grid-cols-2" : "grid-cols-1"}`}>
+                            <div className="rounded-lg bg-muted/60 p-3">
+                              <p className="text-xs font-medium text-muted-foreground">Alunos</p>
+                              <p className="mt-1 text-2xl font-semibold tabular-nums">{turma.students}</p>
+                            </div>
+                            {role === "ADMIN" && (
+                              <div className="rounded-lg bg-muted/60 p-3">
+                                <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><ImageIcon className="size-3.5" /> Avatares</p>
+                                <p className="mt-1 text-2xl font-semibold tabular-nums">{turma.avatarCoverage}%</p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex min-h-7 flex-wrap gap-1.5" aria-label={`Disciplinas da turma ${turma.name}`}>
+                            {subjects.length ? subjects.slice(0, 4).map((subject) => <Badge key={subject} variant="secondary" className="max-w-full truncate">{subject}</Badge>) : <Badge variant="outline">Sem disciplinas</Badge>}
+                            {subjects.length > 4 && <Badge variant="outline">+{subjects.length - 4}</Badge>}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    {role === "ADMIN" && (
+                      <div className="absolute right-3 top-3 z-10">
+                        <TurmaDeleteAction turmaId={turma.id} turmaName={turma.name} />
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <Card className="border-dashed shadow-none">
+              <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+                <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"><BookOpen className="size-5" /></span>
+                <div className="space-y-1">
+                  <h3 className="font-semibold">{query ? "Nenhuma turma encontrada" : "Ainda não existem turmas"}</h3>
+                  <p className="max-w-md text-sm text-muted-foreground">{query ? "Experimente outro nome ou limpe a pesquisa para ver todas as turmas." : "As turmas disponíveis para a sua conta aparecerão aqui."}</p>
+                </div>
+                {query && <Button variant="outline" render={<Link href="/turmas" />}>Limpar pesquisa</Button>}
+              </CardContent>
+            </Card>
+          )}
+        </section>
+
+        {totalPages > 1 && (
+          <nav className="flex flex-wrap items-center justify-center gap-2" aria-label="Paginação de turmas">
+            <Button
+              variant="outline"
+              render={<Link href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} />}
+              className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
             >
-              Próxima
-            </Link>
+              <ArrowLeft /> Anterior
+            </Button>
+            <div className="flex items-center gap-1" aria-label="Páginas de turmas">
+              {mobilePageItems.map((page, index) => typeof page === "number" ? (
+                <Button
+                  key={`${page}-${index}`}
+                  variant={page === currentPage ? "default" : "ghost"}
+                  size="icon"
+                  render={<Link href={buildPageHref(page)} aria-current={page === currentPage ? "page" : undefined} aria-label={`Página ${page}`} />}
+                >
+                  {page}
+                </Button>
+              ) : <span key={`ellipsis-${index}`} className="px-2 text-sm text-muted-foreground" aria-hidden="true">…</span>)}
+            </div>
+            <Button
+              variant="outline"
+              render={<Link href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} />}
+              className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+            >
+              Próxima <ArrowRight />
+            </Button>
           </nav>
         )}
       </main>

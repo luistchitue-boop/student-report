@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,7 +45,7 @@ export default function TurmaDeleteAction({ turmaId, turmaName }: { turmaId: str
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger
-          render={<Button type="button" variant="destructive" className="turma-card-delete">Remover</Button>}
+          render={<Button type="button" variant="outline" size="icon" className="bg-background/90 shadow-sm" aria-label={`Remover turma ${turmaName}`} title="Remover turma"><Trash2 /></Button>}
         />
         <DialogContent>
           <DialogCloseButton />

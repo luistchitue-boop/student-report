@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Plus } from "lucide-react";
 
 export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -79,20 +80,20 @@ export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger
           render={
-            <Button type="button" className="create-turma-button">
-              Nova turma
+            <Button type="button">
+              <Plus /> Nova turma
             </Button>
           }
         />
-        <DialogContent className="turma-create-modal">
+        <DialogContent className="sm:max-w-md">
           <DialogCloseButton />
-          <DialogHeader className="mb-1">
+          <DialogHeader>
             <DialogTitle>Nova turma</DialogTitle>
             <DialogDescription>Preencha os dados para adicionar uma turma à escola.</DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateTurma} className="turma-create-form">
-            <div className="turma-create-field">
+          <form onSubmit={handleCreateTurma} className="grid gap-5">
+            <div className="grid gap-2">
               <Label htmlFor="turma-name">Nome da turma</Label>
               <Input
                 id="turma-name"
@@ -104,7 +105,7 @@ export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
               />
             </div>
 
-            <div className="turma-create-field">
+            <div className="grid gap-2">
               <Label htmlFor="turma-education-type">Tipo de ensino</Label>
               <Select
                 value={form.educationType || null}
@@ -120,16 +121,16 @@ export default function TurmasActions({ isAdmin }: { isAdmin: boolean }) {
               </Select>
             </div>
 
-            <DialogFooter className="turma-create-actions">
-              <Button type="button" variant="outline" className="turma-create-cancel" onClick={() => setIsOpen(false)}>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="turma-create-submit" disabled={status === "saving"}>
+              <Button type="submit" disabled={status === "saving"}>
                 {status === "saving" ? "A guardar..." : "Criar turma"}
               </Button>
             </DialogFooter>
 
-            {message && <p className={`turma-create-status ${status}`} role={status === "error" ? "alert" : "status"}>{message}</p>}
+            {message && <p className={`rounded-lg border p-3 text-sm ${status === "error" ? "border-destructive/20 bg-destructive/5 text-destructive" : "border-primary/20 bg-primary/5 text-primary"}`} role={status === "error" ? "alert" : "status"}>{message}</p>}
           </form>
         </DialogContent>
       </Dialog>

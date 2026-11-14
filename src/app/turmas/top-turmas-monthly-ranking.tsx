@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowUpRight, Medal, Trophy } from "lucide-react";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type TurmaRankingEntry = {
   id: string;
@@ -52,43 +58,78 @@ export function TopTurmasMonthlyRanking() {
   }, [month]);
 
   return (
-    <section className="top-turmas-ranking" aria-labelledby="top-turmas-ranking-title">
-      <header className="top-turmas-ranking-header">
-        <div><p className="eyebrow">DESEMPENHO ESCOLAR</p><h2 id="top-turmas-ranking-title">Top 4 turmas do mês</h2><p>Classificação pela média geral; as faltas desempatarão médias iguais.</p></div>
-        <label>Período mensal<select value={month} onChange={(event) => setMonth(event.target.value)}>{months.map((period) => <option key={period.key} value={period.start.toISOString().slice(0, 7)}>{getPeriodLabel(period)}</option>)}</select></label>
-      </header>
-      {error ? <p className="top-turmas-message error" role="alert">{error}</p> : loading ? <p className="top-turmas-message">A carregar classificação...</p> : !classes.length ? <p className="top-turmas-message">Não há turmas com notas registadas neste mês.</p> : (
-        <ol className="top-turmas-list">{classes.map((turma, index) => (
-          <li key={turma.id}>
-            <span className="top-turmas-place">{index + 1}</span>
-            <Link href={`/turmas/${turma.id}`} className="top-turmas-class-name">{turma.name}</Link>
-            <span className="top-turmas-stat"><strong>{turma.average.toFixed(1)}/{turma.gradeScale}</strong><small>média</small></span>
-            <span className="top-turmas-stat"><strong>{turma.absenceCount}</strong><small>faltas</small></span>
-            <span className="top-turmas-assessed">{turma.assessedStudentCount}/{turma.studentCount} avaliados</span>
-          </li>
-        ))}</ol>
-      )}
-      <p className="top-turmas-footnote">A média é calculada primeiro por aluno avaliado e depois entre alunos; turmas com escalas diferentes são comparadas proporcionalmente à escala. O total de faltas inclui faltas justificadas e injustificadas de alunos ativos.</p>
-      <style>{`
-        .top-turmas-ranking { display:grid; gap:1rem; margin:0 0 1.2rem; padding:1.2rem; border:1px solid #dbe3ec; border-radius:16px; background:#fff; box-shadow:0 6px 20px rgba(15,23,42,.035); }
-        .top-turmas-ranking-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
-        .top-turmas-ranking-header h2 { margin:.2rem 0 .3rem; color:#173044; font-size:1.2rem; }
-        .top-turmas-ranking-header p:not(.eyebrow) { margin:0; color:#64748b; font-size:.82rem; }
-        .top-turmas-ranking-header label { display:grid; gap:.4rem; min-width:190px; color:#334155; font-size:.76rem; font-weight:800; }
-        .top-turmas-ranking-header select { width:100%; min-height:2.6rem; padding:.55rem .7rem; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#1e293b; }
-        .top-turmas-list { display:grid; gap:.55rem; margin:0; padding:0; list-style:none; }
-        .top-turmas-list li { display:grid; grid-template-columns:2rem minmax(0,1fr) auto auto auto; align-items:center; gap:.6rem; padding:.75rem; border:1px solid #e2e8f0; border-radius:11px; background:#f8fafc; }
-        .top-turmas-place { display:grid; place-items:center; width:1.8rem; height:1.8rem; border-radius:50%; background:#d9edf3; color:#176b8b; font-weight:900; }
-        .top-turmas-class-name { min-width:0; color:#173044; font-size:.9rem; font-weight:800; text-decoration:none; }
-        .top-turmas-class-name:hover { text-decoration:underline; }
-        .top-turmas-stat { display:grid; justify-items:end; gap:.1rem; }
-        .top-turmas-stat strong { color:#173044; font-size:.88rem; }
-        .top-turmas-stat small,.top-turmas-assessed { color:#64748b; font-size:.7rem; }
-        .top-turmas-assessed { text-align:right; }
-        .top-turmas-message,.top-turmas-footnote { margin:0; color:#64748b; font-size:.77rem; line-height:1.5; }
-        .top-turmas-message.error { color:#b91c1c; }
-        @media (max-width:700px) { .top-turmas-ranking-header { flex-direction:column; } .top-turmas-ranking-header label { width:100%; } .top-turmas-list li { grid-template-columns:2rem minmax(0,1fr) auto auto; gap:.45rem; } .top-turmas-assessed { grid-column:2 / -1; text-align:left; } }
-      `}</style>
-    </section>
+    <Card className="overflow-hidden border-border/70 shadow-sm">
+      <CardHeader className="flex flex-col gap-4 border-b bg-gradient-to-br from-primary/5 via-background to-background sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Badge variant="secondary" className="gap-1.5 rounded-full"><Trophy /> Desempenho escolar</Badge>
+          <div className="space-y-1">
+            <CardTitle className="text-lg">Top 4 turmas do mês</CardTitle>
+            <CardDescription>Classificação pela média geral; as faltas desempatarão médias iguais.</CardDescription>
+          </div>
+        </div>
+        <div className="grid w-full gap-2 sm:w-56">
+          <Label htmlFor="top-turmas-period">Período mensal</Label>
+          <Select value={month} onValueChange={(value) => { if (value) setMonth(value); }}>
+            <SelectTrigger id="top-turmas-period" className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {months.map((period) => {
+                const value = period.start.toISOString().slice(0, 7);
+                return <SelectItem key={period.key} value={value}>{getPeriodLabel(period)}</SelectItem>;
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-3 pt-4">
+        {error ? (
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive" role="alert">{error}</div>
+        ) : loading ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="A carregar classificação">
+            {Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-28 rounded-xl" />)}
+          </div>
+        ) : !classes.length ? (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-8 text-center">
+            <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"><Medal className="size-5" /></span>
+            <p className="text-sm font-medium">Sem classificações neste período</p>
+            <p className="text-sm text-muted-foreground">Ainda não há turmas com notas registadas.</p>
+          </div>
+        ) : (
+          <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {classes.map((turma, index) => (
+              <li key={turma.id}>
+                <Link href={`/turmas/${turma.id}`} className="group block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                  <Card className="h-full border-border/70 bg-muted/20 transition-all group-hover:-translate-y-0.5 group-hover:border-primary/30 group-hover:bg-background group-hover:shadow-md">
+                    <CardContent className="flex h-full flex-col gap-4 pt-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge variant={index === 0 ? "default" : "secondary"} className="rounded-full">#{index + 1}</Badge>
+                        <ArrowUpRight className="size-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold tracking-tight">{turma.name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{turma.assessedStudentCount}/{turma.studentCount} alunos avaliados</p>
+                      </div>
+                      <div className="mt-auto grid grid-cols-2 gap-2 border-t pt-3">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Média</p>
+                          <p className="font-semibold tabular-nums">{turma.average.toFixed(1)}<span className="text-xs font-normal text-muted-foreground">/{turma.gradeScale}</span></p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Faltas</p>
+                          <p className="font-semibold tabular-nums">{turma.absenceCount}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        )}
+      </CardContent>
+      <CardFooter className="items-start text-xs leading-relaxed text-muted-foreground">
+        A média é calculada primeiro por aluno avaliado e depois entre alunos; turmas com escalas diferentes são comparadas proporcionalmente à escala. O total de faltas inclui faltas justificadas e injustificadas de alunos ativos.
+      </CardFooter>
+    </Card>
   );
 }
