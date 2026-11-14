@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { getCoordinatorTurmas } from "@/lib/teacher-data";
 import { PrismaClient } from "@prisma/client";
 import HomePage from "./home-page";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -13,7 +14,10 @@ export default async function Home() {
     redirect("/auth/signin");
   }
 
-  const turmas = await getCoordinatorTurmas(session.user.id);
+  const [turmas, schoolContext] = await Promise.all([
+    getCoordinatorTurmas(session.user.id),
+    getSchoolContext(session.user.id),
+  ]);
   const turmaIds = turmas.map((turma) => turma.id);
   const activeStudents = turmas.reduce((total, turma) => total + (turma.students ?? 0), 0);
 
@@ -43,6 +47,7 @@ export default async function Home() {
         activeStudents,
         absencesToday,
       }}
+      role={schoolContext?.role ?? "COORDENADOR"}
     />
   );
 }
