@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
+import { Mail, Pencil, Phone, Plus } from "lucide-react";
 
-const greenColor = "color-mix(in oklch, var(--green) 65%, var(--foreground))";
-const dangerColor = "color-mix(in oklch, var(--destructive) 75%, var(--foreground))";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Parent = {
   id: string;
@@ -13,6 +16,7 @@ type Parent = {
 };
 
 export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { parents: Parent[]; turmaId: string; studentId: string; canAddParent: boolean }) {
+  const fieldId = useId();
   const [editingParentId, setEditingParentId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -123,58 +127,48 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
   };
 
   return (
-    <div style={{ display: "grid", gap: "0.85rem" }}>
-      <div style={{ color: "var(--muted-foreground)", fontSize: "0.92rem", fontWeight: 600, letterSpacing: "0.05em" }}>
+    <div className="grid gap-4">
+      <h2 className="text-sm font-semibold tracking-wide text-muted-foreground">
         Contactos dos encarregados de educação
-      </div>
+      </h2>
 
       {canAddParent && (
-        <div style={{ display: "grid", gap: "0.75rem" }}>
-          {!showAddForm ? (
-            <button
-              type="button"
-              onClick={() => { setShowAddForm(true); setAddError(null); }}
-              style={{ minHeight: "2.5rem", padding: "0.55rem 1rem", border: "0", borderRadius: "9px", background: greenColor, color: "var(--card)", fontWeight: 700, cursor: "pointer" }}
-            >
-              + Adicionar encarregado
-            </button>
-          ) : (
-            <form onSubmit={handleAddParent} style={{ display: "grid", gap: "0.75rem", background: "var(--card)", border: `1.5px solid ${greenColor}`, padding: "1rem", borderRadius: "14px" }}>
-              <h3 style={{ margin: 0, color: "var(--card-foreground)", fontSize: "0.95rem", fontWeight: 700 }}>Novo encarregado</h3>
-              <label style={{ display: "grid", gap: "0.35rem", color: "var(--foreground)", fontSize: "0.75rem", fontWeight: 700 }}>
-                Nome *
-                <input required value={addName} onChange={(event) => setAddName(event.target.value)} autoComplete="name" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid var(--input)", borderRadius: "9px", background: "var(--card)", color: "var(--foreground)", fontSize: "0.9rem" }} />
-              </label>
-              <label style={{ display: "grid", gap: "0.35rem", color: "var(--foreground)", fontSize: "0.75rem", fontWeight: 700 }}>
-                Telefone *
-                <input required type="tel" value={addPhone} onChange={(event) => setAddPhone(event.target.value)} autoComplete="tel" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid var(--input)", borderRadius: "9px", background: "var(--card)", color: "var(--foreground)", fontSize: "0.9rem" }} />
-              </label>
-              <label style={{ display: "grid", gap: "0.35rem", color: "var(--foreground)", fontSize: "0.75rem", fontWeight: 700 }}>
-                E-mail
-                <input type="email" value={addEmail} onChange={(event) => setAddEmail(event.target.value)} autoComplete="email" style={{ minHeight: "2.45rem", padding: "0.55rem 0.65rem", border: "1px solid var(--input)", borderRadius: "9px", background: "var(--card)", color: "var(--foreground)", fontSize: "0.9rem" }} />
-              </label>
-              {addError && <div role="alert" style={{ color: dangerColor, fontSize: "0.8rem", fontWeight: 600 }}>{addError}</div>}
-              <div style={{ display: "flex", gap: "0.7rem", justifyContent: "flex-end" }}>
-                <button type="button" disabled={isAdding} onClick={() => { setShowAddForm(false); setAddError(null); }} style={{ minHeight: "2.45rem", padding: "0.5rem 1rem", border: "1px solid var(--input)", borderRadius: "9px", background: "var(--secondary)", color: "var(--secondary-foreground)", fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
-                <button type="submit" disabled={isAdding} style={{ minHeight: "2.45rem", padding: "0.5rem 1rem", border: "0", borderRadius: "9px", background: greenColor, color: "var(--card)", fontWeight: 700, cursor: isAdding ? "not-allowed" : "pointer", opacity: isAdding ? 0.55 : 1 }}>{isAdding ? "A adicionar..." : "Adicionar"}</button>
-              </div>
-            </form>
-          )}
-        </div>
+        !showAddForm ? (
+          <Button type="button" className="min-h-10 w-full sm:w-auto sm:justify-self-start" onClick={() => { setShowAddForm(true); setAddError(null); }}>
+            <Plus aria-hidden="true" /> Adicionar encarregado
+          </Button>
+        ) : (
+          <Card className="ring-primary/40">
+            <CardHeader>
+              <h3 className="font-semibold">Novo encarregado</h3>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAddParent} className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor={`${fieldId}-add-name`}>Nome *</Label>
+                  <Input id={`${fieldId}-add-name`} className="h-10" required value={addName} onChange={(event) => setAddName(event.target.value)} autoComplete="name" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${fieldId}-add-phone`}>Telefone *</Label>
+                  <Input id={`${fieldId}-add-phone`} className="h-10" required type="tel" value={addPhone} onChange={(event) => setAddPhone(event.target.value)} autoComplete="tel" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${fieldId}-add-email`}>E-mail</Label>
+                  <Input id={`${fieldId}-add-email`} className="h-10" type="email" value={addEmail} onChange={(event) => setAddEmail(event.target.value)} autoComplete="email" />
+                </div>
+                {addError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{addError}</div>}
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="outline" className="min-h-10" disabled={isAdding} onClick={() => { setShowAddForm(false); setAddError(null); }}>Cancelar</Button>
+                  <Button type="submit" className="min-h-10" disabled={isAdding}>{isAdding ? "A adicionar..." : "Adicionar"}</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )
       )}
 
       {success && (
-        <div
-          style={{
-            padding: "0.65rem 0.85rem",
-            borderRadius: "10px",
-            background: "color-mix(in oklch, var(--green) 10%, var(--card))",
-            color: greenColor,
-            fontSize: "0.75rem",
-            fontWeight: 600,
-            border: "1px solid color-mix(in oklch, var(--green) 30%, var(--border))",
-          }}
-        >
+        <div role="status" className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-foreground">
           {success}
         </div>
       )}
@@ -182,248 +176,69 @@ export function ContactosTab({ parents, turmaId, studentId, canAddParent }: { pa
       {parentList.length ? (
         parentList.map((parent) =>
           editingParentId === parent.id ? (
-            <div
-              key={parent.id}
-              style={{
-                display: "grid",
-                gap: "0.75rem",
-                background: "var(--card)",
-                border: `1.5px solid ${greenColor}`,
-                padding: "1rem",
-                borderRadius: "14px",
-                boxShadow: "0 2px 8px rgba(57, 117, 93, 0.1)",
-              }}
-            >
-              <h3 style={{ margin: 0, color: "var(--card-foreground)", fontSize: "0.95rem", fontWeight: 700 }}>
-                Editar Encarregado
-              </h3>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    color: "var(--foreground)",
-                    fontSize: "0.7rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    marginBottom: "0.4rem",
-                  }}
-                >
-                  Nome *
-                </label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  style={{
-                    width: "100%",
-                    minHeight: "2.45rem",
-                    padding: "0.55rem 0.65rem",
-                    border: "1px solid var(--input)",
-                    borderRadius: "9px",
-                    background: "var(--card)",
-                    color: "var(--foreground)",
-                    outline: "none",
-                    fontSize: "0.9rem",
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = greenColor)}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--input)")}
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    color: "var(--foreground)",
-                    fontSize: "0.7rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    marginBottom: "0.4rem",
-                  }}
-                >
-                  Telefone *
-                </label>
-                <input
-                  type="tel"
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  style={{
-                    width: "100%",
-                    minHeight: "2.45rem",
-                    padding: "0.55rem 0.65rem",
-                    border: "1px solid var(--input)",
-                    borderRadius: "9px",
-                    background: "var(--card)",
-                    color: "var(--foreground)",
-                    outline: "none",
-                    fontSize: "0.9rem",
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = greenColor)}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--input)")}
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    color: "var(--foreground)",
-                    fontSize: "0.7rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    marginBottom: "0.4rem",
-                  }}
-                >
-                  E-mail
-                </label>
-                <input
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  style={{
-                    width: "100%",
-                    minHeight: "2.45rem",
-                    padding: "0.55rem 0.65rem",
-                    border: "1px solid var(--input)",
-                    borderRadius: "9px",
-                    background: "var(--card)",
-                    color: "var(--foreground)",
-                    outline: "none",
-                    fontSize: "0.9rem",
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = greenColor)}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--input)")}
-                />
-              </div>
-
-              {error && (
-                <div
-                  style={{
-                    padding: "0.65rem 0.85rem",
-                    borderRadius: "8px",
-                    background: "color-mix(in oklch, var(--destructive) 10%, var(--card))",
-                    color: dangerColor,
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    border: "1px solid color-mix(in oklch, var(--destructive) 30%, var(--border))",
-                  }}
-                >
-                  {error}
+            <Card key={parent.id} className="ring-primary/40">
+              <CardHeader>
+                <h3 className="font-semibold">Editar Encarregado</h3>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor={`${fieldId}-edit-name`}>Nome *</Label>
+                  <Input id={`${fieldId}-edit-name`} className="h-10" type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
                 </div>
-              )}
-
-              <div style={{ display: "flex", gap: "0.7rem", justifyContent: "flex-end" }}>
-                <button
-                  onClick={handleCancelEdit}
-                  style={{
-                    minHeight: "2.45rem",
-                    padding: "0.5rem 1rem",
-                    border: "1px solid var(--input)",
-                    borderRadius: "9px",
-                    background: "var(--secondary)",
-                    color: "var(--secondary-foreground)",
-                    fontWeight: 700,
-                    fontSize: "0.75rem",
-                    cursor: "pointer",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  disabled={isLoading}
-                  style={{
-                    minHeight: "2.45rem",
-                    padding: "0.5rem 1rem",
-                    border: "0",
-                    borderRadius: "9px",
-                    background: greenColor,
-                    color: "var(--card)",
-                    fontWeight: 700,
-                    fontSize: "0.75rem",
-                    cursor: isLoading ? "not-allowed" : "pointer",
-                    textTransform: "uppercase",
-                    opacity: isLoading ? 0.55 : 1,
-                  }}
-                >
-                  {isLoading ? "A guardar..." : "Guardar"}
-                </button>
-              </div>
-            </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${fieldId}-edit-phone`}>Telefone *</Label>
+                  <Input id={`${fieldId}-edit-phone`} className="h-10" type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`${fieldId}-edit-email`}>E-mail</Label>
+                  <Input id={`${fieldId}-edit-email`} className="h-10" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+                </div>
+                {error && (
+                  <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+                    {error}
+                  </div>
+                )}
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="outline" className="min-h-10" onClick={handleCancelEdit}>Cancelar</Button>
+                  <Button type="button" className="min-h-10" onClick={handleSaveEdit} disabled={isLoading}>
+                    {isLoading ? "A guardar..." : "Guardar"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
-            <article
-              key={parent.id}
-              style={{
-                display: "grid",
-                gap: "0.75rem",
-                background: "var(--card)",
-                border: "1px solid var(--border)",
-                padding: "1rem",
-                borderRadius: "12px",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.02)",
-              }}
-            >
-              <div style={{ display: "grid", gap: "0.55rem" }}>
-                <strong style={{ color: "var(--card-foreground)", fontSize: "1.05rem", fontWeight: 700 }}>
-                  {parent.name}
-                </strong>
-                <div style={{ display: "grid", gap: "0.35rem", color: "var(--muted-foreground)" }}>
-                  <a
-                    href={`tel:${parent.phone}`}
-                    style={{ color: greenColor, fontWeight: 700, textDecoration: "none" }}
-                  >
-                    {parent.phone || "Telefone não informado"}
-                  </a>
-                  {parent.email ? (
-                    <a
-                      href={`mailto:${parent.email}`}
-                      style={{ color: greenColor, overflowWrap: "anywhere", textDecoration: "none" }}
-                    >
-                      {parent.email}
-                    </a>
-                  ) : (
-                    <span>E-mail não indicado</span>
-                  )}
+            <Card key={parent.id}>
+              <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 space-y-2">
+                  <strong className="block text-base font-semibold text-card-foreground">{parent.name}</strong>
+                  <div className="grid gap-2 text-sm text-muted-foreground">
+                    <div className="flex items-start gap-2">
+                      <Phone aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                      <a href={`tel:${parent.phone}`} className="break-all font-medium text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring">
+                        {parent.phone || "Telefone não informado"}
+                      </a>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Mail aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                      {parent.email ? (
+                        <a href={`mailto:${parent.email}`} className="break-all text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring">
+                          {parent.email}
+                        </a>
+                      ) : (
+                        <span>E-mail não indicado</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <button
-                onClick={() => handleEditClick(parent)}
-                style={{
-                  minHeight: "2rem",
-                  padding: "0.4rem 0.8rem",
-                  border: "1px solid var(--input)",
-                  borderRadius: "8px",
-                  background: "var(--secondary)",
-                  color: greenColor,
-                  fontWeight: 700,
-                  fontSize: "0.7rem",
-                  cursor: "pointer",
-                  textTransform: "uppercase",
-                  whiteSpace: "nowrap",
-                  transition: "all 0.2s ease",
-                  width: "100%",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = greenColor;
-                  e.currentTarget.style.background = "color-mix(in oklch, var(--green) 10%, var(--card))";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "var(--input)";
-                  e.currentTarget.style.background = "var(--secondary)";
-                }}
-              >
-                Editar
-              </button>
-            </article>
+                <Button type="button" variant="outline" className="min-h-10 w-full sm:w-auto" onClick={() => handleEditClick(parent)}>
+                  <Pencil aria-hidden="true" /> Editar
+                </Button>
+              </CardContent>
+            </Card>
           )
         )
       ) : (
-        <div style={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>Nenhum contacto registado.</div>
+        <p className="text-sm text-muted-foreground">Nenhum contacto registado.</p>
       )}
     </div>
   );

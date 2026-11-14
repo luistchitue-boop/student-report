@@ -4,7 +4,18 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight, BookOpen, CalendarDays, ClipboardList, FileCheck, FileText, GraduationCap, Sparkles, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { ContactosTab } from "./contactos-tab";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 
@@ -19,6 +30,35 @@ type MonthlyStudentSummary = {
 };
 const tempos = Array.from({ length: 6 }, (_, index) => `${index + 1}º tempo`);
 
+type StudentTab = "resumo" | "notas" | "faltas" | "justificativos" | "relatorio" | "contactos";
+
+function RecordSelect({ label, value, onChange, options, disabled, clearLabel }: { label: string; value: string; onChange: (value: string) => void; options: Array<{ value: string; label: string; disabled?: boolean }>; disabled?: boolean; clearLabel?: string }) {
+  return (
+    <Select value={value || null} onValueChange={(next) => onChange(next === "__clear__" ? "" : next ?? "")} disabled={disabled}>
+      <SelectTrigger aria-label={label} className="h-10 w-full bg-background">
+        <SelectValue placeholder={clearLabel ?? "Selecione uma opção"}>{options.find((option) => option.value === value)?.label}</SelectValue>
+      </SelectTrigger>
+      <SelectContent alignItemWithTrigger={false}>
+        {clearLabel && <SelectItem value="__clear__">{clearLabel}</SelectItem>}
+        {options.map((option) => <SelectItem key={option.value} value={option.value} disabled={option.disabled}>{option.label}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function PeriodSelector({ value, onChange, periods, isFuture, includeAll = false }: { value: string; onChange: (value: string) => void; periods: ReturnType<typeof getWeeklyCoordinationPeriods>; isFuture: (key: string) => boolean; includeAll?: boolean }) {
+  const options = periods.map((period) => ({ value: period.key, label: `${period.start.toLocaleDateString("pt-AO")} - ${period.end.toLocaleDateString("pt-AO")}${isFuture(period.key) ? " (futuro)" : ""}`, disabled: isFuture(period.key) }));
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><CalendarDays className="size-5" /></span>
+        <div><p className="text-sm font-semibold">Período semanal</p><p className="text-xs text-muted-foreground">Selecione o intervalo a consultar</p></div>
+      </div>
+      <div className="w-full sm:max-w-xs"><RecordSelect label="Período semanal" value={value} onChange={onChange} clearLabel="Selecione um período" options={includeAll ? [{ value: "all", label: "Todos os períodos" }, ...options] : options} /></div>
+    </div>
+  );
+}
+
 function getShortStudentName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length <= 1) return parts[0] ?? name;
@@ -30,7 +70,7 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
   const initialReportPeriod = weeklyPeriods.find((period) => period.key === initialWeek);
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const [tab, setTab] = useState<"resumo" | "notas" | "faltas" | "justificativos" | "relatorio" | "contactos">(initialReportPeriod ? "relatorio" : "resumo");
+  const [tab, setTab] = useState<StudentTab>(initialReportPeriod ? "relatorio" : "resumo");
   const [gradeStart, setGradeStart] = useState("");
   const [gradeEnd, setGradeEnd] = useState("");
   const [summaryStart, setSummaryStart] = useState("");
@@ -72,6 +112,7 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
     const period = weeklyPeriods.find((item) => item.key === value);
     setJustificationStart(value);
     setJustificationEnd(period?.end.toISOString().slice(0, 10) ?? "");
+    setSelectedAbsenceIds([]);
   }
 
   function selectAbsencePeriod(value: string) {
@@ -406,8 +447,6 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
         const imgWidth = pageWidth - 18;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const imgData = canvas.toDataURL("image/png");
         const printableHeight = pageHeight - 18;
         const pixelsPerMillimeter = canvas.width / imgWidth;
         const pageSliceHeight = Math.floor(printableHeight * pixelsPerMillimeter);
@@ -467,174 +506,159 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
 
   return (
     <AppShell active="turmas">
-      <main className="main-content student-record-shell" style={{ maxWidth: 900 }}>
-        <header className="topbar student-record-topbar" style={{ marginBottom: "1.75rem" }}>
-          <div>
-            <p className="eyebrow">ALUNO</p>
-            <h1 style={{ fontSize: "2rem", letterSpacing: "-0.05em" }}>{shortStudentName}</h1>
+      <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
+        <header className="flex flex-col justify-between gap-4 border-b pb-5 sm:flex-row sm:items-end">
+          <div className="min-w-0 space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary">Perfil do aluno</p>
+            <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">{student.name}</h1>
+            <p className="text-sm text-muted-foreground">Acompanhe o percurso escolar e os registos do aluno.</p>
           </div>
-          <Link href={`/turmas/${turma.id}`} style={{ textDecoration: "none", color: "#39755d", fontWeight: 800 }}>
-            ← Voltar à turma
-          </Link>
+          <Link href={`/turmas/${turma.id}`} className={buttonVariants({ variant: "outline", size: "lg", className: "w-fit" })}><ArrowLeft /> Voltar à turma</Link>
         </header>
 
-        <section className="student-record-panel" style={{ background: "#fff", border: "1px solid #dfe5df", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.02)" }}>
-          <div className="student-profile-banner">
-            <div className="student-profile-avatar">
-              {student.avatarUrl ? <img src={student.avatarUrl} alt={`Fotografia de ${shortStudentName}`} /> : <span aria-hidden="true">👤</span>}
+        <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/10 via-card to-card shadow-sm">
+          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <Avatar className="size-16 ring-4 ring-background sm:size-20">
+              {student.avatarUrl && <AvatarImage src={student.avatarUrl} alt={`Fotografia de ${shortStudentName}`} />}
+              <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">{student.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary">Ficha individual</p>
+              <h2 className="break-words text-xl font-semibold tracking-tight">{student.name}</h2>
+              <p className="text-sm text-muted-foreground">{turma.name}{student.age ? ` · ${student.age} anos` : ""}</p>
             </div>
-            <div className="student-profile-copy">
-              <p className="eyebrow">PERFIL DO ALUNO</p>
-              <h2>{shortStudentName}</h2>
-              <p>{turma.name}{student.age ? ` · ${student.age} anos` : ""}</p>
-            </div>
+            <Badge variant="secondary" className="w-fit"><GraduationCap /> {turma.name}</Badge>
+          </CardContent>
+        </Card>
+        <Tabs value={tab} onValueChange={(value) => { if (value) setTab(value as StudentTab); }} className="gap-5">
+          <div className="overflow-x-auto pb-1">
+            <TabsList className="h-auto min-w-max gap-1 p-1" aria-label="Secções do aluno">
+              <TabsTrigger value="resumo" className="h-9 px-3"><ClipboardList /> Resumo</TabsTrigger>
+              <TabsTrigger value="notas" className="h-9 px-3"><BookOpen /> Notas</TabsTrigger>
+              <TabsTrigger value="faltas" className="h-9 px-3"><CalendarDays /> Faltas</TabsTrigger>
+              <TabsTrigger value="justificativos" className="h-9 px-3"><FileCheck /> Justificativos</TabsTrigger>
+              <TabsTrigger value="relatorio" className="h-9 px-3"><FileText /> Relatório</TabsTrigger>
+              <TabsTrigger value="contactos" className="h-9 px-3"><Users /> Contactos</TabsTrigger>
+            </TabsList>
           </div>
-          <div className="student-tabs" style={{ display: "flex", gap: "0.5rem", marginBottom: "1.75rem", borderBottom: "2px solid #e5ece5", paddingBottom: "1rem", flexWrap: "wrap" }}>
-              <button className="student-tab" type="button" onClick={() => setTab("resumo")} style={{ border: "none", background: tab === "resumo" ? "var(--green-soft)" : "transparent", color: tab === "resumo" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
-                Resumo
-              </button>
-              <button className="student-tab" type="button" onClick={() => setTab("notas")} style={{ border: "none", background: tab === "notas" ? "var(--green-soft)" : "transparent", color: tab === "notas" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
-                Notas
-              </button>
-              <button className="student-tab" type="button" onClick={() => setTab("faltas")} style={{ border: "none", background: tab === "faltas" ? "var(--green-soft)" : "transparent", color: tab === "faltas" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
-                Faltas
-              </button>
-              <button className="student-tab" type="button" onClick={() => setTab("justificativos")} style={{ border: "none", background: tab === "justificativos" ? "var(--green-soft)" : "transparent", color: tab === "justificativos" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
-                Justificativos
-              </button>
-              <button className="student-tab" type="button" onClick={() => setTab("relatorio")} style={{ border: "none", background: tab === "relatorio" ? "var(--green-soft)" : "transparent", color: tab === "relatorio" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
-                Relatório
-              </button>
-              <button className="student-tab" type="button" onClick={() => setTab("contactos")} style={{ border: "none", background: tab === "contactos" ? "var(--green-soft)" : "transparent", color: tab === "contactos" ? "var(--green)" : "var(--muted)", fontWeight: 700, padding: "0.7rem 1rem", cursor: "pointer", borderRadius: "8px", transition: "all 0.2s ease", fontSize: "0.85rem" }}>
-                Contactos
-              </button>
-            </div>
+          <Card className="shadow-sm"><CardContent>
 
-            {tab === "resumo" && (
+            <TabsContent value="resumo">
               <div className="student-summary-view">
-                <div className="weekly-period-selector">
-                  <label>Período semanal<select value={summaryStart} onChange={(event) => selectSummaryPeriod(event.target.value)}><option value="">Selecione um período</option><option value="all">Todos os períodos</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
-                </div>
-                {!summaryStart || !summaryEnd ? <p className="student-record-empty">Selecione um período semanal para ver o resumo.</p> : recordsLoading ? <p className="student-record-empty">A carregar o resumo...</p> : (
+                <PeriodSelector value={summaryStart} onChange={selectSummaryPeriod} periods={weeklyPeriods} isFuture={isFuturePeriod} includeAll />
+                {!summaryStart || !summaryEnd ? <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Selecione um período semanal para ver o resumo.</p> : recordsLoading ? <p className="p-4 text-sm text-muted-foreground">A carregar o resumo...</p> : (
                   <>
-                    <div className="student-summary-metrics">
-                      <div className="student-summary-metric accent"><span>Média AC1</span><strong>{averageGrade.toFixed(1)}</strong><small>em {ac1Grades.length} nota(s) normais</small></div>
-                      <div className="student-summary-metric"><span>Faltas registadas</span><strong>{absences.length}</strong><small>{justifiedAbsences} justificadas</small></div>
-                      <div className="student-summary-metric"><span>Disciplinas avaliadas</span><strong>{subjectAverages.length}</strong><small>de {turma.subjects.length} disciplinas</small></div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="grid gap-1 rounded-xl border border-primary/20 bg-primary/5 p-4"><span className="text-xs font-medium text-muted-foreground">Média AC1</span><strong className="text-3xl font-semibold tracking-tight text-primary">{averageGrade.toFixed(1)}</strong><small className="text-xs text-muted-foreground">em {ac1Grades.length} nota(s) normais</small></div>
+                      <div className="grid gap-1 rounded-xl border bg-muted/30 p-4"><span className="text-xs font-medium text-muted-foreground">Faltas registadas</span><strong className="text-3xl font-semibold tracking-tight">{absences.length}</strong><small className="text-xs text-muted-foreground">{justifiedAbsences} justificadas</small></div>
+                      <div className="grid gap-1 rounded-xl border bg-muted/30 p-4"><span className="text-xs font-medium text-muted-foreground">Disciplinas avaliadas</span><strong className="text-3xl font-semibold tracking-tight">{subjectAverages.length}</strong><small className="text-xs text-muted-foreground">de {turma.subjects.length} disciplinas</small></div>
                     </div>
 
-                    <div className="student-summary-grid">
-                      <section className="student-chart-panel">
-                        <div className="student-chart-heading"><div><p className="eyebrow">DESEMPENHO</p><h2>Média por disciplina</h2></div><span>0-{turma.gradeScale}</span></div>
-                        {subjectAverages.length ? <div className="student-bar-chart">{subjectAverages.map((item) => <div className="student-bar-row" key={item.subject}><div className="student-bar-label"><span>{item.subject}</span><strong>{item.average.toFixed(1)}</strong></div><div className="student-bar-track"><span style={{ width: `${Math.min(100, (item.average / maxSubjectAverage) * 100)}%` }} /></div></div>)}</div> : <p className="student-record-empty">Ainda não existem notas registadas.</p>}
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <section className="grid content-start gap-4 rounded-xl border p-4">
+                        <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Desempenho</p><h2 className="mt-1 font-semibold">Média por disciplina</h2></div><span className="text-xs text-muted-foreground">0-{turma.gradeScale}</span></div>
+                        {subjectAverages.length ? <div className="grid gap-3">{subjectAverages.map((item) => <div className="grid gap-1.5" key={item.subject}><div className="flex justify-between gap-3 text-sm"><span className="truncate text-muted-foreground">{item.subject}</span><strong>{item.average.toFixed(1)}</strong></div><div className="h-2 overflow-hidden rounded-full bg-muted"><span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (item.average / maxSubjectAverage) * 100)}%` }} /></div></div>)}</div> : <p className="text-sm text-muted-foreground">Ainda não existem notas registadas.</p>}
                       </section>
 
-                      <section className="student-chart-panel">
-                        <div className="student-chart-heading"><div><p className="eyebrow">ASSIDUIDADE</p><h2>Tipo de falta</h2></div><span>{absences.length} total</span></div>
-                        {absences.length ? <div className="student-bar-chart">{faultTypeCounts.map((item) => <div className="student-bar-row" key={item.label}><div className="student-bar-label"><span>{item.label}</span><strong>{item.count}</strong></div><div className="student-bar-track warm"><span style={{ width: `${(item.count / maxFaultCount) * 100}%` }} /></div></div>)}</div> : <p className="student-record-empty">Não existem faltas registadas.</p>}
-                        <div className="student-chart-note"><strong>{justifiedAbsences}</strong> de {absences.length} falta(s) justificadas</div>
+                      <section className="grid content-start gap-4 rounded-xl border p-4">
+                        <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Assiduidade</p><h2 className="mt-1 font-semibold">Tipo de falta</h2></div><span className="text-xs text-muted-foreground">{absences.length} total</span></div>
+                        {absences.length ? <div className="grid gap-3">{faultTypeCounts.map((item) => <div className="grid gap-1.5" key={item.label}><div className="flex justify-between gap-3 text-sm"><span className="text-muted-foreground">{item.label}</span><strong>{item.count}</strong></div><div className="h-2 overflow-hidden rounded-full bg-muted"><span className="block h-full rounded-full bg-amber-500" style={{ width: `${(item.count / maxFaultCount) * 100}%` }} /></div></div>)}</div> : <p className="text-sm text-muted-foreground">Não existem faltas registadas.</p>}
+                        <div className="border-t pt-3 text-sm text-muted-foreground"><strong className="text-primary">{justifiedAbsences}</strong> de {absences.length} falta(s) justificadas</div>
                       </section>
 
-                      <section className="student-chart-panel student-chart-panel-wide">
-                        <div className="student-chart-heading"><div><p className="eyebrow">DISTRIBUIÇÃO</p><h2>Faixas de notas</h2></div><span>escala 0-{turma.gradeScale}</span></div>
-                        {grades.length ? <div className="student-column-chart">{gradeBands.map((band) => <div className="student-column" key={band.label}><div className="student-column-value">{band.count}</div><div className="student-column-track"><span style={{ height: `${(band.count / maxGradeBandCount) * 100}%` }} /></div><strong>{band.label}</strong></div>)}</div> : <p className="student-record-empty">A distribuição aparecerá quando houver notas.</p>}
+                      <section className="grid gap-4 rounded-xl border p-4 lg:col-span-2">
+                        <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Distribuição</p><h2 className="mt-1 font-semibold">Faixas de notas</h2></div><span className="text-xs text-muted-foreground">escala 0-{turma.gradeScale}</span></div>
+                        {grades.length ? <div className="grid grid-cols-4 gap-4">{gradeBands.map((band) => <div className="grid h-36 grid-rows-[auto_1fr_auto] justify-items-center gap-1 text-xs" key={band.label}><strong>{band.count}</strong><div className="flex h-full w-full max-w-12 items-end overflow-hidden rounded-t-lg bg-muted"><span className="block w-full rounded-t-lg bg-primary/80" style={{ height: `${(band.count / maxGradeBandCount) * 100}%` }} /></div><strong className="text-muted-foreground">{band.label}</strong></div>)}</div> : <p className="text-sm text-muted-foreground">A distribuição aparecerá quando houver notas.</p>}
                       </section>
                     </div>
                   </>
                 )}
               </div>
-            )}
+            </TabsContent>
 
-            {tab === "notas" && (
+            <TabsContent value="notas">
               <div className="student-record-list-panel">
-                <div className="weekly-period-selector">
-                  <label>Período semanal<select value={gradeStart} onChange={(event) => { const period = weeklyPeriods.find((item) => item.key === event.target.value); setGradeStart(event.target.value); setGradeEnd(period ? formatPeriodDate(period.end) : ""); }}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
-                </div>
-                {!gradeStart || !gradeEnd ? <p className="student-record-empty">Selecione o período semanal para ver as notas.</p> : <>
-                <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO ACADÉMICO</p><h2>Notas registadas</h2></div><span>{grades.length} registo(s)</span></div>
-                {recordsLoading ? <p className="student-record-empty">A carregar notas...</p> : grades.length ? grades.map((grade) => (
-                  <div className="student-record-row" key={grade.id}>
-                    <label>Disciplina<select disabled={!canEdit} value={grade.subject} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, subject: event.target.value } : item))}>{turma.subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select></label>
-                    <label>Nota<input disabled={!canEdit} type="number" min="0" max="20" step="0.1" value={grade.value} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, value: Number(event.target.value) } : item))} /></label>
-                    <span className="student-record-grade-classification">{grade.assessmentType ? `${grade.assessmentType} · ${grade.trimester} trimestre` : "AC1 · nota normal"}</span>
-                    {canEdit && <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("grade", grade); setStatusMessage("Nota atualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível atualizar a nota."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("grade", grade.id); setGrades((current) => current.filter((item) => item.id !== grade.id)); setStatusMessage("Nota eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a nota."); } }}>Eliminar</button></div>}
+                <PeriodSelector value={gradeStart} onChange={(value) => { const period = weeklyPeriods.find((item) => item.key === value); setGradeStart(value); setGradeEnd(period ? formatPeriodDate(period.end) : ""); }} periods={weeklyPeriods} isFuture={isFuturePeriod} />
+                {!gradeStart || !gradeEnd ? <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Selecione o período semanal para ver as notas.</p> : <>
+                <div className="flex flex-wrap items-end justify-between gap-2 py-2"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Histórico académico</p><h2 className="mt-1 text-lg font-semibold">Notas registadas</h2></div><Badge variant="secondary">{grades.length} registo(s)</Badge></div>
+                {recordsLoading ? <p className="p-4 text-sm text-muted-foreground">A carregar notas...</p> : grades.length ? grades.map((grade) => (
+                  <div className="grid items-end gap-3 rounded-xl border bg-muted/30 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(100px,1fr)_minmax(0,1fr)_auto]" key={grade.id}>
+                    <div className="grid gap-1.5"><span className="text-xs font-medium text-muted-foreground">Disciplina</span><RecordSelect label="Disciplina" disabled={!canEdit} value={grade.subject} onChange={(value) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, subject: value } : item))} options={turma.subjects.map((subject) => ({ value: subject, label: subject }))} /></div>
+                    <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">Nota<Input className="h-10 bg-background" disabled={!canEdit} type="number" min="0" max="20" step="0.1" value={grade.value} onChange={(event) => setGrades((current) => current.map((item) => item.id === grade.id ? { ...item, value: Number(event.target.value) } : item))} /></label>
+                    <Badge variant="secondary" className="mb-2 w-fit">{grade.assessmentType ? `${grade.assessmentType} · ${grade.trimester} trimestre` : "AC1 · nota normal"}</Badge>
+                    {canEdit && <div className="flex gap-2"><Button type="button" variant="outline" onClick={async () => { try { await updateRecord("grade", grade); setStatusMessage("Nota atualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível atualizar a nota."); } }}>Guardar</Button><Button type="button" variant="destructive" onClick={async () => { try { await deleteRecord("grade", grade.id); setGrades((current) => current.filter((item) => item.id !== grade.id)); setStatusMessage("Nota eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a nota."); } }}>Eliminar</Button></div>}
                   </div>
-                )) : <p className="student-record-empty">Nenhuma nota registada.</p>}
-                {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
+                )) : <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Nenhuma nota registada.</p>}
+                {statusMessage ? <p role="status" className="text-sm font-medium text-primary">{statusMessage}</p> : null}
                 </>}
               </div>
-            )}
+            </TabsContent>
 
-            {tab === "faltas" && (
+            <TabsContent value="faltas">
               <div className="student-record-list-panel">
-                <div className="weekly-period-selector">
-                  <label>Período semanal<select value={absenceStart} onChange={(event) => selectAbsencePeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
-                </div>
-                <div className="student-record-list-heading"><div><p className="eyebrow">HISTÓRICO DE ASSIDUIDADE</p><h2>Faltas registadas</h2></div><span>{absences.length} registo(s)</span></div>
-                {!absenceStart || !absenceEnd ? <p className="student-record-empty">Selecione o período semanal para ver as faltas.</p> : recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : absences.length ? absences.map((absence) => (
-                  <div className="student-record-row absence" key={absence.id}>
-                    <label>Disciplina<select disabled={!canEdit} value={absence.subject} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, subject: event.target.value } : item))}>{turma.subjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select></label>
-                    <label>Dia<input disabled={!canEdit} type="date" max={todayKey} value={absence.dia.slice(0, 10)} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, dia: event.target.value } : item))} /></label>
-                    <label>Tempo<select disabled={!canEdit} value={absence.tempo} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, tempo: event.target.value } : item))}>{tempos.map((tempo) => <option key={tempo} value={tempo}>{tempo}</option>)}</select></label>
-                    <label>Tipo<select disabled={!canEdit} value={absence.faultType} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, faultType: event.target.value } : item))}><option value="FALTA_DE_MATERIAL">Falta de material</option><option value="AUSENCIA_NA_SALA">Ausência na sala</option></select></label>
-                    {canEdit && <div className="student-record-actions"><button type="button" onClick={async () => { try { await updateRecord("absence", absence); setStatusMessage("Falta atualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível atualizar a falta."); } }}>Guardar</button><button type="button" className="danger" onClick={async () => { try { await deleteRecord("absence", absence.id); setAbsences((current) => current.filter((item) => item.id !== absence.id)); setStatusMessage("Falta eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a falta."); } }}>Eliminar</button></div>}
+                <PeriodSelector value={absenceStart} onChange={selectAbsencePeriod} periods={weeklyPeriods} isFuture={isFuturePeriod} />
+                <div className="flex flex-wrap items-end justify-between gap-2 py-2"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Histórico de assiduidade</p><h2 className="mt-1 text-lg font-semibold">Faltas registadas</h2></div><Badge variant="secondary">{absences.length} registo(s)</Badge></div>
+                {!absenceStart || !absenceEnd ? <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Selecione o período semanal para ver as faltas.</p> : recordsLoading ? <p className="p-4 text-sm text-muted-foreground">A carregar faltas...</p> : absences.length ? absences.map((absence) => (
+                  <div className="grid items-end gap-3 rounded-xl border bg-muted/30 p-4 sm:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]" key={absence.id}>
+                    <div className="grid gap-1.5"><span className="text-xs font-medium text-muted-foreground">Disciplina</span><RecordSelect label="Disciplina" disabled={!canEdit} value={absence.subject} onChange={(value) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, subject: value } : item))} options={turma.subjects.map((subject) => ({ value: subject, label: subject }))} /></div>
+                    <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">Dia<Input className="h-10 bg-background" disabled={!canEdit} type="date" max={todayKey} value={absence.dia.slice(0, 10)} onChange={(event) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, dia: event.target.value } : item))} /></label>
+                    <div className="grid gap-1.5"><span className="text-xs font-medium text-muted-foreground">Tempo</span><RecordSelect label="Tempo" disabled={!canEdit} value={absence.tempo} onChange={(value) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, tempo: value } : item))} options={tempos.map((tempo) => ({ value: tempo, label: tempo }))} /></div>
+                    <div className="grid gap-1.5"><span className="text-xs font-medium text-muted-foreground">Tipo</span><RecordSelect label="Tipo de falta" disabled={!canEdit} value={absence.faultType} onChange={(value) => setAbsences((current) => current.map((item) => item.id === absence.id ? { ...item, faultType: value } : item))} options={[{ value: "FALTA_DE_MATERIAL", label: "Falta de material" }, { value: "AUSENCIA_NA_SALA", label: "Ausência na sala" }]} /></div>
+                    {canEdit && <div className="flex gap-2"><Button type="button" variant="outline" onClick={async () => { try { await updateRecord("absence", absence); setStatusMessage("Falta atualizada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível atualizar a falta."); } }}>Guardar</Button><Button type="button" variant="destructive" onClick={async () => { try { await deleteRecord("absence", absence.id); setAbsences((current) => current.filter((item) => item.id !== absence.id)); setStatusMessage("Falta eliminada."); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível eliminar a falta."); } }}>Eliminar</Button></div>}
                   </div>
-                )) : <p className="student-record-empty">Nenhuma falta registada.</p>}
-                {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
+                )) : <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Nenhuma falta registada.</p>}
+                {statusMessage ? <p role="status" className="text-sm font-medium text-primary">{statusMessage}</p> : null}
               </div>
-            )}
+            </TabsContent>
 
-            {tab === "justificativos" && (
+            <TabsContent value="justificativos">
               <div className="student-record-list-panel">
-                <div className="weekly-period-selector">
-                  <label>Período semanal<select value={justificationStart} onChange={(event) => selectJustificationPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
-                </div>
-                {!justificationStart || !justificationEnd ? <p className="student-record-empty">Selecione o intervalo para ver as faltas.</p> : recordsLoading ? <p className="student-record-empty">A carregar faltas...</p> : (
+                <PeriodSelector value={justificationStart} onChange={selectJustificationPeriod} periods={weeklyPeriods} isFuture={isFuturePeriod} />
+                {!justificationStart || !justificationEnd ? <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Selecione o intervalo para ver as faltas.</p> : recordsLoading ? <p className="p-4 text-sm text-muted-foreground">A carregar faltas...</p> : (
                   <>
-                    <div className="student-record-list-heading"><div><p className="eyebrow">JUSTIFICAÇÃO DE FALTAS</p><h2>Selecione as faltas</h2></div><span>{absences.filter((absence) => !absence.justified).length} por justificar</span></div>
+                    <div className="flex flex-wrap items-end justify-between gap-2 py-2"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Justificação de faltas</p><h2 className="mt-1 text-lg font-semibold">Selecione as faltas</h2></div><Badge variant="secondary">{absences.filter((absence) => !absence.justified).length} por justificar</Badge></div>
                     {absences.length ? absences.map((absence) => (
-                      <label key={absence.id} className={`justification-row ${absence.justified ? "justified" : ""} ${absence.justified && absence.hasAttachment ? "has-attachment" : ""}`} onClick={(event) => { if ((event.target as HTMLElement).closest("input, a")) return; if (absence.justified && absence.hasAttachment) setPreviewAbsenceId(absence.id); }}>
-                        <input type="checkbox" checked={selectedAbsenceIds.includes(absence.id)} disabled={!canEdit || absence.justified} onChange={() => setSelectedAbsenceIds((current) => current.includes(absence.id) ? current.filter((id) => id !== absence.id) : [...current, absence.id])} />
-                        <span><strong>{absence.subject}</strong><small>{absence.dia.slice(0, 10)} · {absence.tempo} · {absence.faultType === "AUSENCIA_NA_SALA" ? "Ausência na sala" : "Falta de material"}</small></span>
-                        <span className="justification-status">{absence.justified ? "Justificada" : "Injustificada"}{absence.hasAttachment && <a href={`/api/student-justifications/${absence.id}/attachment`} target="_blank" rel="noreferrer" className="justification-attachment-link">Comprovativo</a>}</span>
-                      </label>
-                    )) : <p className="student-record-empty">Nenhuma falta neste intervalo.</p>}
-                    {canEdit && <div className="justification-footer"><span>{selectedAbsenceIds.length} falta(s) selecionada(s)</span><button type="button" className="mini-pauta-save-button" disabled={!selectedAbsenceIds.length} onClick={() => setShowJustificationModal(true)}>Justificar</button></div>}
+                      <div key={absence.id} className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/30 p-4">
+                        <Checkbox aria-label={`Selecionar falta de ${absence.subject}, ${absence.dia.slice(0, 10)}, ${absence.tempo}`} checked={selectedAbsenceIds.includes(absence.id)} disabled={!canEdit || absence.justified} onCheckedChange={(checked) => setSelectedAbsenceIds((current) => checked ? [...current.filter((id) => id !== absence.id), absence.id] : current.filter((id) => id !== absence.id))} />
+                        <div className="min-w-0 flex-1"><p className="font-semibold">{absence.subject}</p><p className="break-words text-xs text-muted-foreground">{absence.dia.slice(0, 10)} · {absence.tempo} · {absence.faultType === "AUSENCIA_NA_SALA" ? "Ausência na sala" : "Falta de material"}</p></div>
+                        <Badge variant={absence.justified ? "secondary" : "outline"}>{absence.justified ? "Justificada" : "Injustificada"}</Badge>
+                        {absence.justified && absence.hasAttachment && <Button type="button" variant="outline" size="sm" onClick={() => setPreviewAbsenceId(absence.id)}>Ver comprovativo</Button>}
+                      </div>
+                    )) : <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Nenhuma falta neste intervalo.</p>}
+                    {canEdit && <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><span className="text-sm text-muted-foreground">{selectedAbsenceIds.length} falta(s) selecionada(s)</span><Button type="button" disabled={!selectedAbsenceIds.length} onClick={() => { setStatusMessage(""); setShowJustificationModal(true); }}>Justificar</Button></div>}
                   </>
                 )}
-                {statusMessage ? <p className="student-record-status">{statusMessage}</p> : null}
+                {statusMessage ? <p role="status" className="text-sm font-medium text-primary">{statusMessage}</p> : null}
               </div>
-            )}
+            </TabsContent>
 
-            {tab === "relatorio" && (
-              <div style={{ display: "grid", gap: "1rem" }}>
-                <div className="weekly-period-selector">
-                  <label>Período semanal<select value={reportStart} onChange={(event) => selectReportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => <option key={period.key} value={period.key} disabled={isFuturePeriod(period.key)}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isFuturePeriod(period.key) ? " (futuro)" : ""}</option>)}</select></label>
-                </div>
+            <TabsContent value="relatorio">
+              <div className="grid gap-4">
+                <PeriodSelector value={reportStart} onChange={selectReportPeriod} periods={weeklyPeriods} isFuture={isFuturePeriod} />
 
                 {reportStart && (
-                  <section className="student-monthly-summary" aria-live="polite">
-                    <header>
-                      <p className="eyebrow">COMPARAÇÃO MENSAL</p>
-                      <h2>Resultados do mês e do mês anterior</h2>
-                      <p>Notas negativas das semanas iniciadas em cada mês e faltas registadas durante o mês.</p>
+                  <section className="grid gap-4 rounded-xl border p-4" aria-live="polite">
+                    <header className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-primary">Comparação mensal</p>
+                      <h2 className="font-semibold">Resultados do mês e do mês anterior</h2>
+                      <p className="text-sm text-muted-foreground">Notas negativas das semanas iniciadas em cada mês e faltas registadas durante o mês.</p>
                     </header>
-                    {monthlySummaryLoading || (monthlySummary && monthlySummary.month !== reportStart.slice(0, 7)) ? <p>A carregar resumo mensal...</p> : monthlySummaryError ? <p className="student-monthly-summary-error" role="alert">{monthlySummaryError}</p> : monthlySummary && previousMonthlySummary ? (
-                      <div className="student-monthly-comparison">
+                    {monthlySummaryLoading || (monthlySummary && monthlySummary.month !== reportStart.slice(0, 7)) ? <p className="text-sm text-muted-foreground">A carregar resumo mensal...</p> : monthlySummaryError ? <p className="text-sm text-destructive" role="alert">{monthlySummaryError}</p> : monthlySummary && previousMonthlySummary ? (
+                      <div className="grid gap-3 lg:grid-cols-2">
                         {[
                           { summary: previousMonthlySummary, role: "Mês anterior" },
                           { summary: monthlySummary, role: "Mês selecionado" },
                         ].map(({ summary, role }) => (
-                          <article className="student-monthly-card" key={summary.month}>
-                            <h3><span>{role}</span><strong>{new Date(`${summary.month}-01T12:00:00Z`).toLocaleDateString("pt-AO", { month: "long", year: "numeric", timeZone: "UTC" })}</strong></h3>
-                            <div className="student-monthly-summary-grid">
+                          <article className="min-w-0 rounded-xl border bg-muted/30 p-4" key={summary.month}>
+                            <h3 className="mb-4 flex flex-wrap items-baseline gap-2"><span className="text-xs font-semibold uppercase tracking-wider text-primary">{role}</span><strong className="text-sm capitalize">{new Date(`${summary.month}-01T12:00:00Z`).toLocaleDateString("pt-AO", { month: "long", year: "numeric", timeZone: "UTC" })}</strong></h3>
+                            <div className="grid gap-4 text-sm">
                               <section>
-                                <h4>Notas negativas <small>(abaixo de {summary.negativeThreshold})</small></h4>
-                                {summary.negativeGradesBySubject.length ? <ul>{summary.negativeGradesBySubject.map((entry) => <li key={entry.subject}><strong>{entry.subject}</strong><span>{entry.grades.map((grade) => `${grade.value} (${grade.weekStart.slice(8, 10)}/${grade.weekStart.slice(5, 7)}–${grade.weekEnd.slice(8, 10)}/${grade.weekEnd.slice(5, 7)})`).join(", ")}</span></li>)}</ul> : <p>Nenhuma nota negativa registada.</p>}
+                                <h4 className="mb-2 font-semibold">Notas negativas <small className="font-normal text-muted-foreground">(abaixo de {summary.negativeThreshold})</small></h4>
+                                {summary.negativeGradesBySubject.length ? <ul className="grid gap-2">{summary.negativeGradesBySubject.map((entry) => <li className="grid gap-0.5 border-b pb-2 last:border-0 last:pb-0" key={entry.subject}><strong>{entry.subject}</strong><span className="text-xs text-muted-foreground">{entry.grades.map((grade) => `${grade.value} (${grade.weekStart.slice(8, 10)}/${grade.weekStart.slice(5, 7)}–${grade.weekEnd.slice(8, 10)}/${grade.weekEnd.slice(5, 7)})`).join(", ")}</span></li>)}</ul> : <p className="text-xs text-muted-foreground">Nenhuma nota negativa registada.</p>}
                               </section>
                               <section>
-                                <h4>Faltas por disciplina</h4>
-                                {summary.absencesBySubject.length ? <ul>{summary.absencesBySubject.map((entry) => <li key={entry.subject}><strong>{entry.subject}</strong><span>{entry.total} falta(s) · {entry.unjustified} injustificada(s) · {entry.justified} justificada(s)</span></li>)}</ul> : <p>Nenhuma falta registada.</p>}
+                                <h4 className="mb-2 font-semibold">Faltas por disciplina</h4>
+                                {summary.absencesBySubject.length ? <ul className="grid gap-2">{summary.absencesBySubject.map((entry) => <li className="grid gap-0.5 border-b pb-2 last:border-0 last:pb-0" key={entry.subject}><strong>{entry.subject}</strong><span className="text-xs text-muted-foreground">{entry.total} falta(s) · {entry.unjustified} injustificada(s) · {entry.justified} justificada(s)</span></li>)}</ul> : <p className="text-xs text-muted-foreground">Nenhuma falta registada.</p>}
                               </section>
                             </div>
                           </article>
@@ -644,75 +668,70 @@ export function StudentRecordClient({ turma, student, nextStudent, initialWeek, 
                   </section>
                 )}
 
-                <div style={{ display: "grid", gap: "0.55rem" }}>
-                  <label style={{ display: "grid", gap: "0.45rem", fontWeight: 700, color: "#31413d" }}>
+                <div className="grid gap-2">
+                  <label className="grid gap-2 text-sm font-medium">
                     Observação do professor
-                    <textarea
+                    <Textarea
                       rows={4}
                       maxLength={300}
                       disabled={!canEdit || observationLoading || proofreading}
                       value={reportNote}
                       onChange={(event) => { setReportNote(event.target.value.slice(0, 300)); setReportSaved(false); setImprovedReportNote(null); }}
                       placeholder="Escreva uma observação de até 300 caracteres"
-                      style={{ padding: "0.8rem", border: "1px solid #ccd7cc", background: "#fbfcf8", resize: "vertical" }}
+                      className="resize-y"
                     />
                   </label>
-                  <div style={{ color: "#4a5d5a", fontSize: "0.85rem", fontWeight: 700 }}>
+                  <div className="text-xs text-muted-foreground">
                     {reportNote.length}/300 caracteres
                   </div>
                 </div>
 
-                <label className="report-behavior-field">
-                  Comportamento
-                  <select disabled={!canEdit || observationLoading} value={behavior} onChange={(event) => { setBehavior(event.target.value); setReportSaved(false); }}>
-                    <option value="">Selecione uma opção</option>
-                    <option value="Muito bom">Muito bom</option>
-                    <option value="Bom">Bom</option>
-                    <option value="Razoavel">Razoável</option>
-                    <option value="Mau">Mau</option>
-                  </select>
-                </label>
+                <div className="grid gap-2 text-sm font-medium"><span>Comportamento</span><RecordSelect label="Comportamento" disabled={!canEdit || observationLoading} value={behavior} onChange={(value) => { setBehavior(value); setReportSaved(false); }} clearLabel="Selecione uma opção" options={[{ value: "Muito bom", label: "Muito bom" }, { value: "Bom", label: "Bom" }, { value: "Razoavel", label: "Razoável" }, { value: "Mau", label: "Mau" }]} /></div>
 
-                <div style={{ display: "grid", gap: "0.75rem" }}>
-                  <div className="weekly-report-actions">
-                    <button type="button" className="weekly-report-improve-button" onClick={improveWeeklyObservation} disabled={!canEdit || !reportStart || !reportEnd || !reportNote.trim() || observationLoading || proofreading}>{proofreading ? "A melhorar..." : "Melhorar o texto"}</button>
-                    <button type="button" onClick={async () => { try { await saveWeeklyObservation(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível guardar a observação."); } }} disabled={!canEdit || !reportStart || !reportEnd || observationLoading || proofreading} style={{ padding: "0.9rem 1.2rem", background: !canEdit || !reportStart || !reportEnd || observationLoading || proofreading ? "#a7b7af" : "#39755d", color: "#fff", border: "none", fontWeight: 800, cursor: !canEdit || !reportStart || !reportEnd || observationLoading || proofreading ? "not-allowed" : "pointer" }}>
+                <div className="grid gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" onClick={improveWeeklyObservation} disabled={!canEdit || !reportStart || !reportEnd || !reportNote.trim() || observationLoading || proofreading}><Sparkles /> {proofreading ? "A melhorar..." : "Melhorar o texto"}</Button>
+                    <Button type="button" onClick={async () => { try { await saveWeeklyObservation(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível guardar a observação."); } }} disabled={!canEdit || !reportStart || !reportEnd || observationLoading || proofreading}>
                       {observationLoading ? "A carregar..." : "Guardar observação semanal"}
-                    </button>
+                    </Button>
+                    <Button type="button" variant="outline" onClick={generatePdfReport} disabled={!reportStart || !reportEnd || observationLoading}><FileText /> Exportar PDF</Button>
                   </div>
-                  {improvedReportNote !== null && <div className="weekly-report-suggestion"><strong>Sugestão revista</strong><p>{improvedReportNote}</p><div><button type="button" onClick={() => { setReportNote(improvedReportNote); setImprovedReportNote(null); setReportSaved(false); setStatusMessage("Sugestão aplicada. Guarde a observação para a guardar."); }}>Aplicar sugestão</button><button type="button" onClick={() => setImprovedReportNote(null)}>Descartar</button></div></div>}
-                  {reportSaved && nextStudent && <Link className="student-next-button" href={`/turmas/${turma.id}/${encodeURIComponent(nextStudent.id)}?week=${encodeURIComponent(reportStart)}`}>Próximo estudante: {nextStudent.name} →</Link>}
+                  {improvedReportNote !== null && <div className="grid gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4"><strong>Sugestão revista</strong><p className="whitespace-pre-wrap text-sm">{improvedReportNote}</p><div className="flex flex-wrap gap-2"><Button type="button" onClick={() => { setReportNote(improvedReportNote); setImprovedReportNote(null); setReportSaved(false); setStatusMessage("Sugestão aplicada. Guarde a observação para a guardar."); }}>Aplicar sugestão</Button><Button type="button" variant="outline" onClick={() => setImprovedReportNote(null)}>Descartar</Button></div></div>}
+                  {reportSaved && nextStudent && <Link className={buttonVariants({ variant: "secondary", className: "w-fit" })} href={`/turmas/${turma.id}/${encodeURIComponent(nextStudent.id)}?week=${encodeURIComponent(reportStart)}`}>Próximo estudante: {nextStudent.name} <ArrowRight /></Link>}
                   {statusMessage ? (
-                    <div style={{ color: "#244d3d", fontWeight: 700 }}>{statusMessage}</div>
+                    <div role="status" className="text-sm font-medium text-primary">{statusMessage}</div>
                   ) : null}
                 </div>
               </div>
-            )}
+            </TabsContent>
 
-            {tab === "contactos" && (
+            <TabsContent value="contactos">
               <ContactosTab parents={student.parents} turmaId={turma.id} studentId={student.id} canAddParent={canAddParent} />
-            )}
-          </section>
-          {showJustificationModal ? (
-            <div className="justification-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowJustificationModal(false); }}>
-              <form className="justification-modal" onSubmit={async (event) => { event.preventDefault(); try { await justifySelectedAbsences(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível justificar as faltas."); } }}>
-                <div className="student-record-list-heading"><div><p className="eyebrow">JUSTIFICATIVO</p><h2>Justificar faltas</h2></div><button type="button" className="modal-close" onClick={() => setShowJustificationModal(false)} aria-label="Fechar">×</button></div>
-                <label>Título do justificativo<input required value={justificationTitle} onChange={(event) => setJustificationTitle(event.target.value)} /></label>
-                <label>Observações<textarea required rows={4} value={justificationNotes} onChange={(event) => setJustificationNotes(event.target.value)} /></label>
-                <label>Comprovativo<input className="justification-file-input" type="file" accept="image/*" onChange={(event) => setJustificationFile(event.target.files?.[0] ?? null)} /></label>
-                {justificationFile && <p className="justification-file-name">{justificationFile.name}</p>}
-                <button type="submit" className="mini-pauta-save-button" disabled={!justificationFile || !justificationFile.type.startsWith("image/")}>Confirmar justificativo</button>
+            </TabsContent>
+          </CardContent></Card>
+        </Tabs>
+          <Dialog open={showJustificationModal} onOpenChange={setShowJustificationModal}>
+            <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto">
+              <DialogHeader><DialogTitle>Justificar faltas</DialogTitle><DialogDescription>Preencha os detalhes e carregue uma imagem do comprovativo.</DialogDescription></DialogHeader>
+              <DialogCloseButton aria-label="Fechar" />
+              <form className="grid gap-4" onSubmit={async (event) => { event.preventDefault(); try { await justifySelectedAbsences(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível justificar as faltas."); } }}>
+                <label className="grid gap-2 text-sm font-medium">Título do justificativo<Input required value={justificationTitle} onChange={(event) => setJustificationTitle(event.target.value)} /></label>
+                <label className="grid gap-2 text-sm font-medium">Observações<Textarea required rows={4} value={justificationNotes} onChange={(event) => setJustificationNotes(event.target.value)} /></label>
+                <label className="grid gap-2 text-sm font-medium">Comprovativo<Input type="file" accept="image/*" onChange={(event) => setJustificationFile(event.target.files?.[0] ?? null)} /></label>
+                {statusMessage && <p role="alert" className="text-sm text-destructive">{statusMessage}</p>}
+                <DialogFooter><Button type="button" variant="outline" onClick={() => setShowJustificationModal(false)}>Cancelar</Button><Button type="submit" disabled={!justificationFile || !justificationFile.type.startsWith("image/")}>Confirmar justificativo</Button></DialogFooter>
               </form>
-            </div>
-          ) : null}
-          {previewAbsenceId ? (
-            <div className="justification-preview-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewAbsenceId(null); }}>
-              <div className="justification-preview" role="dialog" aria-modal="true" aria-label="Comprovativo da falta">
-                <button type="button" className="modal-close" onClick={() => setPreviewAbsenceId(null)} aria-label="Fechar">×</button>
-                <img src={`/api/student-justifications/${previewAbsenceId}/attachment`} alt="Comprovativo da falta" />
-              </div>
-            </div>
-          ) : null}
+            </DialogContent>
+          </Dialog>
+          <Dialog open={Boolean(previewAbsenceId)} onOpenChange={(open) => { if (!open) setPreviewAbsenceId(null); }}>
+            <DialogContent className="max-h-[calc(100vh-2rem)] max-w-3xl overflow-y-auto">
+              <DialogHeader><DialogTitle>Comprovativo da falta</DialogTitle></DialogHeader>
+              <DialogCloseButton aria-label="Fechar" />
+              {/* Authenticated attachments are served directly by the application. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {previewAbsenceId && <img className="mx-auto max-h-[75vh] max-w-full object-contain" src={`/api/student-justifications/${previewAbsenceId}/attachment`} alt="Comprovativo da falta" />}
+            </DialogContent>
+          </Dialog>
         </main>
       </AppShell>
     );
