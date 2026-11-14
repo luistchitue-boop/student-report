@@ -18,7 +18,6 @@ export async function GET(
       name: true,
       phone: true,
       email: true,
-      student: { select: { turma: { select: { schoolId: true } } } },
     },
   });
 
@@ -27,11 +26,11 @@ export async function GET(
   }
 
   const candidateParents = await prisma.parent.findMany({
-    where: { student: { active: true, turma: { schoolId: parent.student.turma.schoolId } } },
+    where: { student: { active: true } },
     select: {
       id: true,
       name: true,
-      student: { select: { id: true, name: true, turma: { select: { id: true, name: true } } } },
+      student: { select: { id: true, name: true, turma: { select: { id: true, name: true, school: { select: { name: true } } } } } },
     },
   });
   const normalizedName = normalizeParentName(parent.name);
@@ -80,7 +79,7 @@ export async function PATCH(
     }
 
     const parentGroup = await prisma.parent.findMany({
-      where: { student: { active: true, turma: { schoolId: parent.student.turma.schoolId } } },
+      where: { student: { active: true } },
       select: { id: true, name: true },
     });
     const normalizedName = normalizeParentName(parent.name);

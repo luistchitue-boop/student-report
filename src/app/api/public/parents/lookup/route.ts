@@ -8,15 +8,14 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const rawName = typeof body.name === "string" ? body.name : "";
-    const schoolId = typeof body.schoolId === "string" ? body.schoolId : "";
     const normalizedName = normalizeParentName(rawName);
 
-    if (!normalizedName || !schoolId) {
+    if (!normalizedName) {
       return NextResponse.json({ error: "Introduza o nome completo do encarregado." }, { status: 400 });
     }
 
     const parents = await prisma.parent.findMany({
-      where: { student: { active: true, turma: { schoolId } } },
+      where: { student: { active: true } },
       select: { id: true, name: true },
     });
 

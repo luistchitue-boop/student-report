@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { verifyParentContactConfirmation } from "@/lib/parent-contact-confirmation";
+import { normalizeParentName } from "@/lib/parent-contact";
 
 const prisma = new PrismaClient();
 
@@ -24,16 +25,16 @@ export async function GET(
     }
 
     const parents = await prisma.parent.findMany({
-      where: { id: { in: tokenParentIds } },
-      select: { id: true, student: { select: { turma: { select: { schoolId: true } } } } },
+      where: { id: { in: tokenParentIds }, student: { active: true } },
+      select: { id: true, name: true },
     });
-    const parentSchoolIds = new Set(parents.map((parent) => parent.student.turma.schoolId));
-    if (parents.length !== new Set(tokenParentIds).size || parentSchoolIds.size !== 1) {
+    const normalizedNames = new Set(parents.map((parent) => normalizeParentName(parent.name)));
+    if (parents.length !== new Set(tokenParentIds).size || normalizedNames.size !== 1) {
       return NextResponse.redirect(new URL("/encarregado?confirmed=invalid", request.url));
     }
 
     await prisma.parent.updateMany({
-      where: { id: { in: parents.map((parent) => parent.id) }, student: { turma: { schoolId: [...parentSchoolIds][0] } } },
+      where: { id: { in: parents.map((parent) => parent.id) }, student: { active: true } },
       data: { phone, email },
     });
 

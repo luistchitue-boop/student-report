@@ -14,7 +14,7 @@ export default async function ParentContactPage({ params }: { params: Promise<{ 
   const { parentId } = await params;
   const parent = await prisma.parent.findFirst({
     where: { id: parentId },
-    select: { id: true, name: true, phone: true, email: true, student: { select: { turma: { select: { schoolId: true } } } } },
+    select: { id: true, name: true, phone: true, email: true },
   });
 
   if (!parent) {
@@ -22,7 +22,7 @@ export default async function ParentContactPage({ params }: { params: Promise<{ 
   }
 
   const activeParents = await prisma.parent.findMany({
-    where: { student: { active: true, turma: { schoolId: parent.student.turma.schoolId } } },
+    where: { student: { active: true } },
     select: {
       id: true,
       name: true,
@@ -32,7 +32,7 @@ export default async function ParentContactPage({ params }: { params: Promise<{ 
         select: {
           id: true,
           name: true,
-          turma: { select: { id: true, name: true } },
+          turma: { select: { id: true, name: true, school: { select: { name: true } } } },
         },
       },
     },

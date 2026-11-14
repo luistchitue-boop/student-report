@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 type StudentSummary = {
   id: string;
   name: string;
-  turma: { id: string; name: string } | null;
+  turma: { id: string; name: string; school: { name: string } } | null;
 };
 
 type ParentSummary = {
@@ -82,7 +82,7 @@ export function ParentContactEditor({
                   {students.map((student) => (
                     <div className="public-student-item" key={student.id}>
                       <strong>{student.name}</strong>
-                      {student.turma && <span>{student.turma.name}</span>}
+                      {student.turma && <span>{student.turma.name} · {student.turma.school.name}</span>}
                     </div>
                   ))}
                 </div>
