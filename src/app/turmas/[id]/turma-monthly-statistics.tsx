@@ -128,10 +128,10 @@ function StudentRanking({ title, students, emptyText, criterion }: { title: stri
           <ChartContainer
             id={`ranking-${chartId}`}
             config={chartConfig}
-            className="h-[260px] w-full aspect-auto sm:h-[320px]"
+            className="mx-auto h-[260px] w-full max-w-xl aspect-auto sm:h-[320px]"
             aria-label={`${title}: gráfico de barras com fotografias dos alunos`}
           >
-            <BarChart accessibilityLayer data={data} barCategoryGap={isMobile ? 12 : 8} barGap={2} margin={{ top: isMobile ? 48 : 62, right: 4, left: -18, bottom: 8 }}>
+            <BarChart accessibilityLayer data={data} barCategoryGap={isMobile ? 12 : 8} barGap={2} margin={{ top: isMobile ? 48 : 62, right: 8, left: 8, bottom: 8 }}>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="name"
