@@ -1,11 +1,27 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateRangePicker } from "@/components/date-picker";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PrismaClient } from "@prisma/client";
 import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 const PAGE_SIZE = 12;
+const ACTION_PREVIEW_LIMIT = 64;
+
+function formatActionPreview(action: string) {
+  return action.length > ACTION_PREVIEW_LIMIT
+    ? `${action.slice(0, ACTION_PREVIEW_LIMIT).trimEnd()}…`
+    : action;
+}
 
 function formatDisplayName(name: string) {
   const trimmed = name.trim();
@@ -148,82 +164,120 @@ export default async function ActivityLogsPage({
           </div>
         </header>
 
-        <section className="admin-shell workspace">
-          <div className="panel-heading admin-heading">
-            <div>
-              <p className="eyebrow">AUDITORIA</p>
-              <h3>Quem registou o quê e quando</h3>
-            </div>
-          </div>
-
-          <form method="get" className="admin-log-filters">
-            <label>
-              <span>Turma</span>
-              <select name="turmaId" defaultValue={turmaFilter}>
-                <option value="">Todas as turmas</option>
-                {turmas.map((turma) => (
-                  <option key={turma.id} value={turma.id}>{turma.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>De</span>
-              <input type="date" name="from" defaultValue={fromFilter} />
-            </label>
-
-            <label>
-              <span>Até</span>
-              <input type="date" name="to" defaultValue={toFilter} />
-            </label>
-
-            <div className="admin-log-filter-actions">
-              <button type="submit" className="admin-submit">Filtrar</button>
-              {(turmaFilter || fromFilter || toFilter) && (
-                <a href="/admin/logs" className="admin-log-reset">Limpar</a>
-              )}
-            </div>
-          </form>
-
-          <div className="admin-log-list">
-            {totalCount === 0 ? (
-              <p className="admin-status idle">Ainda não existem registos de atividade para este filtro.</p>
-            ) : (
-              visibleLogs.map((entry) => {
-                const details = entry.details && typeof entry.details === "object" ? (entry.details as Record<string, unknown>) : null;
-
-                return (
-                  <article key={entry.id} className="admin-log-item">
-                    <div className="admin-log-cell admin-log-operation">
-                      <span>Operação</span>
-                      <strong>{entry.action}</strong>
-                    </div>
-                    <div className="admin-log-cell">
-                      <span>Utilizador</span>
-                      <strong>{entry.actor.teacher?.name || entry.actor.name || entry.actor.email || entry.actorName}</strong>
-                    </div>
-                    <div className="admin-log-cell">
-                      <span>Envolvido</span>
-                      <strong>{formatInvolvedSubject(entry.entity, details, turmaNames, studentNames)}</strong>
-                    </div>
-                    <time dateTime={entry.createdAt.toISOString()}>{new Date(entry.createdAt).toLocaleString("pt-AO")}</time>
-                  </article>
-                );
-              })
-            )}
-          </div>
-          {totalPages > 1 && (
-            <nav className="pagination" aria-label="Paginação dos registos de atividade">
-              <a href={buildPageHref(Math.max(1, currentPage - 1))} className={currentPage === 1 ? "page-button disabled" : "page-button"} aria-disabled={currentPage === 1}>Anterior</a>
-              <div className="pagination-compact" aria-label="Páginas dos registos">
-                {pageItems.map((page, index) => typeof page === "number" ? (
-                  <a key={`${page}-${index}`} href={buildPageHref(page)} className={page === currentPage ? "page-button active" : "page-button"} aria-current={page === currentPage ? "page" : undefined}>{page}</a>
-                ) : <span key={page} className="page-button page-ellipsis" aria-hidden="true">…</span>)}
+        <Card className="admin-shell w-full max-w-none gap-0 overflow-visible py-0">
+          <CardHeader className="border-b px-5 py-5 sm:px-6">
+            <p className="text-xs font-semibold tracking-widest text-muted-foreground">AUDITORIA</p>
+            <CardTitle className="text-lg">Quem registou o quê e quando</CardTitle>
+            <CardDescription>Consulte as atividades registadas na escola e filtre por turma ou data.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-5 p-5 sm:p-6">
+            <form method="get" className="grid items-end gap-3 rounded-xl border bg-muted/30 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.8fr)_auto]">
+              <div className="grid min-w-0 gap-2">
+                <Label htmlFor="logs-turma">Turma</Label>
+                <Select name="turmaId" defaultValue={turmaFilter || null}>
+                  <SelectTrigger id="logs-turma" className="h-10 w-full">
+                    <SelectValue placeholder="Todas as turmas" />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    {turmas.map((turma) => <SelectItem key={turma.id} value={turma.id}>{turma.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-              <a href={buildPageHref(Math.min(totalPages, currentPage + 1))} className={currentPage === totalPages ? "page-button disabled" : "page-button"} aria-disabled={currentPage === totalPages}>Seguinte</a>
-            </nav>
-          )}
-        </section>
+
+              <div className="grid min-w-0 gap-2">
+                <Label htmlFor="logs-period">Período</Label>
+                <DateRangePicker
+                  id="logs-period"
+                  fromName="from"
+                  toName="to"
+                  defaultFrom={fromFilter}
+                  defaultTo={toFilter}
+                  placeholder="Selecionar intervalo de datas"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-1">
+                <Button type="submit" className="h-10">Filtrar</Button>
+                {(turmaFilter || fromFilter || toFilter) && (
+                  <Button variant="outline" className="h-10" render={<Link href="/admin/logs" />}>Limpar</Button>
+                )}
+              </div>
+            </form>
+
+            <div className="overflow-hidden rounded-xl border">
+              <Table className="min-w-[980px]">
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-[320px] text-xs uppercase tracking-wide text-muted-foreground">Operação</TableHead>
+                    <TableHead className="w-[220px] text-xs uppercase tracking-wide text-muted-foreground">Utilizador</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">Envolvido</TableHead>
+                    <TableHead className="w-[190px] text-right text-xs uppercase tracking-wide text-muted-foreground">Data e hora</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {totalCount === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-28 text-center whitespace-normal text-muted-foreground">
+                        Ainda não existem registos de atividade para este filtro.
+                      </TableCell>
+                    </TableRow>
+                  ) : visibleLogs.map((entry) => {
+                    const details = entry.details && typeof entry.details === "object" ? (entry.details as Record<string, unknown>) : null;
+
+                    return (
+                      <TableRow key={entry.id}>
+                        <TableCell className="w-[320px] max-w-[320px]">
+                          <Badge variant="secondary" className="max-w-full truncate" title={entry.action}>
+                            {formatActionPreview(entry.action)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-normal">
+                          <span className="font-medium text-foreground">{entry.actor.teacher?.name || entry.actor.name || entry.actor.email || entry.actorName}</span>
+                        </TableCell>
+                        <TableCell className="max-w-[420px] whitespace-normal break-words text-muted-foreground">
+                          {formatInvolvedSubject(entry.entity, details, turmaNames, studentNames)}
+                        </TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground">
+                          <time dateTime={entry.createdAt.toISOString()}>{new Date(entry.createdAt).toLocaleString("pt-AO")}</time>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            {totalPages > 1 && (
+              <nav className="flex flex-wrap items-center justify-center gap-2" aria-label="Paginação dos registos de atividade">
+                <Button
+                  variant="outline"
+                  render={<Link href={currentPage === 1 ? buildPageHref(1) : buildPageHref(currentPage - 1)} aria-disabled={currentPage === 1} tabIndex={currentPage === 1 ? -1 : undefined} />}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                >
+                  <ArrowLeft /> Anterior
+                </Button>
+                <div className="flex items-center gap-1" aria-label="Páginas dos registos">
+                  {pageItems.map((page, index) => typeof page === "number" ? (
+                    <Button
+                      key={`${page}-${index}`}
+                      variant={page === currentPage ? "default" : "ghost"}
+                      size="icon"
+                      render={<Link href={buildPageHref(page)} aria-current={page === currentPage ? "page" : undefined} aria-label={`Página ${page}`} />}
+                    >
+                      {page}
+                    </Button>
+                  ) : <span key={page} className="px-2 text-sm text-muted-foreground" aria-hidden="true">…</span>)}
+                </div>
+                <Button
+                  variant="outline"
+                  render={<Link href={currentPage === totalPages ? buildPageHref(totalPages) : buildPageHref(currentPage + 1)} aria-disabled={currentPage === totalPages} tabIndex={currentPage === totalPages ? -1 : undefined} />}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                >
+                  Próxima <ArrowRight />
+                </Button>
+              </nav>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </AppShell>
   );

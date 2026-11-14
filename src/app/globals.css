@@ -88,19 +88,6 @@
 .admin-assignment-add select { flex:1; }
 .admin-assignment-add-button { min-height:2.7rem; padding:0.65rem 0.9rem; border:1px solid #b9cdbd; border-radius:10px; background:#fff; color:var(--green); font-size:0.75rem; font-weight:800; }
 .admin-assignment-add-button:disabled { cursor:not-allowed; opacity:0.5; }
-.admin-log-list { display:grid; gap:0.9rem; }
-.admin-log-filters { display:grid; grid-template-columns:1.3fr 1fr 1fr auto; gap:0.8rem; align-items:end; background:#f6f9f5; border:1px solid #dfe8e1; border-radius:16px; padding:0.9rem 1rem; margin-bottom:1rem; }
-.admin-log-filters label { display:grid; gap:0.42rem; font-size:0.72rem; color:#4c5f59; font-weight:700; }
-.admin-log-filters select, .admin-log-filters input { border:1px solid #ccd8d0; border-radius:10px; background:#fff; padding:0.7rem 0.8rem; font-size:0.9rem; color:#1c312e; }
-.admin-log-filter-actions { display:flex; align-items:center; gap:0.7rem; }
-.admin-log-reset { display:inline-flex; align-items:center; justify-content:center; min-height:2.7rem; padding:0.65rem 0.9rem; border-radius:10px; background:#edf4ef; border:1px solid #d5e2d9; color:#1b3d34; text-decoration:none; font-weight:800; font-size:0.8rem; }
-.admin-log-item { display:grid; grid-template-columns:minmax(180px,1.4fr) minmax(130px,1fr) minmax(180px,1.2fr) auto; gap:1rem; align-items:center; padding:0.9rem 1rem; border:1px solid #dfe8e1; border-radius:12px; background:#fff; box-shadow:0 8px 20px rgba(27,52,41,0.035); }
-.admin-log-cell { min-width:0; display:grid; gap:0.28rem; }
-.admin-log-cell span { color:#7a887f; font:0.62rem 'DM Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; }
-.admin-log-cell strong { overflow:hidden; color:#173b31; font-size:0.8rem; text-overflow:ellipsis; white-space:nowrap; }
-.admin-log-operation strong { color:var(--green); }
-.admin-log-item time { color:#7a887f; font:0.65rem 'DM Mono',monospace; white-space:nowrap; }
-.admin-log-empty { margin:0; color:#5d6a63; font-size:0.78rem; }
 .admin-status { margin:0; font-size:0.82rem; font-weight:700; }
 .admin-status.idle { color:#64726c; }
 .admin-status.saving { color:#596a61; }
@@ -609,8 +596,6 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
   .biometrico-period strong { grid-column:1 / -1; grid-row:2; }
   .biometrico-status { grid-column:2; grid-row:1; }
   .biometrico-modal { padding:1.1rem; }
-  .admin-log-item { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-  .admin-log-item time { grid-column: 1 / -1; }
   .topbar, .section-heading, .panel-heading, footer { flex-direction: column; align-items: flex-start; gap: 12px; }
   .profile { width: 100%; justify-content: space-between; font-size: 11px; padding-top: 4px; }
   .welcome { margin-top: 20px; padding: 24px 18px; min-height: 180px; }
@@ -912,7 +897,6 @@ button { font-weight:500; }
   }
 
   .main-content .admin-form,
-  .main-content .admin-log-filters,
   .main-content .student-global-search-form,
   .main-content .turma-search-form,
   .main-content .admin-turma-panel,
@@ -936,7 +920,6 @@ button { font-weight:500; }
 
   .main-content .admin-field,
   .main-content .schools-field,
-  .main-content .admin-log-filters label,
   .main-content .turma-search-form,
   .main-content .student-global-search-form {
     color: var(--foreground);
@@ -1008,7 +991,6 @@ button { font-weight:500; }
   }
 
   .main-content .admin-assignment-card,
-  .main-content .admin-log-item,
   .main-content .global-student-results,
   .main-content .summary-card,
   .main-content .student-card,
@@ -1232,14 +1214,6 @@ button { font-weight:500; }
     gap: 1rem;
   }
 
-  .main-content .admin-log-list {
-    gap: .7rem;
-  }
-
-  .main-content .admin-log-item {
-    padding: 1rem;
-  }
-
   .main-content .pagination .page-button {
     min-height: 2.35rem;
     border: 1px solid var(--border);
@@ -1318,29 +1292,6 @@ button { font-weight:500; }
     .main-content .turma-toolbar > div:first-child { grid-row: 1; }
     .main-content .turma-search-form { grid-row: 2; }
     .main-content .turma-toolbar-actions { grid-row: 3; justify-content: space-between; }
-
-    .main-content .admin-log-filters {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .main-content .admin-log-filters label:first-child,
-    .main-content .admin-log-filter-actions {
-      grid-column: 1 / -1;
-    }
-
-    .main-content .admin-log-filter-actions > button,
-    .main-content .admin-log-filter-actions > a {
-      flex: 1;
-    }
-
-    .main-content .admin-log-item {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: .7rem;
-    }
-
-    .main-content .admin-log-item time {
-      grid-column: 1 / -1;
-    }
 
     .main-content .biometrico-turma-switcher,
     .main-content .attendance-book-toolbar,
@@ -1438,7 +1389,6 @@ button { font-weight:500; }
 .dark :is(
   .schools-manager-heading p, .schools-field > span, .schools-create-description,
   .schools-list-details small, .schools-code-hint, .admin-field span,
-  .admin-log-cell span, .admin-log-item time, .admin-log-empty,
   .biometrico-turma-switcher label, .biometrico-period-date,
   .attendance-book-subtitle, .attendance-last-absence,
   .attendance-book-toolbar label, .attendance-fault-switch legend,
@@ -1454,7 +1404,7 @@ button { font-weight:500; }
 ) { color: var(--muted-foreground); }
 
 .dark :is(
-  .schools-panel-title h3, .schools-list-details strong, .admin-log-cell strong,
+  .schools-panel-title h3, .schools-list-details strong,
   .student-monthly-card h3, .student-monthly-summary-grid h4,
   .student-monthly-summary-grid li strong, .report-behavior-field
 ) { color: var(--foreground); }
@@ -1470,7 +1420,7 @@ button { font-weight:500; }
 }
 
 .dark :is(
-  .schools-activate-button, .admin-assignment-add-button, .admin-log-reset,
+  .schools-activate-button, .admin-assignment-add-button,
   .attendance-select-all, .mini-pauta-export-button,
   .new-student-cancel, .weekly-report-improve-button, .weekly-report-suggestion button + button
 ) {
@@ -1479,7 +1429,7 @@ button { font-weight:500; }
   color: var(--secondary-foreground);
 }
 .dark :is(
-  .schools-activate-button, .admin-assignment-add-button, .admin-log-reset,
+  .schools-activate-button, .admin-assignment-add-button,
   .attendance-select-all, .mini-pauta-export-button,
   .new-student-cancel, .weekly-report-improve-button
 ):hover { background: var(--accent); color: var(--accent-foreground); }
