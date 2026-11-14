@@ -10,6 +10,8 @@ import {
   FileText,
   Fingerprint,
   House,
+  ChevronDown,
+  LoaderCircle,
   ShieldCheck,
   Settings,
   ScrollText,
@@ -21,7 +23,10 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
   const [schoolMemberships, setSchoolMemberships] = useState<Array<{ schoolId: string; role: string; school: { id: string; name: string } }>>([]);
   const [activeSchoolId, setActiveSchoolId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [switchingSchool, setSwitchingSchool] = useState(false);
+  const [schoolSwitchError, setSchoolSwitchError] = useState("");
   const isAdmin = role === "ADMIN";
+  const activeMembership = schoolMemberships.find((membership) => membership.schoolId === activeSchoolId);
 
   useEffect(() => {
     let activeRequest = true;
@@ -40,12 +45,22 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
   }, []);
 
   async function changeSchool(schoolId: string) {
-    const response = await fetch("/api/schools/active", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ schoolId }),
-    });
-    if (response.ok) window.location.reload();
+    if (!schoolId || schoolId === activeSchoolId || switchingSchool) return;
+    setSwitchingSchool(true);
+    setSchoolSwitchError("");
+    try {
+      const response = await fetch("/api/schools/active", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schoolId }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error ?? "Não foi possível mudar de escola.");
+      window.location.reload();
+    } catch (error) {
+      setSchoolSwitchError(error instanceof Error ? error.message : "Não foi possível mudar de escola.");
+      setSwitchingSchool(false);
+    }
   }
 
   return (
@@ -61,21 +76,6 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
             </span>
           </div>
 
-          {schoolMemberships.length > 1 && (
-            <label className="school-switcher-label">
-              <span>Escola ativa</span>
-              <select
-                aria-label="Selecionar escola ativa"
-                value={activeSchoolId ?? ""}
-                onChange={(event) => void changeSchool(event.target.value)}
-              >
-                <option value="" disabled>Selecione uma escola</option>
-                {schoolMemberships.map((membership) => (
-                  <option key={membership.schoolId} value={membership.schoolId}>{membership.school.name}</option>
-                ))}
-              </select>
-            </label>
-          )}
           <button
             className="mobile-menu-toggle"
             onClick={() => setMenuOpen(!menuOpen)}
@@ -87,6 +87,31 @@ export function AppShell({ children, active }: { children: ReactNode; active: "i
             <span></span>
           </button>
         </div>
+
+        {schoolMemberships.length > 1 && (
+          <div className={`school-switcher${switchingSchool ? " is-switching" : ""}`}>
+            <label htmlFor="active-school-select" className="school-switcher-label">
+              <span className="school-switcher-caption"><Building2 size={13} /> ESCOLA ATIVA</span>
+              <span className="school-switcher-control">
+                <select
+                  id="active-school-select"
+                  value={activeSchoolId ?? ""}
+                  disabled={switchingSchool}
+                  onChange={(event) => void changeSchool(event.target.value)}
+                  aria-label="Mudar de escola ativa"
+                >
+                  <option value="" disabled>Selecione uma escola</option>
+                  {schoolMemberships.map((membership) => (
+                    <option key={membership.schoolId} value={membership.schoolId}>{membership.school.name}</option>
+                  ))}
+                </select>
+                {switchingSchool ? <LoaderCircle className="school-switcher-spinner" size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+              </span>
+            </label>
+            <span className="school-switcher-role">{activeMembership?.role === "ADMIN" ? "Administrador" : activeMembership?.role === "DIRECCAO" ? "Direção" : activeMembership ? "Coordenador" : "A selecionar escola"}</span>
+            {schoolSwitchError && <p className="school-switcher-error" role="alert">{schoolSwitchError}</p>}
+          </div>
+        )}
 
         <nav className={`sidebar-nav ${menuOpen ? "menu-open" : ""}`}>
           <Link href="/" className={active === "inicio" ? "nav-active" : ""} onClick={() => setMenuOpen(false)}>

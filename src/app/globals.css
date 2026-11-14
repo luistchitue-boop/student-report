@@ -141,6 +141,20 @@
 .app-shell { min-height:100vh; display:flex; position:relative; }
 .sidebar { position:sticky; top:0; align-self:flex-start; width:236px; min-width:236px; height:100vh; padding:34px 24px 24px; background:#e4f0e5; display:flex; flex-direction:column; }
 .sidebar-header { display:flex; align-items:center; margin-bottom:10px; }
+.school-switcher { display:grid; gap:5px; margin:0 12px 20px; padding:11px 12px 10px; border:1px solid rgba(57,117,93,.19); border-radius:13px; background:rgba(255,255,255,.62); box-shadow:0 5px 14px rgba(30,65,46,.045); }
+.school-switcher-label { display:grid; gap:7px; min-width:0; }
+.school-switcher-caption { display:flex; align-items:center; gap:6px; color:#718078; font: .59rem 'DM Mono',monospace; font-weight:500; letter-spacing:.12em; }
+.school-switcher-caption svg { color:var(--green); }
+.school-switcher-control { position:relative; display:flex; align-items:center; min-width:0; }
+.school-switcher-control select { width:100%; min-width:0; min-height:40px; appearance:none; padding:0 34px 0 11px; border:1px solid #d5e1d7; border-radius:9px; background:#fff; color:#203b30; font-family:'Manrope',sans-serif; font-size:.73rem; font-weight:800; outline:none; cursor:pointer; }
+.school-switcher-control select:focus-visible { border-color:var(--green); box-shadow:0 0 0 3px rgba(57,117,93,.13); }
+.school-switcher-control select:disabled { cursor:wait; opacity:.72; }
+.school-switcher-control > svg { position:absolute; right:10px; pointer-events:none; color:var(--green); }
+.school-switcher-control > .school-switcher-spinner { animation:school-switch-spin .8s linear infinite; }
+@keyframes school-switch-spin { to { transform:rotate(360deg); } }
+.school-switcher-role { padding-left:1px; color:#849087; font-size:.62rem; font-weight:600; }
+.school-switcher-error { margin-top:3px; color:#984b3d; font-size:.64rem; line-height:1.4; }
+.school-switcher.is-switching select { border-color:#a9c8af; }
 @media (min-width: 701px) {
   .sidebar-header { margin-bottom: 22px; }
 }
@@ -580,6 +594,12 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
   .app-shell { flex-direction: column; }
   .sidebar { position: fixed; top: 0; left: 0; width: 100%; height: auto; padding: 0; border-bottom: 1px solid rgba(57, 117, 93, 0.15); gap: 0; display: flex; flex-direction: column; z-index: 100; }
   .sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #e4f0e5; gap: 8px; }
+  .school-switcher { margin:0; padding:10px 16px 11px; border:0; border-top:1px solid rgba(57,117,93,.11); border-radius:0; background:#f3f8f2; box-shadow:none; }
+  .school-switcher-label { grid-template-columns:88px minmax(0,1fr); align-items:center; gap:10px; }
+  .school-switcher-caption { font-size:.55rem; }
+  .school-switcher-control select { min-height:36px; }
+  .school-switcher-role { display:none; }
+  .school-switcher-error { padding-left:98px; }
   .brand { flex: 1; justify-content: flex-start; gap: 8px; font-size: 13px; }
   .brand small { font-size: 8px; }
   .brand-mark { width: 24px; height: 24px; font-size: 12px; flex-shrink: 0; }
@@ -588,7 +608,7 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
   .mobile-menu-toggle[aria-expanded="true"] span:nth-child(1) { transform: rotate(45deg) translateY(9px); }
   .mobile-menu-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
   .mobile-menu-toggle[aria-expanded="true"] span:nth-child(3) { transform: rotate(-45deg) translateY(-9px); }
-  .sidebar-nav { position: absolute; top: 100%; left: 0; right: 0; background: #e4f0e5; display: none; flex-direction: column; gap: 0; padding: 12px 0; max-height: calc(100vh - 60px); overflow-y: auto; }
+  .sidebar-nav { position: absolute; top: 100%; left: 0; right: 0; background: #e4f0e5; display: none; flex-direction: column; gap: 0; padding: 12px 0; max-height: calc(100vh - 120px); overflow-y: auto; }
   .sidebar-nav.menu-open { display: flex; }
   .sidebar-nav a { padding: 12px 16px; font-size: 13px; }
   .sidebar-nav a:nth-child(1), .sidebar-nav a:nth-child(2), .sidebar-nav a:nth-child(3) { border-bottom: 1px solid rgba(57, 117, 93, 0.08); }
@@ -693,6 +713,12 @@ nav .nav-active, .sidebar-nav .nav-active { background:#cde5cb; border-radius:4p
 }
 
 @media (max-width: 480px) {
+  .school-switcher { padding:8px 12px 9px; }
+  .school-switcher-label { grid-template-columns:76px minmax(0,1fr); gap:8px; }
+  .school-switcher-caption { gap:4px; font-size:.51rem; letter-spacing:.08em; }
+  .school-switcher-caption svg { width:12px; height:12px; }
+  .school-switcher-control select { min-height:34px; font-size:.68rem; }
+  .school-switcher-error { padding-left:84px; }
   .schools-manager { padding:13px; }
   .schools-manager-heading { gap:10px; }
   .schools-manager-heading-icon { flex-basis:36px; height:36px; }
