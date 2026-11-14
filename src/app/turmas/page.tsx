@@ -96,7 +96,7 @@ export default async function TurmasPage({
 
   return (
     <AppShell active="turmas">
-      <main className="main-content turma-page-shell">
+      <main className="main-content mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
         <header className="topbar turma-topbar">
           <div>
             <p className="eyebrow">COORDENAÇÃO</p>
