@@ -40,20 +40,20 @@ export function NavUser({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <SidebarMenuButton size="lg" className="aria-expanded:bg-muted" />
+              <SidebarMenuButton size="lg" className="aria-expanded:bg-muted group-data-[collapsible=icon]:mx-auto! group-data-[collapsible=icon]:justify-center!" />
             }
           >
             <Avatar className="size-8 rounded-lg grayscale">
               {user.image && <AvatarImage src={user.image} alt={user.name} />}
               <AvatarFallback className="rounded-lg">{user.name.slice(0, 2).toLocaleUpperCase()}</AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
+            <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
               <span className="truncate font-medium">{user.name}</span>
               <span className="truncate text-xs text-foreground/70">
                 {user.email}
               </span>
             </div>
-            <EllipsisVerticalIcon className="ml-auto size-4" />
+            <EllipsisVerticalIcon className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="min-w-56"

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps } from "react";
 import {
   Activity,
+  BadgeCheck,
   BookOpenCheck,
   Building2,
   ClipboardCheck,
@@ -16,6 +17,8 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
+  ChevronRight,
+  Plus,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -30,6 +33,16 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { NavUser } from "@/components/nav-user";
 
 type SchoolMembership = {
@@ -69,6 +82,7 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
+  const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
   const school = memberships.find((membership) => membership.schoolId === activeSchoolId);
   const mainItems: NavItem[] = [
     { label: "Início", href: "/", icon: House },
@@ -109,9 +123,10 @@ export function AppSidebar({
             render={<Link href={href} onClick={() => { if (isMobile) setOpenMobile(false); }} />}
             isActive={active}
             tooltip={label}
+            className="group-data-[collapsible=icon]:mx-auto! group-data-[collapsible=icon]:justify-center!"
           >
             <Icon />
-            <span>{label}</span>
+            <span className="group-data-[collapsible=icon]:hidden">{label}</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       );
@@ -123,39 +138,76 @@ export function AppSidebar({
       <SidebarHeader className="px-3 pb-3 pt-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex h-12 items-center gap-3 px-2">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-                <Activity className="size-5" />
-              </span>
-              <span className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate text-sm font-bold tracking-tight">AEPH Relatórios</span>
-                <span className="truncate text-xs text-muted-foreground">Gestão escolar</span>
-              </span>
-            </div>
+            <Dialog open={schoolDialogOpen} onOpenChange={setSchoolDialogOpen}>
+              <DialogTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-12 w-full min-w-0 justify-start gap-3 px-2 text-left hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:px-0!"
+                    aria-label={`Escola ativa: ${school?.school.name ?? "AEPH Relatórios"}. Abrir opções de escola`}
+                  />
+                }
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                  <Activity className="size-5" />
+                </span>
+                <span className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
+                  <span className="truncate text-sm font-bold tracking-tight" title={school?.school.name ?? "AEPH Relatórios"}>
+                    {school?.school.name ?? "AEPH Relatórios"}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">Gestão escolar</span>
+                </span>
+              </DialogTrigger>
+              <DialogContent className="max-h-[min(85svh,42rem)] overflow-y-auto sm:max-w-md">
+                <DialogCloseButton />
+                <DialogHeader>
+                  <DialogTitle>Escolas da sua conta</DialogTitle>
+                  <DialogDescription>Escolha a escola ativa para abrir os respetivos dados e ferramentas.</DialogDescription>
+                </DialogHeader>
+
+                <div className="grid gap-2">
+                  {memberships.map((membership) => {
+                    const active = membership.schoolId === activeSchoolId;
+                    return (
+                      <Button
+                        key={membership.schoolId}
+                        type="button"
+                        variant={active ? "secondary" : "outline"}
+                        className="h-auto min-h-14 w-full justify-start gap-3 whitespace-normal px-3 py-2 text-left"
+                        onClick={() => onSwitchSchool(membership.schoolId)}
+                        disabled={switchingSchool || active}
+                        aria-current={active ? "true" : undefined}
+                      >
+                        <Building2 className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="grid min-w-0 flex-1 gap-1">
+                          <span className="break-words font-medium">{membership.school.name}</span>
+                          <span className="text-xs font-normal text-muted-foreground">{roleLabel(membership.role)}</span>
+                        </span>
+                        {active ? <BadgeCheck className="size-4 shrink-0 text-primary" aria-label="Escola ativa" /> : <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                {switchingSchool && <p className="text-sm text-muted-foreground" role="status">A mudar de escola…</p>}
+                {switchError && <p className="text-sm text-destructive" role="alert">{switchError}</p>}
+
+                {appRole === "ADMIN" && (
+                  <Button
+                    type="button"
+                    variant="default"
+                    className="w-full"
+                    render={<Link href="/admin#schools-manager-title" onClick={() => { setSchoolDialogOpen(false); if (isMobile) setOpenMobile(false); }} />}
+                  >
+                    <Plus /> Criar nova escola
+                  </Button>
+                )}
+              </DialogContent>
+            </Dialog>
           </SidebarMenuItem>
         </SidebarMenu>
 
-        {memberships.length > 0 && (
-          <div className="school-switcher-card group-data-[collapsible=icon]:hidden">
-            <label htmlFor="active-school-select" className="school-switcher-label">
-              <span className="school-switcher-caption"><Building2 aria-hidden="true" /> Escola ativa</span>
-              <select
-                id="active-school-select"
-                value={activeSchoolId ?? ""}
-                disabled={switchingSchool || memberships.length < 2}
-                onChange={(event) => onSwitchSchool(event.target.value)}
-                aria-label="Escola ativa"
-              >
-                <option value="" disabled>Selecione uma escola</option>
-                {memberships.map((membership) => (
-                  <option key={membership.schoolId} value={membership.schoolId}>{membership.school.name}</option>
-                ))}
-              </select>
-            </label>
-            <span className="school-switcher-role">{school ? roleLabel(school.role) : switchingSchool ? "A mudar de escola…" : roleLabel(appRole ?? undefined)}</span>
-            {switchError && <p className="school-switcher-error" role="alert">{switchError}</p>}
-          </div>
-        )}
       </SidebarHeader>
 
       <SidebarContent className="px-2">
