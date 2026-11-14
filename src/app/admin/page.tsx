@@ -20,7 +20,7 @@ export default async function AdminPage() {
       <main className="main-content admin-page-content">
         <PageHeaderCard badge="Administração" title="Gestão da escola" description="Gira as contas e os acessos da sua escola." icon={ShieldCheck} />
         <AdminRouteNav current="users" />
-        <AdminClient />
+        <AdminClient allowAdminCreation />
       </main>
     </AppShell>
   );

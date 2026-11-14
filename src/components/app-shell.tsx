@@ -32,7 +32,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
 
   useEffect(() => {
     let activeRequest = true;
-    fetch("/api/schools/active")
+    fetch("/api/schools/active", { cache: "no-store" })
       .then(async (response) => response.ok ? response.json() : null)
       .then((result) => {
         if (!activeRequest || !result) return;
@@ -46,8 +46,9 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
     return () => { activeRequest = false; };
   }, []);
 
-  async function changeSchool(schoolId: string) {
-    if (!schoolId || schoolId === activeSchoolId || switchingSchool) return;
+  async function changeSchool(schoolId: string): Promise<boolean> {
+    if (!schoolId || switchingSchool) return false;
+    if (schoolId === activeSchoolId) return true;
     setSwitchingSchool(true);
     setSchoolSwitchError("");
     try {
@@ -58,11 +59,15 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
       });
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(result?.error ?? "Não foi possível mudar de escola.");
+      setActiveSchoolId(result.activeSchoolId ?? schoolId);
+      setRole(result.role ?? null);
+      setSwitchingSchool(false);
       router.replace("/");
-      router.refresh();
+      return true;
     } catch (error) {
       setSchoolSwitchError(error instanceof Error ? error.message : "Não foi possível mudar de escola.");
       setSwitchingSchool(false);
+      return false;
     }
   }
 
@@ -76,7 +81,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
           activeSchoolId={activeSchoolId}
           switchingSchool={switchingSchool}
           switchError={schoolSwitchError}
-          onSwitchSchool={(schoolId) => void changeSchool(schoolId)}
+          onSwitchSchool={changeSchool}
           user={{
             name: session?.user?.name?.trim() || "Utilizador",
             email: session?.user?.email || "",

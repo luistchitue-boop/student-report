@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 type AdminClientProps = {
   title?: string;
   eyebrow?: string;
-  defaultRole?: "COORDENADOR" | "DIRECCAO";
+  defaultRole?: "COORDENADOR" | "DIRECCAO" | "ADMIN";
+  allowAdminCreation?: boolean;
 };
 
 type ExistingTeacher = { id: string; name: string; phone: string | null; role: string; user: { email: string }; turmaAssignments: { turmaId: string; isMain: boolean }[] };
@@ -23,7 +24,9 @@ export function AdminClient({
   title = "Criar professor e atribuir turmas",
   eyebrow = "NOVO COORDENADOR",
   defaultRole = "COORDENADOR",
+  allowAdminCreation = false,
 }: AdminClientProps) {
+  const [newAccountRole, setNewAccountRole] = useState<"COORDENADOR" | "DIRECCAO" | "ADMIN">(defaultRole);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -77,7 +80,7 @@ export function AdminClient({
           email: form.email,
           password: form.password,
           turmaNames: selectedTurmas,
-          role: defaultRole,
+          role: newAccountRole,
         }),
       });
 
@@ -88,7 +91,7 @@ export function AdminClient({
       }
 
       setStatus("success");
-      const roleLabel = defaultRole === "DIRECCAO" ? "Direção" : "Professor";
+      const roleLabel = newAccountRole === "ADMIN" ? "Administrador" : newAccountRole === "DIRECCAO" ? "Direção" : "Professor";
       setMessage(`${roleLabel} criado com sucesso: ${data.teacher.name}`);
       setForm({ name: "", email: "", password: "" });
       setSelectedTurmas([]);
@@ -172,10 +175,27 @@ export function AdminClient({
         <CardHeader className="border-b bg-muted/20">
           <Badge variant="secondary" className="w-fit">{eyebrow}</Badge>
           <CardTitle className="text-xl">{title}</CardTitle>
-          <CardDescription>{defaultRole === "DIRECCAO" ? "Crie uma conta de direção e defina as turmas que poderá acompanhar." : "Crie uma conta de coordenação e atribua as turmas correspondentes."}</CardDescription>
+          <CardDescription>{newAccountRole === "ADMIN" ? "Crie um administrador com acesso a todas as turmas desta escola." : newAccountRole === "DIRECCAO" ? "Crie uma conta de direção e defina as turmas que poderá acompanhar." : "Crie uma conta de coordenação e atribua as turmas correspondentes."}</CardDescription>
         </CardHeader>
         <CardContent className="p-5 sm:p-6">
           <form onSubmit={handleSubmit} className="grid gap-6">
+            {allowAdminCreation && (
+              <div className="grid max-w-md gap-2">
+                <Label htmlFor="admin-new-role">Perfil da conta</Label>
+                <Select value={newAccountRole} onValueChange={(value) => {
+                  if (value === "COORDENADOR" || value === "ADMIN") {
+                    setNewAccountRole(value);
+                    setSelectedTurmas([]);
+                  }
+                }}>
+                  <SelectTrigger id="admin-new-role" className="h-10 w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectItem value="COORDENADOR">Coordenador</SelectItem>
+                    <SelectItem value="ADMIN">Administrador da escola</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="grid gap-2">
                 <Label htmlFor="admin-new-name">Nome</Label>
@@ -191,7 +211,7 @@ export function AdminClient({
               </div>
             </div>
 
-            <Card className="border-border/70 bg-muted/20 shadow-none">
+            {newAccountRole !== "ADMIN" && <Card className="border-border/70 bg-muted/20 shadow-none">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Turmas atribuídas</CardTitle>
                 <CardDescription>{selectedTurmas.length} turma(s) selecionada(s)</CardDescription>
@@ -208,14 +228,14 @@ export function AdminClient({
                 })}
                 {!existingTurmas.length && <p className="col-span-full rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Não existem turmas nesta escola para atribuir.</p>}
               </CardContent>
-            </Card>
+            </Card>}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               {message ? (
                 <p role={status === "error" ? "alert" : "status"} className={`text-sm ${status === "error" ? "text-destructive" : "text-muted-foreground"}`}>{message}</p>
               ) : <span />}
-              <Button type="submit" disabled={status === "saving"}>
-                <UserRound /> {status === "saving" ? "A guardar..." : defaultRole === "DIRECCAO" ? "Criar conta de direção" : "Criar professor"}
+                <Button type="submit" disabled={status === "saving"}>
+                <UserRound /> {status === "saving" ? "A guardar..." : newAccountRole === "ADMIN" ? "Criar administrador" : newAccountRole === "DIRECCAO" ? "Criar conta de direção" : "Criar professor"}
               </Button>
             </div>
           </form>

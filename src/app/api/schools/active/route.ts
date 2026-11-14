@@ -29,7 +29,7 @@ export async function GET() {
     memberships,
     activeSchoolId: activeMembership?.schoolId ?? null,
     role: activeMembership?.role ?? null,
-  });
+  }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
 
 export async function POST(request: Request) {

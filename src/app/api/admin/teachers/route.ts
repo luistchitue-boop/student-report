@@ -188,20 +188,20 @@ export async function POST(request: Request) {
         .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
         .map((value) => value.trim()),
     )];
-    const requestedRole = body.role === "DIRECCAO" ? "DIRECCAO" : "COORDENADOR";
+    const requestedRole = body.role === "ADMIN" ? "ADMIN" : body.role === "DIRECCAO" ? "DIRECCAO" : "COORDENADOR";
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Nome, email e senha são obrigatórios" }, { status: 400 });
     }
 
-    if (turmaNames.length === 0) {
+    if (requestedRole !== "ADMIN" && turmaNames.length === 0) {
       return NextResponse.json({ error: "Selecione pelo menos uma turma" }, { status: 400 });
     }
 
-    const turmas = await prisma.turma.findMany({
+    const turmas = turmaNames.length ? await prisma.turma.findMany({
       where: { schoolId: schoolContext.schoolId, name: { in: turmaNames } },
       select: { id: true, name: true },
-    });
+    }) : [];
     if (turmas.length !== turmaNames.length) {
       return NextResponse.json({ error: "Uma ou mais turmas não pertencem à escola ativa." }, { status: 400 });
     }
@@ -237,12 +237,14 @@ export async function POST(request: Request) {
 
     await prisma.schoolMembership.create({ data: { schoolId: schoolContext.schoolId, userId: user.id, role: requestedRole } });
 
-    for (const turma of turmas) {
-      await prisma.teacherTurma.upsert({ where: { teacherId_turmaId: { teacherId: teacher.id, turmaId: turma.id } }, create: { teacherId: teacher.id, turmaId: turma.id }, update: {} });
+    if (requestedRole !== "ADMIN") {
+      for (const turma of turmas) {
+        await prisma.teacherTurma.upsert({ where: { teacherId_turmaId: { teacherId: teacher.id, turmaId: turma.id } }, create: { teacherId: teacher.id, turmaId: turma.id }, update: {} });
+      }
     }
 
     return NextResponse.json({
-      message: "Professor criado com sucesso",
+      message: requestedRole === "ADMIN" ? "Administrador criado com sucesso" : "Professor criado com sucesso",
       teacher: {
         id: teacher.id,
         name: teacher.name,

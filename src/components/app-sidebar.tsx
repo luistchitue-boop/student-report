@@ -58,7 +58,7 @@ type AppSidebarProps = ComponentProps<typeof Sidebar> & {
   switchingSchool: boolean;
   switchError: string;
   user: { name: string; email: string; image?: string | null };
-  onSwitchSchool: (schoolId: string) => void;
+  onSwitchSchool: (schoolId: string) => Promise<boolean>;
 };
 
 type NavItem = { label: string; href: string; icon: LucideIcon };
@@ -174,7 +174,13 @@ export function AppSidebar({
                         type="button"
                         variant={active ? "secondary" : "outline"}
                         className="h-auto min-h-14 w-full justify-start gap-3 whitespace-normal px-3 py-2 text-left"
-                        onClick={() => onSwitchSchool(membership.schoolId)}
+                        onClick={async () => {
+                          const switched = await onSwitchSchool(membership.schoolId);
+                          if (switched) {
+                            setSchoolDialogOpen(false);
+                            if (isMobile) setOpenMobile(false);
+                          }
+                        }}
                         disabled={switchingSchool || active}
                         aria-current={active ? "true" : undefined}
                       >
