@@ -5,13 +5,15 @@ import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { isWeeklyPeriodClosed } from "@/lib/closed-periods";
 import { hasTurmaPeriodActivity } from "@/lib/turma-completeness";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   const session = await auth();
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
 
-  if (!session?.user?.id || session.user.role !== "COORDENADOR") {
+  if (!session?.user?.id || !schoolContext || schoolContext.role !== "COORDENADOR") {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
 
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Não é possível preencher um período futuro." }, { status: 400 });
     }
     const turma = await prisma.turma.findFirst({
-      where: { id: turmaId, teacherAssignments: { some: { isMain: true, teacher: { userId: session.user.id, role: "COORDENADOR" } } } },
+      where: { id: turmaId, schoolId: schoolContext.schoolId, teacherAssignments: { some: { isMain: true, teacher: { userId: session.user.id } } } },
       select: { id: true },
     });
 
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Não tem acesso a esta turma." }, { status: 403 });
     }
 
-    if (await isWeeklyPeriodClosed(period.start, period.end, prisma)) {
+    if (await isWeeklyPeriodClosed(period.start, period.end, prisma, schoolContext.schoolId)) {
       return NextResponse.json({ error: "Este período semanal está fechado. Não é possível registar o relatório." }, { status: 403 });
     }
 

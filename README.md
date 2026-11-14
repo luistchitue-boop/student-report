@@ -40,3 +40,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Multi-school rollout
+
+The schema includes school memberships and assigns existing classes, activity logs, weekly closures, and users to the legacy school in a forward migration. A normal build does **not** apply database migrations. Before applying the new migration to any persistent database, take and verify a restorable backup and rehearse the migration against a disposable copy. Apply it only as an explicit deployment step after that review; do not use `prisma db push` or run the seed script against production.
+
+After the migration, existing users keep their current login and receive a membership in the legacy school. School administrators can add schools from the application and switch only between schools where they have a membership. Creating a school does not copy any student, class, or report data. Public guardian lookup requires choosing a school, and the seed script requires explicit `SEED_SCHOOL_ID`, `SEED_COORDINATOR_EMAIL`, and `SEED_COORDINATOR_PASSWORD` values; it never resets an existing account's password.

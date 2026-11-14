@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -17,8 +18,12 @@ export async function createActivityLog({
   entityId?: string | null;
   details?: Record<string, unknown> | null;
 }) {
+  const schoolContext = await getSchoolContext(actorId);
+  if (!schoolContext) throw new Error("Não existe uma escola ativa autorizada para este utilizador.");
+
   await prisma.activityLog.create({
     data: {
+      schoolId: schoolContext.schoolId,
       actorId,
       actorName,
       action,

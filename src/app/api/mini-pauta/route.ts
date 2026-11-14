@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { isTurmaWeeklyPeriodClosed } from "@/lib/closed-periods";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -25,11 +26,13 @@ function parseGradeClassification(assessmentType: unknown, trimester: unknown, e
   return { assessmentType: normalizedType as GradeAssessmentType, trimester: normalizedTrimester as Trimester };
 }
 
-async function getAuthorizedTurma(userId: string, turmaId: string, userRole?: string) {
+async function getAuthorizedTurma(userId: string, turmaId: string, schoolId: string, userRole?: string) {
   const isAdmin = userRole === "ADMIN";
 
   return prisma.turma.findFirst({
-    where: isAdmin ? { id: turmaId } : { id: turmaId, teacherAssignments: { some: { teacher: { userId } } } },
+    where: isAdmin
+      ? { id: turmaId, schoolId }
+      : { id: turmaId, schoolId, teacherAssignments: { some: { teacher: { userId } } } },
     include: {
       subjects: { orderBy: { name: "asc" }, select: { name: true } },
       students: { where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, age: true } },
@@ -40,6 +43,8 @@ async function getAuthorizedTurma(userId: string, turmaId: string, userRole?: st
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const turmaId = searchParams.get("turmaId") ?? "";
@@ -51,7 +56,7 @@ export async function GET(request: NextRequest) {
   const trimester = searchParams.get("trimester");
   if (!turmaId || !subject) return NextResponse.json({ error: "Turma e disciplina são obrigatórias." }, { status: 400 });
 
-  const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
+  const turma = await getAuthorizedTurma(session.user.id, turmaId, schoolContext.schoolId, schoolContext.role);
   if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
   if (!turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
   const classification = parseGradeClassification(assessmentType, trimester, turma.educationType);
@@ -85,7 +90,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADMIN" && session.user.role !== "COORDENADOR") return NextResponse.json({ error: "Sem permissão para usar a mini pauta." }, { status: 403 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || (schoolContext.role !== "ADMIN" && schoolContext.role !== "COORDENADOR")) return NextResponse.json({ error: "Sem permissão para usar a mini pauta." }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -96,7 +102,7 @@ export async function POST(request: NextRequest) {
     const grades = Array.isArray(body.grades) ? body.grades : [];
     if (!turmaId || !subject) return NextResponse.json({ error: "Turma e disciplina são obrigatórias." }, { status: 400 });
 
-    const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
+    const turma = await getAuthorizedTurma(session.user.id, turmaId, schoolContext.schoolId, schoolContext.role);
     if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
     const classification = parseGradeClassification(body.assessmentType, body.trimester, turma.educationType);
     if (!classification) return NextResponse.json({ error: "O tipo de nota não corresponde ao ensino da turma ou falta selecionar o trimestre." }, { status: 400 });

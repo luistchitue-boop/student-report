@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { PrismaClient } from "@prisma/client";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -9,12 +10,13 @@ export async function DELETE(
 ) {
   const session = await auth();
   if (!session?.user?.id) return Response.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return Response.json({ error: "Apenas administradores podem eliminar alunos." }, { status: 403 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || schoolContext.role !== "ADMIN") return Response.json({ error: "Apenas administradores podem eliminar alunos." }, { status: 403 });
 
   try {
     const { id: turmaId, studentId } = await params;
     const student = await prisma.student.findFirst({
-      where: { id: studentId, turmaId },
+      where: { id: studentId, turmaId, turma: { schoolId: schoolContext.schoolId } },
       select: { id: true },
     });
 

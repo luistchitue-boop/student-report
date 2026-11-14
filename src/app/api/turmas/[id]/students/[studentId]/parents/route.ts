@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -13,15 +14,17 @@ export async function POST(
     if (!session?.user?.id) {
       return Response.json({ message: "Não autorizado" }, { status: 401 });
     }
+    const schoolContext = await getSchoolContext(session.user.id);
+    if (!schoolContext) return Response.json({ message: "Selecione uma escola autorizada." }, { status: 403 });
 
     const { id: turmaId, studentId } = await params;
-    const role = session.user.role ?? "COORDENADOR";
+    const role = schoolContext.role;
     if (!["ADMIN", "COORDENADOR", "DIRECCAO"].includes(role)) {
       return Response.json({ message: "Sem permissão para adicionar encarregados" }, { status: 403 });
     }
 
     const student = await prisma.student.findFirst({
-      where: { id: studentId, turmaId },
+      where: { id: studentId, turmaId, turma: { schoolId: schoolContext.schoolId } },
       select: { id: true, name: true },
     });
     if (!student) {
@@ -30,16 +33,17 @@ export async function POST(
 
     const turma = await prisma.turma.findFirst({
       where: role === "ADMIN"
-        ? { id: turmaId }
+          ? { id: turmaId, schoolId: schoolContext.schoolId }
         : role === "DIRECCAO"
           ? {
               id: turmaId,
+            schoolId: schoolContext.schoolId,
               OR: [
                 { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
                 { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } },
               ],
             }
-          : { id: turmaId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+          : { id: turmaId, schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
       select: { id: true },
     });
     if (!turma) {

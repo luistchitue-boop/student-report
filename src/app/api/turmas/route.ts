@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   const session = await auth();
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
 
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  if ((session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  if (!schoolContext || schoolContext.role !== "ADMIN") {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
 
@@ -29,6 +31,7 @@ export async function POST(request: Request) {
 
     const turma = await prisma.turma.create({
       data: {
+        schoolId: schoolContext.schoolId,
         name,
         educationType,
       },

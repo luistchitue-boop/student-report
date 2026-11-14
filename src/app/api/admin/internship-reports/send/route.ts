@@ -7,6 +7,7 @@ import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { isSendableEmailAddress } from "@/lib/email-address";
 import { generateInternshipReportPdf } from "@/lib/internship-report-pdf";
 import { createInternshipReportShareSignature } from "@/lib/internship-report-share";
+import { getSchoolContext } from "@/lib/school-context";
 
 declare global {
   var prismaAdminInternshipReportSend: PrismaClient | undefined;
@@ -31,7 +32,8 @@ function normalizeAngolaPhone(value: string) {
 
 export async function POST(request: Request) {
   const session = await auth();
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
+  if (!session?.user || !schoolContext || schoolContext.role !== "ADMIN") {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
 
@@ -45,14 +47,14 @@ export async function POST(request: Request) {
     }
 
     const report = await prisma.internshipPerformanceReport.findFirst({
-      where: { id: reportId, student: { turma: { isInternship: true } } },
+      where: { id: reportId, student: { turma: { isInternship: true, schoolId: schoolContext.schoolId } } },
       include: {
         student: {
           select: {
             id: true,
             name: true,
             avatarUrl: true,
-            turma: { select: { name: true } },
+            turma: { select: { name: true, school: { select: { id: true, name: true, logoUrl: true, address: true, website: true } } } },
             parents: { where: { id: parentId }, select: { id: true, name: true, email: true, phone: true } },
           },
         },
@@ -92,8 +94,8 @@ export async function POST(request: Request) {
           from: process.env.RESEND_FROM_EMAIL!,
           to: recipientContact,
           subject: `Relatório de estágio de ${report.student.name} | ${period}`,
-          text: `Estimado(a) ${firstName},\n\nSegue em anexo o relatório de acompanhamento de estágio de ${report.student.name}, referente ao período ${period}.\n\nCom os melhores cumprimentos,\nNova Escola Politécnica do Huambo`,
-          html: `<p>Estimado(a) ${escapeHtml(firstName)},</p><p>Segue em anexo o relatório de acompanhamento de estágio de <strong>${escapeHtml(report.student.name)}</strong>, referente ao período ${escapeHtml(period)}.</p><p>Com os melhores cumprimentos,<br>Nova Escola Politécnica do Huambo</p>`,
+          text: `Estimado(a) ${firstName},\n\nSegue em anexo o relatório de acompanhamento de estágio de ${report.student.name}, referente ao período ${period}.\n\nCom os melhores cumprimentos,\n${report.student.turma.school.name}`,
+          html: `<p>Estimado(a) ${escapeHtml(firstName)},</p><p>Segue em anexo o relatório de acompanhamento de estágio de <strong>${escapeHtml(report.student.name)}</strong>, referente ao período ${escapeHtml(period)}.</p><p>Com os melhores cumprimentos,<br>${escapeHtml(report.student.turma.school.name)}</p>`,
           attachments: [{ content: pdf, filename: `relatorio-estagio-${report.student.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9-]+/g, "-").toLowerCase() || "estagiario"}.pdf` }],
         });
         if (result.error) deliveryError = result.error.message;

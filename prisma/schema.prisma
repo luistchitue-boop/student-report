@@ -54,6 +54,36 @@ model User {
   weeklyReports WeeklyCoordinationReport[]
   closedPeriods ClosedWeeklyPeriod[]
   closedTurmaMonthlyPeriods ClosedTurmaMonthlyPeriod[]
+  schoolMemberships SchoolMembership[]
+}
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  logoUrl   String?
+  address   String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships         SchoolMembership[]
+  turmas              Turma[]
+  activityLogs        ActivityLog[]
+  closedWeeklyPeriods ClosedWeeklyPeriod[]
+}
+
+model SchoolMembership {
+  id        String   @id @default(cuid())
+  schoolId  String
+  userId    String
+  role      String   @default("COORDENADOR")
+  createdAt DateTime @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, userId])
+  @@index([userId])
 }
 
 enum FaultType {
@@ -109,8 +139,9 @@ model Teacher {
 
 model Turma {
   id           String   @id @default(cuid())
+  schoolId     String
   name         String
-  code         String?  @unique
+  code         String?
   schedule     String?
   gradeScale   Int      @default(20)
   educationType TurmaEducationType?
@@ -118,6 +149,7 @@ model Turma {
   coordinatorId String?
   createdAt    DateTime @default(now())
 
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   coordinator Teacher? @relation(fields: [coordinatorId], references: [id], onDelete: SetNull)
   students    Student[]
   reportDeliveries ReportDelivery[]
@@ -126,6 +158,9 @@ model Turma {
   direccaoAssignments DireccaoTurma[]
   teacherAssignments TeacherTurma[]
   closedMonthlyPeriods ClosedTurmaMonthlyPeriod[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
 }
 
 model DireccaoTurma {
@@ -343,6 +378,7 @@ model StudentWeeklyObservation {
 
 model ActivityLog {
   id        String   @id @default(cuid())
+  schoolId  String
   actorId   String
   actorName String
   action    String
@@ -351,8 +387,10 @@ model ActivityLog {
   details   Json?
   createdAt DateTime @default(now())
 
-  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  actor  User   @relation(fields: [actorId], references: [id], onDelete: Cascade)
 
+  @@index([schoolId, createdAt])
   @@index([actorId])
   @@index([createdAt])
 }
@@ -378,16 +416,18 @@ model WeeklyCoordinationReport {
 
 model ClosedWeeklyPeriod {
   id             String   @id @default(cuid())
+  schoolId       String
   weekStart      DateTime
   weekEnd        DateTime
   closedAt       DateTime @default(now())
   closedByUserId String
   reason         String?
 
-  closedBy User @relation(fields: [closedByUserId], references: [id], onDelete: Cascade)
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  closedBy User   @relation(fields: [closedByUserId], references: [id], onDelete: Cascade)
 
-  @@unique([weekStart, weekEnd])
-  @@index([weekStart])
+  @@unique([schoolId, weekStart, weekEnd])
+  @@index([schoolId, weekStart])
 }
 
 model ClosedTurmaMonthlyPeriod {

@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { InternshipReportsClient } from "./internship-reports-client";
+import { getSchoolContext } from "@/lib/school-context";
 
 export default async function InternshipReportsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/auth/signin");
-  if ((session.user.role ?? "COORDENADOR") !== "COORDENADOR") redirect("/");
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || schoolContext.role !== "COORDENADOR") redirect("/");
 
   return (
     <AppShell active="internships">

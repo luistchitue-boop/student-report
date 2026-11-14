@@ -11,13 +11,14 @@ export async function GET(
   { params }: { params: Promise<{ parentId: string }> }
 ) {
   const { parentId } = await params;
-  const parent = await prisma.parent.findUnique({
+  const parent = await prisma.parent.findFirst({
     where: { id: parentId },
     select: {
       id: true,
       name: true,
       phone: true,
       email: true,
+      student: { select: { turma: { select: { schoolId: true } } } },
     },
   });
 
@@ -26,7 +27,7 @@ export async function GET(
   }
 
   const candidateParents = await prisma.parent.findMany({
-    where: { student: { active: true } },
+    where: { student: { active: true, turma: { schoolId: parent.student.turma.schoolId } } },
     select: {
       id: true,
       name: true,
@@ -70,13 +71,16 @@ export async function PATCH(
       return NextResponse.json({ error: "O e-mail introduzido não é válido." }, { status: 400 });
     }
 
-    const parent = await prisma.parent.findUnique({ where: { id: parentId } });
+    const parent = await prisma.parent.findFirst({
+      where: { id: parentId },
+      include: { student: { select: { turma: { select: { schoolId: true } } } } },
+    });
     if (!parent) {
       return NextResponse.json({ error: "Perfil não encontrado." }, { status: 404 });
     }
 
     const parentGroup = await prisma.parent.findMany({
-      where: { student: { active: true } },
+      where: { student: { active: true, turma: { schoolId: parent.student.turma.schoolId } } },
       select: { id: true, name: true },
     });
     const normalizedName = normalizeParentName(parent.name);

@@ -13,7 +13,7 @@ export type InternshipPdfReport = {
   strengths: string;
   improvementAreas: string;
   comments: string;
-  student: { name: string; avatarUrl: string | null; turma: { name: string } };
+  student: { name: string; avatarUrl: string | null; turma: { name: string; school: { id: string; name: string; logoUrl: string | null; address: string | null; website: string | null } } };
   teacher: { name: string } | null;
 };
 
@@ -49,8 +49,28 @@ async function loadStudentAvatar(url?: string | null) {
   }
 }
 
+async function loadSchoolLogo(url: string | null, useLegacyLogo: boolean) {
+  if (!url && !useLegacyLogo) return null;
+  try {
+    let bytes: Buffer;
+    if (url) {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      bytes = Buffer.from(await response.arrayBuffer());
+    } else {
+      bytes = readFileSync(path.join(process.cwd(), "public", "school-logo.png"));
+    }
+    return `data:image/png;base64,${bytes.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateInternshipReportPdf(report: InternshipPdfReport) {
-  const studentAvatar = await loadStudentAvatar(report.student.avatarUrl);
+  const [studentAvatar, logo] = await Promise.all([
+    loadStudentAvatar(report.student.avatarUrl),
+    loadSchoolLogo(report.student.turma.school.logoUrl, report.student.turma.school.id === "legacy-neph-school"),
+  ]);
   const document = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const pageWidth = document.internal.pageSize.getWidth();
   const pageHeight = document.internal.pageSize.getHeight();
@@ -59,7 +79,6 @@ export async function generateInternshipReportPdf(report: InternshipPdfReport) {
   const paper = [246, 229, 219] as const;
   const terracotta = [181, 132, 112] as const;
   const ink = [102, 68, 55] as const;
-  const logo = loadPublicPng("school-logo.png");
   const qrCode = loadPublicPng("qr-code.png");
   let y = 0;
 
@@ -93,11 +112,14 @@ export async function generateInternshipReportPdf(report: InternshipPdfReport) {
     document.setTextColor(...ink);
     document.setFont("helvetica", "bold");
     document.setFontSize(10);
-    document.text("NOVA ESCOLA POLITÉCNICA DO HUAMBO", 100, 42);
+    document.text(report.student.turma.school.name.toLocaleUpperCase(), 100, 42, { maxWidth: pageWidth - 220 });
     document.setFont("helvetica", "normal");
     document.setFontSize(8);
-    document.text("Rua Vicente Ferreira 60-64, Cidade Baixa, Huambo", 100, 55);
-    document.text("https://www.neph.ao", 100, 67);
+    const school = report.student.turma.school;
+    const address = school.address ?? (school.id === "legacy-neph-school" ? "Rua Vicente Ferreira 60-64, Cidade Baixa, Huambo" : "");
+    const website = school.website ?? (school.id === "legacy-neph-school" ? "https://www.neph.ao" : "");
+    if (address) document.text(address, 100, 55, { maxWidth: pageWidth - 220 });
+    if (website) document.text(website, 100, 67, { maxWidth: pageWidth - 220 });
   };
 
   const drawSection = (heading: string, value: string) => {

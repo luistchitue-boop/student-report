@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
-  const role = session.user.role ?? "COORDENADOR";
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
+  const role = schoolContext.role;
   if (role !== "ADMIN" && role !== "DIRECCAO") return NextResponse.json({ error: "Sem permissão para consultar esta classificação." }, { status: 403 });
 
   const monthKey = new URL(request.url).searchParams.get("month") ?? "";
@@ -21,11 +24,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const accessFilter = role === "DIRECCAO"
-      ? { OR: [
+      ? { schoolId: schoolContext.schoolId, OR: [
         { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
         { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } },
       ] }
-      : {};
+      : { schoolId: schoolContext.schoolId };
     const turmas = await prisma.turma.findMany({
       where: accessFilter,
       orderBy: { name: "asc" },

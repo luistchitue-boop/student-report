@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
 export async function GET(_request: Request, { params }: { params: Promise<{ absenceId: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
 
   const { absenceId } = await params;
-  const isAdmin = session.user.role === "ADMIN";
+  const isAdmin = schoolContext.role === "ADMIN";
   const absence = await prisma.absence.findFirst({
     where: isAdmin
-      ? { id: absenceId }
-      : { id: absenceId, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+      ? { id: absenceId, student: { turma: { schoolId: schoolContext.schoolId } } }
+      : { id: absenceId, student: { turma: { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
     select: { attachmentUrl: true, attachmentName: true, attachmentContentType: true },
   });
 

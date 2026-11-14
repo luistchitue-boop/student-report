@@ -9,6 +9,7 @@ import { StudentImportClient } from "./student-import-client";
 import { GradeScaleClient } from "./grade-scale-client";
 import { TurmaDisciplinasClient } from "./disciplinas-client";
 import { TurmaMonthlyStatistics } from "./turma-monthly-statistics";
+import { getSchoolContext } from "@/lib/school-context";
 
 const PAGE_SIZE = 10;
 
@@ -24,6 +25,9 @@ export default async function TurmaDetailPage({
   if (!session?.user?.id) {
     redirect("/auth/signin");
   }
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) redirect("/");
+  const role = schoolContext.role;
 
   const { id } = await params;
   const turmas = await getCoordinatorTurmas(session.user.id);
@@ -107,7 +111,7 @@ export default async function TurmaDetailPage({
           <div className="detail-panel-header">
             <div className="detail-panel-actions">
               <span className="detail-count">{turma.students} alunos</span>
-              {(session.user.role === "ADMIN" || session.user.role === "COORDENADOR") && (
+              {(role === "ADMIN" || role === "COORDENADOR") && (
                 <>
                   <Link href={`/turmas/${turma.id}/livro_de_ponto`} className="attendance-book-button">
                     Livro de ponto
@@ -117,12 +121,12 @@ export default async function TurmaDetailPage({
                   </Link>
                 </>
               )}
-              <TurmaDisciplinasClient turmaId={turma.id} initialSubjects={turma.subjects} isAdmin={session.user.role === "ADMIN"} />
-              {session.user.role === "ADMIN" && <StudentImportClient turmaId={turma.id} />}
+              <TurmaDisciplinasClient turmaId={turma.id} initialSubjects={turma.subjects} isAdmin={role === "ADMIN"} />
+              {role === "ADMIN" && <StudentImportClient turmaId={turma.id} />}
               <Link href={`/turmas/${turma.id}/novo_aluno`} className="new-student-button">
                 Novo aluno
               </Link>
-              {session.user.role === "ADMIN" && <GradeScaleClient turmaId={turma.id} initialScale={turma.gradeScale} initialEducationType={turma.educationType} />}
+              {role === "ADMIN" && <GradeScaleClient turmaId={turma.id} initialScale={turma.gradeScale} initialEducationType={turma.educationType} />}
             </div>
           </div>
 
@@ -143,8 +147,8 @@ export default async function TurmaDetailPage({
                 key={student.id}
                 turmaId={turma.id}
                 student={student}
-                availableTurmas={session.user.role === "ADMIN" ? turmas.filter((candidate) => candidate.id !== turma.id).map((candidate) => ({ id: candidate.id, name: candidate.name })) : []}
-                isAdmin={session.user.role === "ADMIN"}
+                availableTurmas={role === "ADMIN" ? turmas.filter((candidate) => candidate.id !== turma.id).map((candidate) => ({ id: candidate.id, name: candidate.name })) : []}
+                isAdmin={role === "ADMIN"}
               />
             ))}
           </div>

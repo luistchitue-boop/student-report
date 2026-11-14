@@ -4,12 +4,15 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { getCoordinatorTurmaById } from "@/lib/teacher-data";
 import { AttendanceBookClient } from "./attendance-book-client";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
 export default async function AttendanceBookPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/auth/signin");
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) redirect("/");
 
   const { id } = await params;
   let turma = await getCoordinatorTurmaById(session.user.id, id);
@@ -22,7 +25,7 @@ export default async function AttendanceBookPage({ params }: { params: Promise<{
   };
 
   const latestAbsenceLog = await prisma.activityLog.findFirst({
-    where: { actorId: session.user.id, entity: "Absence", action: "Registou faltas" },
+    where: { actorId: session.user.id, schoolId: schoolContext.schoolId, entity: "Absence", action: "Registou faltas" },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: { details: true },
   });

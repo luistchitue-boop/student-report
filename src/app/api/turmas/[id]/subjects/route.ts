@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -14,12 +15,16 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
 
   const { id } = await params;
-  const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+  const isAdmin = schoolContext.role === "ADMIN";
 
   const turma = await prisma.turma.findFirst({
-    where: isAdmin ? { id } : { id, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+    where: isAdmin
+      ? { id, schoolId: schoolContext.schoolId }
+      : { id, schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
     select: { subjects: { orderBy: { name: "asc" }, select: { name: true } } },
   });
 
@@ -37,7 +42,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  if ((session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || schoolContext.role !== "ADMIN") {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
 
@@ -49,7 +55,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "O nome da disciplina é obrigatório." }, { status: 400 });
   }
 
-  const turma = await prisma.turma.findUnique({ where: { id }, select: { id: true } });
+  const turma = await prisma.turma.findFirst({ where: { id, schoolId: schoolContext.schoolId }, select: { id: true } });
 
   if (!turma) {
     return NextResponse.json({ error: "Turma not found" }, { status: 404 });
@@ -77,7 +83,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  if ((session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || schoolContext.role !== "ADMIN") {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
 
@@ -85,6 +92,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const body = await request.json();
   const oldName = normalizeSubjectName(body.oldName);
   const newName = normalizeSubjectName(body.newName);
+  const turma = await prisma.turma.findFirst({ where: { id, schoolId: schoolContext.schoolId }, select: { id: true } });
+  if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
+
 
   if (!oldName || !newName) {
     return NextResponse.json({ error: "Nome da disciplina inválido." }, { status: 400 });
@@ -113,13 +123,17 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  if ((session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || schoolContext.role !== "ADMIN") {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
 
   const { id } = await params;
   const body = await request.json();
   const name = normalizeSubjectName(body.name);
+  const turma = await prisma.turma.findFirst({ where: { id, schoolId: schoolContext.schoolId }, select: { id: true } });
+  if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
+
 
   if (!name) {
     return NextResponse.json({ error: "O nome da disciplina é obrigatório." }, { status: 400 });

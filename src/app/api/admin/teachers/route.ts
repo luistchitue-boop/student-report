@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
-import { hashPassword } from "@/lib/password";
+import { getSchoolContext } from "@/lib/school-context";
 
 declare global {
   var prismaAdminTeachers: PrismaClient | undefined;
@@ -17,29 +17,39 @@ if (process.env.NODE_ENV !== "production") {
 
 async function requireAdmin() {
   const session = await auth();
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") return null;
-  return session;
+  if (!session?.user?.id) return null;
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || schoolContext.role !== "ADMIN") return null;
+  return { session, schoolContext };
 }
 
 export async function GET() {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  const { schoolContext } = admin;
 
   const [teachers, turmas] = await Promise.all([
     prisma.teacher.findMany({
-      where: { role: { not: "ADMIN" } },
+      where: { user: { schoolMemberships: { some: { schoolId: schoolContext.schoolId, role: { not: "ADMIN" } } } } },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, phone: true, role: true, user: { select: { email: true } }, turmaAssignments: { select: { turmaId: true, isMain: true } } },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        user: { select: { email: true, schoolMemberships: { where: { schoolId: schoolContext.schoolId }, select: { role: true } } } },
+        turmaAssignments: { where: { turma: { schoolId: schoolContext.schoolId } }, select: { turmaId: true, isMain: true } },
+      },
     }),
-    prisma.turma.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, coordinatorId: true } }),
+    prisma.turma.findMany({ where: { schoolId: schoolContext.schoolId }, orderBy: { name: "asc" }, select: { id: true, name: true, coordinatorId: true } }),
   ]);
 
-  return NextResponse.json({ teachers, turmas });
+  return NextResponse.json({ teachers: teachers.map(({ user, ...teacher }) => ({ ...teacher, role: user.schoolMemberships[0]?.role ?? "COORDENADOR", user })), turmas });
 }
 
 export async function PATCH(request: Request) {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  const { session, schoolContext } = admin;
 
   try {
     const body = await request.json();
@@ -48,7 +58,7 @@ export async function PATCH(request: Request) {
     if (body.action === "resetPassword") {
       const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
       const teacher = await prisma.teacher.findFirst({
-        where: { id: teacherId, role: { not: "ADMIN" } },
+        where: { id: teacherId, user: { schoolMemberships: { some: { schoolId: schoolContext.schoolId, role: { not: "ADMIN" } } } } },
         include: { user: { select: { id: true, name: true, email: true } } },
       });
 
@@ -56,20 +66,7 @@ export async function PATCH(request: Request) {
       if (teacher.userId === session.user.id) return NextResponse.json({ error: "Use as definições da sua conta para alterar a sua palavra-passe" }, { status: 400 });
       if (newPassword.length < 6) return NextResponse.json({ error: "A palavra-passe deve ter pelo menos 6 caracteres" }, { status: 400 });
 
-      await prisma.user.update({
-        where: { id: teacher.user.id },
-        data: { password: await hashPassword(newPassword) },
-      });
-      await createActivityLog({
-        actorId: session.user.id,
-        actorName: describeActorName(session.user),
-        action: "Redefiniu a palavra-passe de uma conta",
-        entity: "User",
-        entityId: teacher.user.id,
-        details: { name: teacher.user.name, email: teacher.user.email },
-      });
-
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ error: "A palavra-passe pertence à conta global do utilizador e não pode ser redefinida por uma escola." }, { status: 403 });
     }
 
     const requestedRole = body.role === "ADMIN" || body.role === "DIRECCAO" || body.role === "COORDENADOR" ? body.role : "";
@@ -79,11 +76,14 @@ export async function PATCH(request: Request) {
     const requestedMainTurmaIds: string[] | null = Array.isArray(body.mainTurmaIds)
       ? Array.from(new Set<string>(body.mainTurmaIds.filter((id: unknown): id is string => typeof id === "string")))
       : null;
-    const teacher = await prisma.teacher.findFirst({ where: { id: teacherId, role: { not: "ADMIN" } }, include: { turmaAssignments: { select: { turmaId: true, isMain: true } } } });
+    const teacher = await prisma.teacher.findFirst({
+      where: { id: teacherId, user: { schoolMemberships: { some: { schoolId: schoolContext.schoolId, role: { not: "ADMIN" } } } } },
+      include: { turmaAssignments: { where: { turma: { schoolId: schoolContext.schoolId } }, select: { turmaId: true, isMain: true } } },
+    });
     if (!teacher) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
     if (!requestedRole) return NextResponse.json({ error: "Perfil inválido" }, { status: 400 });
 
-    const validTurmas = await prisma.turma.findMany({ where: { id: { in: turmaIds } }, select: { id: true } });
+    const validTurmas = await prisma.turma.findMany({ where: { id: { in: turmaIds }, schoolId: schoolContext.schoolId }, select: { id: true } });
     if (validTurmas.length !== turmaIds.length) return NextResponse.json({ error: "Uma ou mais turmas não foram encontradas" }, { status: 400 });
     if (requestedMainTurmaIds?.some((turmaId) => !turmaIds.includes(turmaId)) || (requestedMainTurmaIds?.length && requestedRole !== "COORDENADOR")) return NextResponse.json({ error: "Os coordenadores principais devem estar atribuídos às turmas" }, { status: 400 });
 
@@ -91,8 +91,12 @@ export async function PATCH(request: Request) {
     const mainTurmaIds = requestedMainTurmaIds ?? existingMainTurmaIds.filter((turmaId) => turmaIds.includes(turmaId));
 
     await prisma.$transaction(async (transaction) => {
-      await transaction.teacher.update({ where: { id: teacher.id }, data: { role: requestedRole, ...(phone !== undefined ? { phone } : {}) } });
-      await transaction.teacherTurma.deleteMany({ where: { teacherId: teacher.id, turmaId: { notIn: turmaIds } } });
+      await transaction.schoolMembership.update({
+        where: { schoolId_userId: { schoolId: schoolContext.schoolId, userId: teacher.userId } },
+        data: { role: requestedRole },
+      });
+      await transaction.teacher.update({ where: { id: teacher.id }, data: { ...(phone !== undefined ? { phone } : {}) } });
+      await transaction.teacherTurma.deleteMany({ where: { teacherId: teacher.id, turma: { schoolId: schoolContext.schoolId }, turmaId: { notIn: turmaIds } } });
       await transaction.teacherTurma.updateMany({ where: { teacherId: teacher.id, turmaId: { in: turmaIds } }, data: { isMain: false } });
       const existingTurmaIds = new Set(teacher.turmaAssignments.map((assignment) => assignment.turmaId));
       const newTurmaIds = turmaIds.filter((turmaId) => !existingTurmaIds.has(turmaId));
@@ -119,8 +123,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  const { session, schoolContext } = admin;
 
   try {
     const body = await request.json();
@@ -131,10 +136,12 @@ export async function DELETE(request: Request) {
     });
 
     if (!teacher) return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
+    const membership = await prisma.schoolMembership.findUnique({ where: { schoolId_userId: { schoolId: schoolContext.schoolId, userId: teacher.userId } } });
+    if (!membership) return NextResponse.json({ error: "Conta não encontrada nesta escola" }, { status: 404 });
     if (teacher.userId === session.user.id) return NextResponse.json({ error: "Não pode remover a sua própria conta" }, { status: 400 });
 
-    if (teacher.role === "ADMIN") {
-      const adminCount = await prisma.teacher.count({ where: { role: "ADMIN" } });
+    if (membership.role === "ADMIN") {
+      const adminCount = await prisma.schoolMembership.count({ where: { schoolId: schoolContext.schoolId, role: "ADMIN" } });
       if (adminCount <= 1) return NextResponse.json({ error: "Não pode remover o último administrador" }, { status: 400 });
     }
 
@@ -144,9 +151,14 @@ export async function DELETE(request: Request) {
       action: "Removeu uma conta",
       entity: "User",
       entityId: teacher.user.id,
-      details: { name: teacher.user.name, email: teacher.user.email, role: teacher.role },
+      details: { name: teacher.user.name, email: teacher.user.email, role: membership.role },
     });
-    await prisma.user.delete({ where: { id: teacher.user.id } });
+    await prisma.$transaction([
+      prisma.teacherTurma.deleteMany({ where: { teacherId: teacher.id, turma: { schoolId: schoolContext.schoolId } } }),
+      prisma.direccaoTurma.deleteMany({ where: { teacherId: teacher.id, turma: { schoolId: schoolContext.schoolId } } }),
+      prisma.internshipStudentAssignment.deleteMany({ where: { teacherId: teacher.id, student: { turma: { schoolId: schoolContext.schoolId } } } }),
+      prisma.schoolMembership.delete({ where: { schoolId_userId: { schoolId: schoolContext.schoolId, userId: teacher.userId } } }),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -156,11 +168,11 @@ export async function DELETE(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  const admin = await requireAdmin();
+  if (!admin) {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
+  const { schoolContext } = admin;
 
   try {
     const body = await request.json();
@@ -188,15 +200,12 @@ export async function POST(request: Request) {
           password: await bcrypt.hash(password, 10),
         },
       });
-    } else {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          name,
-          password: await bcrypt.hash(password, 10),
-        },
-      });
     }
+
+    const existingMembership = await prisma.schoolMembership.findUnique({
+      where: { schoolId_userId: { schoolId: schoolContext.schoolId, userId: user.id } },
+    });
+    if (existingMembership) return NextResponse.json({ error: "Este utilizador já pertence a esta escola." }, { status: 409 });
 
     let teacher = await prisma.teacher.findUnique({ where: { userId: user.id } });
 
@@ -208,20 +217,14 @@ export async function POST(request: Request) {
           role: requestedRole,
         },
       });
-    } else {
-      teacher = await prisma.teacher.update({
-        where: { id: teacher.id },
-        data: {
-          name,
-          role: requestedRole,
-        },
-      });
     }
+
+    await prisma.schoolMembership.create({ data: { schoolId: schoolContext.schoolId, userId: user.id, role: requestedRole } });
 
     for (const turmaName of turmaNames) {
       if (!turmaName) continue;
 
-      const turma = await prisma.turma.findFirst({ where: { name: turmaName }, select: { id: true } });
+      const turma = await prisma.turma.findFirst({ where: { name: turmaName, schoolId: schoolContext.schoolId }, select: { id: true } });
       if (!turma) continue;
       await prisma.teacherTurma.upsert({ where: { teacherId_turmaId: { teacherId: teacher.id, turmaId: turma.id } }, create: { teacherId: teacher.id, turmaId: turma.id }, update: {} });
     }

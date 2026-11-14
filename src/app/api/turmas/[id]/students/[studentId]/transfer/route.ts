@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { PrismaClient } from "@prisma/client";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -11,7 +12,8 @@ export async function PATCH(
     const { id: sourceTurmaId, studentId } = await params;
     const session = await auth();
     if (!session?.user?.id) return Response.json({ error: "Não autorizado" }, { status: 401 });
-    if (session.user.role !== "ADMIN") return Response.json({ error: "Apenas administradores podem transferir alunos." }, { status: 403 });
+    const schoolContext = await getSchoolContext(session.user.id);
+    if (!schoolContext || schoolContext.role !== "ADMIN") return Response.json({ error: "Apenas administradores podem transferir alunos." }, { status: 403 });
 
     const body = await request.json();
     const destinationTurmaId = typeof body.destinationTurmaId === "string" ? body.destinationTurmaId : "";
@@ -20,7 +22,7 @@ export async function PATCH(
     }
 
     const accessibleTurmas = await prisma.turma.findMany({
-      where: { id: { in: [sourceTurmaId, destinationTurmaId] } },
+      where: { id: { in: [sourceTurmaId, destinationTurmaId] }, schoolId: schoolContext.schoolId },
       select: { id: true },
     });
     if (accessibleTurmas.length !== 2) {
@@ -28,7 +30,7 @@ export async function PATCH(
     }
 
     const student = await prisma.student.findFirst({
-      where: { id: studentId, turmaId: sourceTurmaId },
+      where: { id: studentId, turmaId: sourceTurmaId, turma: { schoolId: schoolContext.schoolId } },
       select: { id: true },
     });
     if (!student) return Response.json({ error: "Aluno não encontrado." }, { status: 404 });

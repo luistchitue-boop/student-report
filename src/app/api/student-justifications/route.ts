@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADMIN" && session.user.role !== "COORDENADOR") return NextResponse.json({ error: "Sem permissão para justificar faltas." }, { status: 403 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || (schoolContext.role !== "ADMIN" && schoolContext.role !== "COORDENADOR")) return NextResponse.json({ error: "Sem permissão para justificar faltas." }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -31,7 +33,10 @@ export async function POST(request: NextRequest) {
       try {
         const parsedUrl = new URL(typeof attachment.url === "string" ? attachment.url : "");
         attachmentUrl = parsedUrl.toString();
-        if (parsedUrl.protocol !== "https:" || !parsedUrl.hostname.endsWith(".blob.vercel-storage.com") || typeof attachment.pathname !== "string" || !attachment.pathname.startsWith("justifications/")) throw new Error();
+        const path = typeof attachment.pathname === "string" ? attachment.pathname : "";
+        const belongsToSchool = path.startsWith(`schools/${schoolContext.schoolId}/justifications/`)
+          || (schoolContext.schoolId === "legacy-neph-school" && path.startsWith("justifications/"));
+        if (parsedUrl.protocol !== "https:" || !parsedUrl.hostname.endsWith(".blob.vercel-storage.com") || !belongsToSchool) throw new Error();
       } catch {
         return NextResponse.json({ error: "Comprovativo inválido." }, { status: 400 });
       }
@@ -41,11 +46,11 @@ export async function POST(request: NextRequest) {
     }
 
     const uniqueAbsenceIds = [...new Set(absenceIds)];
-    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+    const isAdmin = schoolContext.role === "ADMIN";
     const absences = await prisma.absence.findMany({
       where: isAdmin
-        ? { id: { in: uniqueAbsenceIds } }
-        : { id: { in: uniqueAbsenceIds }, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+        ? { id: { in: uniqueAbsenceIds }, student: { turma: { schoolId: schoolContext.schoolId } } }
+        : { id: { in: uniqueAbsenceIds }, student: { turma: { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
       select: { id: true, dia: true, student: { select: { turmaId: true } } },
     });
 

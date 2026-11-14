@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { PrismaClient } from "@prisma/client";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -14,12 +15,16 @@ export async function PATCH(
     if (!session?.user?.id) {
       return Response.json({ message: "Não autorizado" }, { status: 401 });
     }
+    const schoolContext = await getSchoolContext(session.user.id);
+    if (!schoolContext) return Response.json({ message: "Selecione uma escola autorizada." }, { status: 403 });
 
-    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+    const isAdmin = schoolContext.role === "ADMIN";
 
     // Verify the coordinator owns this turma
     const turma = await prisma.turma.findFirst({
-      where: isAdmin ? { id: turmaId } : { id: turmaId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+      where: isAdmin
+        ? { id: turmaId, schoolId: schoolContext.schoolId }
+        : { id: turmaId, schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
       select: { id: true },
     });
 
@@ -28,12 +33,12 @@ export async function PATCH(
     }
 
     // Verify the student belongs to this turma
-    const student = await prisma.student.findUnique({
-      where: { id: studentId },
+    const student = await prisma.student.findFirst({
+      where: { id: studentId, turmaId, turma: { schoolId: schoolContext.schoolId } },
       select: { turmaId: true, active: true },
     });
 
-    if (!student || student.turmaId !== turmaId) {
+    if (!student) {
       return Response.json({ message: "Aluno não encontrado" }, { status: 404 });
     }
 

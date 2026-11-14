@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { PrismaClient } from "@prisma/client";
 import * as XLSX from "xlsx";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -15,11 +16,12 @@ function normalizeName(value: string) {
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return Response.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADMIN") return Response.json({ error: "Apenas administradores podem importar alunos." }, { status: 403 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || schoolContext.role !== "ADMIN") return Response.json({ error: "Apenas administradores podem importar alunos." }, { status: 403 });
 
   try {
     const { id: turmaId } = await params;
-    const turma = await prisma.turma.findUnique({ where: { id: turmaId }, select: { id: true } });
+    const turma = await prisma.turma.findFirst({ where: { id: turmaId, schoolId: schoolContext.schoolId }, select: { id: true } });
     if (!turma) return Response.json({ error: "Turma não encontrada." }, { status: 404 });
 
     const formData = await request.formData();

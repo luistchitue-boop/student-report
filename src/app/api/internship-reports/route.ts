@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -15,19 +16,21 @@ function text(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
-async function getCoordinator(session: { user: { id: string; role?: string | null } }) {
-  if ((session.user.role ?? "COORDENADOR") !== "COORDENADOR") return null;
-  return prisma.teacher.findUnique({ where: { userId: session.user.id }, select: { id: true, name: true } });
+async function getCoordinator(userId: string, schoolId: string, role: string) {
+  if (role !== "COORDENADOR") return null;
+  return prisma.teacher.findUnique({ where: { userId }, select: { id: true, name: true } });
 }
 
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  const teacher = await getCoordinator(session);
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
+  const teacher = await getCoordinator(session.user.id, schoolContext.schoolId, schoolContext.role);
   if (!teacher) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
 
   const students = await prisma.student.findMany({
-    where: { turma: { isInternship: true }, internshipAssignments: { some: { teacherId: teacher.id } } },
+    where: { turma: { isInternship: true, schoolId: schoolContext.schoolId }, internshipAssignments: { some: { teacherId: teacher.id } } },
     orderBy: [{ turma: { name: "asc" } }, { name: "asc" }],
     select: {
       id: true,
@@ -44,7 +47,9 @@ export async function GET() {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  const teacher = await getCoordinator(session);
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
+  const teacher = await getCoordinator(session.user.id, schoolContext.schoolId, schoolContext.role);
   if (!teacher) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
 
   try {
@@ -64,7 +69,7 @@ export async function POST(request: Request) {
     if (!strengths || !improvementAreas || !comments) return NextResponse.json({ error: "Preencha os pontos fortes, aspetos a melhorar e observações." }, { status: 400 });
 
     const student = await prisma.student.findFirst({
-      where: { id: studentId, turma: { isInternship: true }, internshipAssignments: { some: { teacherId: teacher.id } } },
+      where: { id: studentId, turma: { isInternship: true, schoolId: schoolContext.schoolId }, internshipAssignments: { some: { teacherId: teacher.id } } },
       select: { id: true, name: true, turmaId: true },
     });
     if (!student) return NextResponse.json({ error: "Não tem acesso a este aluno." }, { status: 404 });

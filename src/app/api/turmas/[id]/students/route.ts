@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -9,6 +10,8 @@ type ParentInput = { name?: unknown; phone?: unknown; email?: unknown };
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
 
   try {
     const { id: turmaId } = await params;
@@ -32,10 +35,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Preencha o nome e telefone de pelo menos um encarregado." }, { status: 400 });
     }
 
-    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+    const isAdmin = schoolContext.role === "ADMIN";
 
     const turma = await prisma.turma.findFirst({
-      where: isAdmin ? { id: turmaId } : { id: turmaId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+      where: isAdmin
+        ? { id: turmaId, schoolId: schoolContext.schoolId }
+        : { id: turmaId, schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
       select: { id: true },
     });
     if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });

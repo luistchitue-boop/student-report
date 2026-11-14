@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { PrismaClient } from "@prisma/client";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 const PAGE_SIZE = 12;
@@ -45,8 +46,9 @@ export default async function ActivityLogsPage({
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const session = await auth();
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
 
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  if (!session?.user || !schoolContext || schoolContext.role !== "ADMIN") {
     redirect("/");
   }
 
@@ -57,6 +59,7 @@ export default async function ActivityLogsPage({
   const requestedPage = Number(typeof params.page === "string" ? params.page : "1");
 
   const where = {
+    schoolId: schoolContext.schoolId,
     ...(turmaFilter ? { details: { path: ["turmaId"], equals: turmaFilter } } : {}),
     ...(fromFilter || toFilter ? {
       createdAt: {
@@ -94,6 +97,7 @@ export default async function ActivityLogsPage({
     : [1, ...(currentPage > 3 ? ["ellipsis-start"] : []), ...Array.from({ length: 3 }, (_, index) => Math.max(2, Math.min(currentPage - 1, totalPages - 3) + index)), ...(currentPage < totalPages - 2 ? ["ellipsis-end"] : []), totalPages];
 
   const turmas = await prisma.turma.findMany({
+    where: { schoolId: schoolContext.schoolId },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
@@ -122,14 +126,14 @@ export default async function ActivityLogsPage({
 
   const studentNames = Object.fromEntries(
     (await prisma.student.findMany({
-      where: { id: { in: [...studentIds] } },
+      where: { id: { in: [...studentIds] }, turma: { schoolId: schoolContext.schoolId } },
       select: { id: true, name: true },
     })).map((student) => [student.id, student.name])
   );
 
   const turmaNames = Object.fromEntries(
     (await prisma.turma.findMany({
-      where: { id: { in: [...turmaIds] } },
+      where: { id: { in: [...turmaIds] }, schoolId: schoolContext.schoolId },
       select: { id: true, name: true },
     })).map((turma) => [turma.id, turma.name])
   );

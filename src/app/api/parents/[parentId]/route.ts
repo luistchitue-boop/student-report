@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { PrismaClient } from "@prisma/client";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -15,10 +16,12 @@ export async function PATCH(
     if (!session?.user?.id) {
       return Response.json({ message: "Não autorizado" }, { status: 401 });
     }
+    const schoolContext = await getSchoolContext(session.user.id);
+    if (!schoolContext) return Response.json({ message: "Selecione uma escola autorizada." }, { status: 403 });
 
     // Get the parent to find the student and turma
-    const parent = await prisma.parent.findUnique({
-      where: { id: parentId },
+    const parent = await prisma.parent.findFirst({
+      where: { id: parentId, student: { turma: { schoolId: schoolContext.schoolId } } },
       select: { studentId: true, name: true, phone: true, email: true },
     });
 
@@ -36,21 +39,22 @@ export async function PATCH(
       return Response.json({ message: "Aluno não encontrado" }, { status: 404 });
     }
 
-    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
-    const isDireccao = (session.user.role ?? "COORDENADOR") === "DIRECCAO";
+    const isAdmin = schoolContext.role === "ADMIN";
+    const isDireccao = schoolContext.role === "DIRECCAO";
 
     const turma = await prisma.turma.findFirst({
       where: isAdmin
-        ? { id: student.turmaId }
+        ? { id: student.turmaId, schoolId: schoolContext.schoolId }
         : isDireccao
           ? {
               id: student.turmaId,
+              schoolId: schoolContext.schoolId,
               OR: [
                 { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
                 { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } },
               ],
             }
-          : { id: student.turmaId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+          : { id: student.turmaId, schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
       select: { id: true },
     });
 

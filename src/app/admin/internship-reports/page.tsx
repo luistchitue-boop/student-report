@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { InternshipReportsAdminClient } from "./internship-reports-client";
+import { getSchoolContext } from "@/lib/school-context";
 
 export default async function AdminInternshipReportsPage() {
   const session = await auth();
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") redirect("/");
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
+  if (!session?.user || !schoolContext || schoolContext.role !== "ADMIN") redirect("/");
 
   return (
     <AppShell active="admin">

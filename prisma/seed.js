@@ -13,9 +13,10 @@ const csvTurmaNames = fs.readdirSync(turmasDataDirectory)
   .map((fileName) => path.basename(fileName, '.csv'));
 const targetTurmas = [...new Set([...turmaNames, ...csvTurmaNames])].map((name) => ({ name }));
 const coordinatorTurmaNames = ['10CEJ', '10CFBA', '10CFBB'];
-const coordinatorEmail = 'test@example.com';
-const coordinatorPassword = 'test1234';
-const coordinatorName = 'Test Coordinator';
+const schoolId = process.env.SEED_SCHOOL_ID;
+const coordinatorEmail = process.env.SEED_COORDINATOR_EMAIL;
+const coordinatorPassword = process.env.SEED_COORDINATOR_PASSWORD;
+const coordinatorName = process.env.SEED_COORDINATOR_NAME || 'School Coordinator';
 
 function parseCsvLine(line) {
   const values = [];
@@ -72,20 +73,18 @@ function readTurmaCsv(turmaName) {
 }
 
 async function ensureUserAndTeacher() {
+  if (!schoolId || !coordinatorEmail || !coordinatorPassword) {
+    throw new Error('Set SEED_SCHOOL_ID, SEED_COORDINATOR_EMAIL, and SEED_COORDINATOR_PASSWORD before seeding.');
+  }
+  const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { id: true } });
+  if (!school) throw new Error(`School ${schoolId} does not exist; seed cannot create or select a school implicitly.`);
+
   let user = await prisma.user.findUnique({ where: { email: coordinatorEmail } });
 
   if (!user) {
     user = await prisma.user.create({
       data: {
         email: coordinatorEmail,
-        name: coordinatorName,
-        password: await bcrypt.hash(coordinatorPassword, 10),
-      },
-    });
-  } else {
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: {
         name: coordinatorName,
         password: await bcrypt.hash(coordinatorPassword, 10),
       },
@@ -101,15 +100,13 @@ async function ensureUserAndTeacher() {
         role: 'COORDENADOR',
       },
     });
-  } else {
-    teacher = await prisma.teacher.update({
-      where: { id: teacher.id },
-      data: {
-        name: coordinatorName,
-        role: 'COORDENADOR',
-      },
-    });
   }
+
+  await prisma.schoolMembership.upsert({
+    where: { schoolId_userId: { schoolId, userId: user.id } },
+    create: { schoolId, userId: user.id, role: 'COORDENADOR' },
+    update: {},
+  });
 
   return teacher;
 }
@@ -119,11 +116,12 @@ async function seedTurmas(teacher) {
 
   for (const turmaConfig of targetTurmas) {
     const shouldAssignCoordinator = coordinatorTurmaNames.includes(turmaConfig.name);
-    let turma = await prisma.turma.findFirst({ where: { name: turmaConfig.name } });
+    let turma = await prisma.turma.findFirst({ where: { schoolId, name: turmaConfig.name } });
 
     if (!turma) {
       turma = await prisma.turma.create({
         data: {
+          schoolId,
           name: turmaConfig.name,
           coordinatorId: shouldAssignCoordinator ? teacher.id : null,
           schedule: 'Segunda a Sexta',
@@ -210,7 +208,7 @@ async function seedSubjects() {
   const results = [];
 
   for (const turmaData of disciplineData) {
-    const turma = await prisma.turma.findFirst({ where: { name: turmaData.turma_name } });
+    const turma = await prisma.turma.findFirst({ where: { schoolId, name: turmaData.turma_name } });
 
     if (!turma) {
       results.push({ name: turmaData.turma_name, subjectCount: 0, skipped: true });
@@ -251,8 +249,8 @@ async function main() {
   const subjects = await seedSubjects();
 
   console.log(JSON.stringify({
+    schoolId,
     email: coordinatorEmail,
-    password: coordinatorPassword,
     teacherId: teacher.id,
     turmas: results.filter((turma) => turma.coordinatorAssigned),
     subjects,

@@ -13,6 +13,7 @@ import { proofreadCoordinatorObservation } from "@/lib/proofread-observation";
 import { isSendableEmailAddress } from "@/lib/email-address";
 import { hasMonthlyReportData } from "@/lib/monthly-report-data";
 import { formatPeriodDate, getMonthlyCoordinationPeriods, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { getSchoolContext } from "@/lib/school-context";
 
 declare global {
   var prismaAdminReports: PrismaClient | undefined;
@@ -48,7 +49,7 @@ function normalizeAngolaPhone(value: string) {
   return `+244${digits.replace(/^0/, "")}`;
 }
 
-function buildReportEmailHtml({ logoUrl, reportUrl, studentName, firstName, periodLabel }: { logoUrl: string; reportUrl: string; studentName: string; firstName: string; periodLabel: string }) {
+function buildReportEmailHtml({ logoUrl, reportUrl, studentName, firstName }: { logoUrl: string; reportUrl: string; studentName: string; firstName: string }) {
   const safeStudentName = escapeHtml(studentName);
   const safeFirstName = escapeHtml(firstName);
   const safeReportUrl = escapeHtml(reportUrl);
@@ -59,12 +60,18 @@ function buildReportEmailHtml({ logoUrl, reportUrl, studentName, firstName, peri
   return `<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório escolar</title></head><body style="margin:0;padding:0;background:#fff9df;font-family:Arial,Helvetica,sans-serif;color:#173044"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff9df;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff"><tr><td style="background:#d9edf3;padding:24px 32px;border-bottom:4px solid #f3c0bd"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td valign="middle"><img src="${escapeHtml(logoUrl)}" width="56" height="56" alt="Logótipo da Nova Escola Politécnica do Huambo" style="display:block;width:56px;height:56px;object-fit:contain"></td><td valign="middle" style="padding-left:14px"><div style="font-size:18px;font-weight:bold;color:#173044;letter-spacing:.2px">Nova Escola Politécnica do Huambo</div><div style="font-size:10px;letter-spacing:2px;color:#176b8b;margin-top:4px">Garantindo um ensino de qualidade no Huambo</div></td></tr></table></td></tr><tr><td style="padding:38px 40px 34px"><div style="font-size:11px;letter-spacing:2px;color:#176b8b;font-weight:bold">RELATÓRIO ESCOLAR</div><h1 style="font-size:26px;line-height:1.25;color:#173044;margin:12px 0 18px">O seu relatório está pronto para leitura</h1><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 18px">Estimado(a) ${safeFirstName},</p><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 24px">Temos o prazer de partilhar o relatório escolar de <strong>${safeStudentName}</strong>. A nossa equipa preparou este documento com todo o cuidado para lhe dar uma visão clara da aprendizagem e do progresso do seu educando.</p>${linkSection}<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff1c2;border-left:4px solid #f3c0bd;margin:0 0 28px"><tr style="padding:20px 24px"><td style="padding:20px 24px;font-size:12px;line-height:1.5;color:#173044"><div style="margin:0 0 8px"><strong>Informações úteis</strong></div><p style="margin:0">A equipa escolar fica à sua disposição para qualquer dúvida sobre o desempenho do seu educando.</p></td></tr></table><p style="font-size:11px;line-height:1.5;color:#607583;margin:0">Com os melhores cumprimentos,<br>Nova Escola Politécnica do Huambo</p></td></tr><tr><td style="padding:24px 32px;background:#f0f0f0;font-size:10px;line-height:1.4;color:#666;text-align:center"><p style="margin:0">Mensagem automática. Por favor, não responda a este email.</p></td></tr></table></td></tr></table></body></html>`;
 }
 
-function getReportEmailOverride(options: { logoUrl: string; reportUrl: string; studentName: string; firstName: string; periodLabel: string }): Record<string, string> {
-  return { html: buildReportEmailHtml(options) };
+function getReportEmailOverride(options: { logoUrl: string; schoolName: string; reportUrl: string; studentName: string; firstName: string; periodLabel: string }): Record<string, string> {
+  const safeSchoolName = escapeHtml(options.schoolName);
+  const html = buildReportEmailHtml(options)
+    .replace(/Logótipo da Nova Escola Politécnica do Huambo/g, `Logótipo de ${safeSchoolName}`)
+    .replace(/Nova Escola Politécnica do Huambo/g, safeSchoolName)
+    .replace("Garantindo um ensino de qualidade no Huambo", "Acompanhamento do percurso escolar");
+  return { html };
 }
 
-async function loadImageDataUrl(url?: string | null) {
+async function loadImageDataUrl(url?: string | null, useLegacyLogo = false) {
   try {
+    if (!url && !useLegacyLogo) return null;
     const response = url
       ? await fetch(url)
       : new Response(await readFile(path.join(process.cwd(), "public", "school-logo.png")), { headers: { "Content-Type": "image/png" } });
@@ -133,7 +140,8 @@ async function loadCircularAvatarDataUrl(url?: string | null) {
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
+  if (!session?.user || !schoolContext || schoolContext.role !== "ADMIN") return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const periodKey = searchParams.get("periodKey") ?? "";
@@ -143,7 +151,7 @@ export async function GET(request: NextRequest) {
   if (!period || !turmaId) return NextResponse.json({ error: "Período e turma são obrigatórios." }, { status: 400 });
 
   const deliveries = await prisma.reportDelivery.findMany({
-    where: { turmaId, periodStart: period.start, channel, status: "FAILED" },
+    where: { turmaId, turma: { schoolId: schoolContext.schoolId }, periodStart: period.start, channel, status: "FAILED" },
     orderBy: [{ student: { name: "asc" } }, { recipientEmail: "asc" }],
     select: { id: true, student: { select: { name: true } }, recipientName: true, recipientEmail: true, error: true, attemptedAt: true },
   });
@@ -151,6 +159,7 @@ export async function GET(request: NextRequest) {
 }
 
 async function generateStudentReportPdf({
+  school,
   studentName,
   turmaName,
   gradeScale,
@@ -172,6 +181,7 @@ async function generateStudentReportPdf({
   absences,
   weeklyObservations,
 }: {
+  school: { id: string; name: string; logoUrl: string | null; address: string | null; website: string | null };
   studentName: string;
   turmaName: string;
   gradeScale: number;
@@ -194,7 +204,7 @@ async function generateStudentReportPdf({
   weeklyObservations: Array<{ weekStart: Date; weekEnd: Date; behavior?: string | null; teacherObservation?: string | null }>;
 }) {
   const [logoDataUrl, avatarDataUrl, qrCodeDataUrl, behaviorImage, absenceImage, gradesImage] = await Promise.all([
-    loadImageDataUrl(),
+    loadImageDataUrl(school.logoUrl, school.id === "legacy-neph-school"),
     loadCircularAvatarDataUrl(avatarUrl),
     loadPublicImageDataUrl("qr-code.png"),
     loadMetricCardImage("comportamento.jpeg"),
@@ -220,8 +230,8 @@ async function generateStudentReportPdf({
       const progress = row / 15;
       const radius = 0.4 + progress * 1.25;
       doc.setFillColor(249 - Math.round(progress * 16), 222 - Math.round(progress * 28), 205 - Math.round(progress * 34));
-      for (let x = pageWidth - 78; x <= pageWidth - 12; x += 14) doc.circle(x, 104 + row * 14, radius, "F");
-      for (let x = 12; x <= 78; x += 14) doc.circle(x, 14 + row * 14, radius, "F");
+      for (let x = pageWidth - 78, i = 0; i < 2; x += 14, i += 1) doc.circle(x, 104 + row * 14, radius, "F");
+      for (let x = 12, i = 0; i < 2; x += 14, i += 1) doc.circle(x, 14 + row * 14, radius, "F");
     }
   };
   const drawSchoolHeader = () => {
@@ -230,11 +240,13 @@ async function generateStudentReportPdf({
     doc.setTextColor(...ink);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("NOVA ESCOLA POLITÉCNICA DO HUAMBO", 100, 42);
+    doc.text(school.name.toLocaleUpperCase(), 100, 42, { maxWidth: pageWidth - 220 });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.text("Rua Vicente Ferreira 60-64, Cidade Baixa, Huambo", 100, 55);
-    doc.text("https://www.neph.ao", 100, 67);
+    const schoolAddress = school.address ?? (school.id === "legacy-neph-school" ? "Rua Vicente Ferreira 60-64, Cidade Baixa, Huambo" : "");
+    const schoolWebsite = school.website ?? (school.id === "legacy-neph-school" ? "https://www.neph.ao" : "");
+    if (schoolAddress) doc.text(schoolAddress, 100, 55, { maxWidth: pageWidth - 220 });
+    if (schoolWebsite) doc.text(schoolWebsite, 100, 67, { maxWidth: pageWidth - 220 });
   };
 
   doc.setFillColor(...paper);
@@ -633,18 +645,19 @@ async function generateStudentReportPdf({
 
 export async function POST(request: Request) {
   const session = await auth();
-  const userRole = session?.user?.role ?? "COORDENADOR";
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
+  const userRole = schoolContext?.role ?? "COORDENADOR";
 
   try {
     const body = await request.json();
     const preview = body.preview === true;
-    if (!session?.user || (userRole !== "ADMIN" && !(userRole === "DIRECCAO" && preview))) {
+    if (!session?.user || !schoolContext || (userRole !== "ADMIN" && !(userRole === "DIRECCAO" && preview))) {
       return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
     }
 
     const retryDeliveryId = typeof body.retryDeliveryId === "string" ? body.retryDeliveryId : "";
-    const retryDelivery = retryDeliveryId ? await prisma.reportDelivery.findUnique({
-      where: { id: retryDeliveryId },
+    const retryDelivery = retryDeliveryId ? await prisma.reportDelivery.findFirst({
+      where: { id: retryDeliveryId, turma: { schoolId: schoolContext.schoolId } },
       select: {
         turmaId: true,
         studentId: true,
@@ -720,6 +733,7 @@ export async function POST(request: Request) {
       const assignedTurmas = await prisma.turma.findMany({
         where: {
           id: { in: turmaIds },
+          schoolId: schoolContext.schoolId,
           OR: [
             { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
             { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } },
@@ -729,6 +743,14 @@ export async function POST(request: Request) {
       });
       if (assignedTurmas.length !== new Set(turmaIds).size) {
         return NextResponse.json({ error: "Não tem acesso a uma ou mais turmas selecionadas." }, { status: 403 });
+      }
+    } else {
+      const schoolTurmas = await prisma.turma.findMany({
+        where: { id: { in: turmaIds }, schoolId: schoolContext.schoolId },
+        select: { id: true },
+      });
+      if (schoolTurmas.length !== new Set(turmaIds).size) {
+        return NextResponse.json({ error: "Uma ou mais turmas não pertencem à escola ativa." }, { status: 403 });
       }
     }
 
@@ -759,11 +781,11 @@ export async function POST(request: Request) {
     const weeklyPeriodTerms = reportPeriods.map((weeklyPeriod) => `Semanal:${formatPeriodDate(weeklyPeriod.start)}:${formatPeriodDate(weeklyPeriod.end)}`);
     const weeklyPeriodLabels = reportPeriods.map((weeklyPeriod) => `${String(weeklyPeriod.start.getDate()).padStart(2, "0")}/${String(weeklyPeriod.start.getMonth() + 1).padStart(2, "0")}-${String(weeklyPeriod.end.getDate()).padStart(2, "0")}/${String(weeklyPeriod.end.getMonth() + 1).padStart(2, "0")}`);
     const turmas = await prisma.turma.findMany({
-      where: { id: { in: turmaIds } },
+      where: { id: { in: turmaIds }, schoolId: schoolContext.schoolId },
       include: {
         coordinator: { select: { name: true } },
         teacherAssignments: {
-          where: { isMain: true, teacher: { role: "COORDENADOR" } },
+          where: { isMain: true, teacher: { user: { schoolMemberships: { some: { schoolId: schoolContext.schoolId, role: "COORDENADOR" } } } } },
           select: { teacher: { select: { name: true, phone: true } } },
           take: 1,
         },
@@ -835,6 +857,7 @@ export async function POST(request: Request) {
         const teacherObservation = await proofreadCoordinatorObservation(student.weeklyObservations[0]?.teacherObservation);
         if (preview) {
           const pdf = await generateStudentReportPdf({
+            school: schoolContext.school,
             studentName: student.name,
             turmaName: turma.name,
             gradeScale: turma.gradeScale,
@@ -888,6 +911,7 @@ export async function POST(request: Request) {
         if (!approvedParents.size) continue;
 
         const pdf = await generateStudentReportPdf({
+          school: schoolContext.school,
           studentName: student.name,
           turmaName: turma.name,
           gradeScale: turma.gradeScale,
@@ -923,7 +947,7 @@ export async function POST(request: Request) {
         // For WhatsApp, upload to blob storage. For email, store PDF buffer for direct attachment.
         let reportUrl = "";
         if (channel === "WHATSAPP") {
-          const blob = await put(`reports/${period.key}/${crypto.randomUUID()}-${safeFileName(student.name)}-${safeFileName(turma.name)}.pdf`, pdf, {
+          const blob = await put(`schools/${schoolContext.schoolId}/reports/${period.key}/${crypto.randomUUID()}-${safeFileName(student.name)}-${safeFileName(turma.name)}.pdf`, pdf, {
             access: "public",
             addRandomSuffix: true,
             contentType: "application/pdf",
@@ -973,7 +997,8 @@ export async function POST(request: Request) {
 
     const resend = channel === "EMAIL" ? new Resend(RESEND_API_KEY) : null;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
-    const logoUrl = `${appUrl.replace(/\/$/, "")}/school-logo.png`;
+    const logoUrl = schoolContext.school.logoUrl
+      ?? (schoolContext.schoolId === "legacy-neph-school" ? `${appUrl.replace(/\/$/, "")}/school-logo.png` : "");
     const periodLabel = `${formatPeriodDate(period.start)} a ${formatPeriodDate(period.end)}`;
     let sent = 0;
     const results: Array<{ email: string; studentName: string; success: boolean; error?: string }> = [];
@@ -984,7 +1009,7 @@ export async function POST(request: Request) {
           await twilio(TWILIO_ACCOUNT_SID!, TWILIO_AUTH_TOKEN!).messages.create({
             from: TWILIO_WHATSAPP_FROM!.startsWith("whatsapp:") ? TWILIO_WHATSAPP_FROM! : `whatsapp:${TWILIO_WHATSAPP_FROM}`,
             to: `whatsapp:${recipient.phone}`,
-            body: `Saudações, Sr.(a) ${recipient.firstName}.\n\nO relatório escolar de ${recipient.studentName}, referente ao período ${periodLabel}, está disponível neste link:\n${recipient.reportUrl}\n\nCom os melhores cumprimentos,\nNova Escola Politécnica do Huambo`,
+            body: `Saudações, Sr.(a) ${recipient.firstName}.\n\nO relatório escolar de ${recipient.studentName}, referente ao período ${periodLabel}, está disponível neste link:\n${recipient.reportUrl}\n\nCom os melhores cumprimentos,\n${schoolContext.school.name}`,
           });
           sent += 1;
           await saveDelivery({ turmaId: recipient.turmaId, studentId: recipient.studentId, recipientName: recipient.recipientName, recipientEmail: recipient.email, reportUrl: recipient.reportUrl, status: "SENT" });
@@ -1002,9 +1027,9 @@ export async function POST(request: Request) {
         from: RESEND_FROM_EMAIL!,
         to: recipient.email,
         subject: `O seu relatório escolar está pronto | ${recipient.studentName}`,
-        text: `Estimado(a) ${recipient.firstName},\n\nO relatório escolar de ${recipient.studentName}, referente ao período ${periodLabel}, está disponível em anexo.\n\nCom os melhores cumprimentos,\nNova Escola Politécnica do Huambo`,
+        text: `Estimado(a) ${recipient.firstName},\n\nO relatório escolar de ${recipient.studentName}, referente ao período ${periodLabel}, está disponível em anexo.\n\nCom os melhores cumprimentos,\n${schoolContext.school.name}`,
         html: `<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório escolar</title></head><body style="margin:0;padding:0;background:#fff9df;font-family:Arial,Helvetica,sans-serif;color:#173044"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff9df;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff"><tr><td style="background:#d9edf3;padding:24px 32px;border-bottom:4px solid #f3c0bd"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td valign="middle"><img src="${logoUrl}" width="56" height="56" alt="Logótipo da Nova Escola Politécnica do Huambo" style="display:block;width:56px;height:56px;object-fit:contain"></td><td valign="middle" style="padding-left:14px"><div style="font-size:18px;font-weight:bold;color:#173044;letter-spacing:.2px">Nova Escola Politécnica do Huambo</div><div style="font-size:10px;letter-spacing:2px;color:#176b8b;margin-top:4px">Garantindo um ensino de qualidade no Huambo</div></td></tr></table></td></tr><tr><td style="padding:38px 40px 34px"><div style="font-size:11px;letter-spacing:2px;color:#176b8b;font-weight:bold">RELATÓRIO ESCOLAR</div><h1 style="font-size:26px;line-height:1.25;color:#173044;margin:12px 0 18px">O seu relatório está pronto para leitura</h1><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 18px">Caro encarregado de educação,</p><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 24px">Temos o prazer de partilhar o relatório escolar de <strong>${safeStudentName}</strong>. A nossa equipa preparou este documento com todo o cuidado para lhe dar uma visão clara da aprendizagem e do progresso do seu educando.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff1c2;border-left:4px solid #f3c0bd;margin:0 0 28px"><tr><td style="padding:16px 18px;color:#405564;font-size:14px;line-height:1.6"><strong style="color:#173044">Período avaliado:</strong> ${periodLabel}<br><strong style="color:#173044">Documento:</strong> relatório escolar em anexo</td></tr></table><p style="font-size:15px;line-height:1.7;color:#405564;margin:0 0 24px">Consulte o ficheiro PDF anexado a esta mensagem.</p><p style="font-size:15px;line-height:1.7;color:#405564;margin:0">Com os melhores cumprimentos,<br><strong>Nova Escola Politécnica do Huambo</strong></p></td></tr><tr><td style="background:#173044;padding:18px 40px;color:#d9edf3;font-size:11px;line-height:1.5">Este é um envio automático. Para esclarecimentos, contacte a escola.</td></tr></table></td></tr></table></body></html>`,
-        ...getReportEmailOverride({ logoUrl, reportUrl: "relatorio.pdf", studentName: recipient.studentName, firstName: recipient.firstName, periodLabel }),
+        ...getReportEmailOverride({ logoUrl, schoolName: schoolContext.school.name, reportUrl: "relatorio.pdf", studentName: recipient.studentName, firstName: recipient.firstName, periodLabel }),
         attachments: recipient.pdfBuffer ? [{ content: recipient.pdfBuffer, filename: `relatorio-${safeFileName(recipient.studentName)}.pdf` }] : undefined,
       });
 

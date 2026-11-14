@@ -6,6 +6,7 @@ import { getCoordinatorTurmas } from "@/lib/teacher-data";
 import TurmaDeleteAction from "./turma-delete-action";
 import TurmasActions from "./turmas-actions";
 import { TopTurmasMonthlyRanking } from "./top-turmas-monthly-ranking";
+import { getSchoolContext } from "@/lib/school-context";
 
 const PAGE_SIZE = 6;
 
@@ -19,6 +20,9 @@ export default async function TurmasPage({
   if (!session?.user?.id) {
     redirect("/auth/signin");
   }
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) redirect("/");
+  const role = schoolContext.role;
 
   const allTurmas = await getCoordinatorTurmas(session.user.id);
   const params = await searchParams;
@@ -101,7 +105,7 @@ export default async function TurmasPage({
           </Link>
         </header>
 
-        {(session.user.role === "ADMIN" || session.user.role === "DIRECCAO") && <TopTurmasMonthlyRanking />}
+        {(role === "ADMIN" || role === "DIRECCAO") && <TopTurmasMonthlyRanking />}
 
         <section className="turma-summary" aria-label="Resumo de turmas">
           <div className="summary-card">
@@ -166,7 +170,7 @@ export default async function TurmasPage({
             <div className="page-meta">
               {visibleTurmas.length ? `Mostrando ${startIndex + 1}-${Math.min(startIndex + visibleTurmas.length, turmas.length)} de ${turmas.length}` : "Nenhuma turma encontrada"}
             </div>
-            <TurmasActions isAdmin={session.user.role === "ADMIN"} />
+            <TurmasActions isAdmin={role === "ADMIN"} />
           </div>
         </section>
 
@@ -188,7 +192,7 @@ export default async function TurmasPage({
                         <span className="metric-label">Alunos</span>
                         <span className="metric-value">{turma.students}</span>
                       </div>
-                      {session.user.role === "ADMIN" && <div className="metric-row">
+                      {role === "ADMIN" && <div className="metric-row">
                         <span className="metric-label">Avatares</span>
                         <span className="metric-value">{turma.avatarCoverage}%</span>
                       </div>}
@@ -207,7 +211,7 @@ export default async function TurmasPage({
                   </article>
                 </Link>
 
-                {session.user.role === "ADMIN" && (
+                {role === "ADMIN" && (
                   <TurmaDeleteAction turmaId={turma.id} turmaName={turma.name} />
                 )}
               </div>

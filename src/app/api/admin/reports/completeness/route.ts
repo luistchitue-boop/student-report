@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { formatPeriodDate, getMonthlyCoordinationPeriods, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
   const session = await auth();
-  const userRole = session?.user?.role ?? "COORDENADOR";
-  if (!session?.user || (userRole !== "ADMIN" && userRole !== "DIRECCAO")) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
+  const userRole = schoolContext?.role ?? "COORDENADOR";
+  if (!session?.user || !schoolContext || (userRole !== "ADMIN" && userRole !== "DIRECCAO")) return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const periodKey = searchParams.get("periodKey") ?? "";
@@ -28,7 +30,12 @@ export async function GET(request: Request) {
     : [`Semanal:${formatPeriodDate(period.start)}:${formatPeriodDate(period.end)}`];
 
   const turmas = await prisma.turma.findMany({
-    where: { id: { in: turmaIds } },
+    where: userRole === "ADMIN"
+      ? { id: { in: turmaIds }, schoolId: schoolContext.schoolId }
+      : { id: { in: turmaIds }, schoolId: schoolContext.schoolId, OR: [
+        { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+        { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } },
+      ] },
     select: {
       id: true,
       name: true,

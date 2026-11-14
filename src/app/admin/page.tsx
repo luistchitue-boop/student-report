@@ -3,11 +3,13 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { AdminClient } from "./admin-client";
+import { getSchoolContext } from "@/lib/school-context";
 
 export default async function AdminPage() {
   const session = await auth();
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
 
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  if (!session?.user || !schoolContext || schoolContext.role !== "ADMIN") {
     redirect("/");
   }
 

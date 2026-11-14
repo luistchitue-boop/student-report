@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { ControloExportButton } from "./controlo-export-button";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 const PAGE_SIZE = 6;
@@ -14,14 +15,17 @@ export default async function ControloPage({
   searchParams?: Promise<{ turmaId?: string; page?: string; month?: string }>;
 }) {
   const session = await auth();
-  const role = session?.user?.role ?? "COORDENADOR";
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
+  const role = schoolContext?.role ?? "COORDENADOR";
 
-  if (!session?.user?.id || (role !== "ADMIN" && role !== "DIRECCAO")) redirect("/");
+  if (!session?.user?.id || !schoolContext || (role !== "ADMIN" && role !== "DIRECCAO")) redirect("/");
 
   const turmas = await prisma.turma.findMany({
-    where: role === "ADMIN" ? undefined : { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+    where: role === "ADMIN"
+      ? { schoolId: schoolContext.schoolId }
+      : { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, teacherAssignments: { select: { isMain: true, teacher: { select: { id: true, name: true, userId: true, role: true } } } } },
+    select: { id: true, name: true, teacherAssignments: { select: { isMain: true, teacher: { select: { id: true, name: true, userId: true, user: { select: { schoolMemberships: { where: { schoolId: schoolContext.schoolId }, select: { role: true } } } } } } } } },
   });
   const params = searchParams ? await searchParams : {};
   const requestedTurmaId = params.turmaId;
@@ -37,7 +41,7 @@ export default async function ControloPage({
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const visiblePeriods = filteredPeriods.slice(startIndex, startIndex + PAGE_SIZE);
-  const mainCoordinator = selectedTurma?.teacherAssignments.find((assignment) => assignment.isMain && assignment.teacher.role === "COORDENADOR")?.teacher;
+  const mainCoordinator = selectedTurma?.teacherAssignments.find((assignment) => assignment.isMain && assignment.teacher.user.schoolMemberships[0]?.role === "COORDENADOR")?.teacher;
   const reportRangeStart = periods[0]?.start;
   const reportRangeEnd = periods[periods.length - 1]?.end;
   const reports = mainCoordinator

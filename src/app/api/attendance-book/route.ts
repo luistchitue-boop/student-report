@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog } from "@/lib/activity-log";
 import { isTurmaDateClosed } from "@/lib/closed-periods";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -15,11 +16,13 @@ function isWeekend(dateInput: string) {
   return day === 0 || day === 6;
 }
 
-async function getAuthorizedTurma(userId: string, turmaId: string, userRole?: string) {
+async function getAuthorizedTurma(userId: string, turmaId: string, schoolId: string, userRole?: string) {
   const isAdmin = userRole === "ADMIN";
 
   return prisma.turma.findFirst({
-    where: isAdmin ? { id: turmaId } : { id: turmaId, teacherAssignments: { some: { teacher: { userId } } } },
+    where: isAdmin
+      ? { id: turmaId, schoolId }
+      : { id: turmaId, schoolId, teacherAssignments: { some: { teacher: { userId } } } },
     include: {
       subjects: { orderBy: { name: "asc" }, select: { name: true } },
       students: { where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, age: true } },
@@ -30,6 +33,8 @@ async function getAuthorizedTurma(userId: string, turmaId: string, userRole?: st
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const turmaId = searchParams.get("turmaId");
@@ -40,7 +45,7 @@ export async function GET(request: NextRequest) {
   if (!turmaId || !date || !subject) return NextResponse.json({ error: "Turma, date, and subject are required" }, { status: 400 });
   if (isWeekend(date)) return NextResponse.json({ error: "Não é possível registar faltas aos fins de semana." }, { status: 400 });
 
-  const turma = await getAuthorizedTurma(session.user.id, turmaId);
+  const turma = await getAuthorizedTurma(session.user.id, turmaId, schoolContext.schoolId, schoolContext.role);
   if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
 
   const dia = normalizeDay(date);
@@ -74,7 +79,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADMIN" && session.user.role !== "COORDENADOR") return NextResponse.json({ error: "Sem permissão para usar o livro de ponto." }, { status: 403 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || (schoolContext.role !== "ADMIN" && schoolContext.role !== "COORDENADOR")) return NextResponse.json({ error: "Sem permissão para usar o livro de ponto." }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -93,7 +99,7 @@ export async function POST(request: NextRequest) {
     if (date > todayKey) return NextResponse.json({ error: "Não é possível registar faltas numa data futura." }, { status: 400 });
     if (isWeekend(date)) return NextResponse.json({ error: "Não é possível registar faltas aos fins de semana." }, { status: 400 });
 
-    const turma = await getAuthorizedTurma(session.user.id, turmaId, session.user.role ?? "COORDENADOR");
+    const turma = await getAuthorizedTurma(session.user.id, turmaId, schoolContext.schoolId, schoolContext.role);
     if (!turma) return NextResponse.json({ error: "Turma not found" }, { status: 404 });
     if (!turma.subjects.some((entry) => entry.name === subject)) return NextResponse.json({ error: "Subject does not belong to this turma" }, { status: 400 });
 

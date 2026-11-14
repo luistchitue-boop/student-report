@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { isSendableEmailAddress } from "@/lib/email-address";
 import { hasMonthlyReportData } from "@/lib/monthly-report-data";
 import { formatPeriodDate, getWeeklyCoordinationPeriods, type MonthlyPeriod } from "@/lib/weekly-coordination";
+import { getSchoolContext } from "@/lib/school-context";
 
 declare global {
   var prismaAdminDeliveryStatus: PrismaClient | undefined;
@@ -41,7 +42,8 @@ function parseMonthlyPeriod(periodKey: string): MonthlyPeriod | null {
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
+  if (!session?.user || !schoolContext || schoolContext.role !== "ADMIN") {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
 
@@ -59,9 +61,9 @@ export async function GET(request: NextRequest) {
   const [periodEndYear, periodEndMonth, periodEndDay] = formatPeriodDate(period.end).split("-").map(Number);
   const absenceEndExclusive = new Date(Date.UTC(periodEndYear, periodEndMonth - 1, periodEndDay + 1));
   const [turmas, activeStudents, deliveries] = await Promise.all([
-    prisma.turma.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.turma.findMany({ where: { schoolId: schoolContext.schoolId }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.student.findMany({
-      where: { active: true },
+      where: { active: true, turma: { schoolId: schoolContext.schoolId } },
       select: {
         id: true,
         name: true,
@@ -73,7 +75,7 @@ export async function GET(request: NextRequest) {
       },
     }),
     prisma.reportDelivery.findMany({
-      where: { periodStart: period.start, channel: "EMAIL" },
+      where: { periodStart: period.start, channel: "EMAIL", turma: { schoolId: schoolContext.schoolId } },
       select: { id: true, turmaId: true, studentId: true, recipientName: true, recipientEmail: true, status: true, error: true, attemptedAt: true, student: { select: { name: true, parents: { orderBy: { name: "asc" }, select: { id: true, name: true, email: true, phone: true } } } }, turma: { select: { name: true } } },
     }),
   ]);

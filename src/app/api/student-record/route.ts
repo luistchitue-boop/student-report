@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { isTurmaDateClosed, isTurmaWeeklyPeriodClosed } from "@/lib/closed-periods";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -25,6 +26,8 @@ export async function GET(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
   try {
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("studentId");
@@ -47,13 +50,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid date range" }, { status: 400 });
     }
 
-    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+    const isAdmin = schoolContext.role === "ADMIN";
     const student = await prisma.student.findFirst({
       where: isAdmin
-        ? { id: studentId }
+        ? { id: studentId, turma: { schoolId: schoolContext.schoolId } }
         : {
             id: studentId,
-            turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+            turma: { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
           },
       select: { id: true, turma: { select: { gradeScale: true } } },
     });
@@ -123,7 +126,8 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
-  if (session.user.role !== "ADMIN" && session.user.role !== "COORDENADOR") {
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || (schoolContext.role !== "ADMIN" && schoolContext.role !== "COORDENADOR")) {
     return NextResponse.json({ error: "Sem permissão para alterar registos." }, { status: 403 });
   }
 
@@ -135,13 +139,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "studentId is required" }, { status: 400 });
     }
 
-    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+    const isAdmin = schoolContext.role === "ADMIN";
     const student = await prisma.student.findFirst({
       where: isAdmin
-        ? { id: studentId }
+        ? { id: studentId, turma: { schoolId: schoolContext.schoolId } }
         : {
             id: studentId,
-            turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
+            turma: { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
           },
       select: { turma: { select: { id: true, gradeScale: true, subjects: { select: { name: true } } } } },
     });
@@ -281,7 +285,8 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADMIN" && session.user.role !== "COORDENADOR") return NextResponse.json({ error: "Sem permissão para alterar registos." }, { status: 403 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || (schoolContext.role !== "ADMIN" && schoolContext.role !== "COORDENADOR")) return NextResponse.json({ error: "Sem permissão para alterar registos." }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -289,15 +294,15 @@ export async function PATCH(request: NextRequest) {
     const id = typeof body.id === "string" ? body.id : "";
     if (!type || !id) return NextResponse.json({ error: "Record type and id are required" }, { status: 400 });
 
-    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+    const isAdmin = schoolContext.role === "ADMIN";
 
     if (type === "grade") {
       const value = Number(body.value);
       if (!Number.isFinite(value) || value < 0) return NextResponse.json({ error: "Grade must be valid" }, { status: 400 });
       const grade = await prisma.grade.findFirst({
         where: isAdmin
-          ? { id }
-          : { id, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+          ? { id, student: { turma: { schoolId: schoolContext.schoolId } } }
+          : { id, student: { turma: { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
         include: { student: { include: { turma: { select: { id: true, gradeScale: true, subjects: { select: { name: true } } } } } } },
       });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
@@ -326,7 +331,9 @@ export async function PATCH(request: NextRequest) {
     }
 
       const absence = await prisma.absence.findFirst({
-        where: isAdmin ? { id } : { id, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+        where: isAdmin
+          ? { id, student: { turma: { schoolId: schoolContext.schoolId } } }
+          : { id, student: { turma: { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
         include: { student: { select: { turmaId: true } } },
       });
     if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });
@@ -368,7 +375,8 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADMIN" && session.user.role !== "COORDENADOR") return NextResponse.json({ error: "Sem permissão para alterar registos." }, { status: 403 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || (schoolContext.role !== "ADMIN" && schoolContext.role !== "COORDENADOR")) return NextResponse.json({ error: "Sem permissão para alterar registos." }, { status: 403 });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -376,11 +384,13 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get("id");
     if (!id || (type !== "grade" && type !== "absence")) return NextResponse.json({ error: "Record type and id are required" }, { status: 400 });
 
-    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+    const isAdmin = schoolContext.role === "ADMIN";
 
     if (type === "grade") {
       const grade = await prisma.grade.findFirst({
-        where: isAdmin ? { id } : { id, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+        where: isAdmin
+          ? { id, student: { turma: { schoolId: schoolContext.schoolId } } }
+          : { id, student: { turma: { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
         include: { student: { select: { turmaId: true } } },
       });
       if (!grade) return NextResponse.json({ error: "Grade not found" }, { status: 404 });
@@ -401,7 +411,9 @@ export async function DELETE(request: NextRequest) {
       });
     } else {
       const absence = await prisma.absence.findFirst({
-        where: isAdmin ? { id } : { id, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+        where: isAdmin
+          ? { id, student: { turma: { schoolId: schoolContext.schoolId } } }
+          : { id, student: { turma: { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
         include: { student: { select: { turmaId: true } } },
       });
       if (!absence) return NextResponse.json({ error: "Absence not found" }, { status: 404 });

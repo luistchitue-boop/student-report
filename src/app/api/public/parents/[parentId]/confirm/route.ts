@@ -23,8 +23,17 @@ export async function GET(
       return NextResponse.redirect(new URL("/encarregado?confirmed=invalid", request.url));
     }
 
-    await prisma.parent.updateMany({
+    const parents = await prisma.parent.findMany({
       where: { id: { in: tokenParentIds } },
+      select: { id: true, student: { select: { turma: { select: { schoolId: true } } } } },
+    });
+    const parentSchoolIds = new Set(parents.map((parent) => parent.student.turma.schoolId));
+    if (parents.length !== new Set(tokenParentIds).size || parentSchoolIds.size !== 1) {
+      return NextResponse.redirect(new URL("/encarregado?confirmed=invalid", request.url));
+    }
+
+    await prisma.parent.updateMany({
+      where: { id: { in: parents.map((parent) => parent.id) }, student: { turma: { schoolId: [...parentSchoolIds][0] } } },
       data: { phone, email },
     });
 

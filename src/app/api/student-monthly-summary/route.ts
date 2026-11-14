@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const studentId = searchParams.get("studentId") ?? "";
@@ -23,11 +26,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+    const isAdmin = schoolContext.role === "ADMIN";
     const student = await prisma.student.findFirst({
       where: isAdmin
-        ? { id: studentId }
-        : { id: studentId, turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } },
+        ? { id: studentId, turma: { schoolId: schoolContext.schoolId } }
+        : { id: studentId, turma: { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } } },
       select: { id: true, turma: { select: { gradeScale: true } } },
     });
     if (!student) return NextResponse.json({ error: "Aluno não encontrado." }, { status: 404 });

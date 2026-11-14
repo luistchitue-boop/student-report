@@ -3,12 +3,14 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { getCoordinatorTurmas } from "@/lib/teacher-data";
 import { RelatoriosClient } from "./relatorios-client";
+import { getSchoolContext } from "@/lib/school-context";
 
 export default async function AdminRelatoriosPage() {
   const session = await auth();
-  const userRole = session?.user?.role ?? "COORDENADOR";
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
+  const userRole = schoolContext?.role ?? "COORDENADOR";
 
-  if (!session?.user || (userRole !== "ADMIN" && userRole !== "DIRECCAO")) {
+  if (!session?.user || !schoolContext || (userRole !== "ADMIN" && userRole !== "DIRECCAO")) {
     redirect("/");
   }
 

@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { getSchoolContext } from "@/lib/school-context";
 
 declare global {
   var prisma: PrismaClient | undefined;
@@ -81,14 +82,21 @@ const turmaSelect = {
 };
 
 export async function getCoordinatorTurmas(userId: string) {
-  const teacher = await prisma.teacher.findUnique({ where: { userId }, select: { role: true } });
-  if (teacher?.role === "ADMIN") {
-    return (await prisma.turma.findMany({ orderBy: { name: "asc" }, select: turmaSelect })).map(mapTurmaForCoordinator);
+  const schoolContext = await getSchoolContext(userId);
+  if (!schoolContext) return [];
+
+  if (schoolContext.role === "ADMIN") {
+    return (await prisma.turma.findMany({
+      where: { schoolId: schoolContext.schoolId },
+      orderBy: { name: "asc" },
+      select: turmaSelect,
+    })).map(mapTurmaForCoordinator);
   }
 
-  if (teacher?.role === "DIRECCAO") {
+  if (schoolContext.role === "DIRECCAO") {
     const turmas = await prisma.turma.findMany({
       where: {
+        schoolId: schoolContext.schoolId,
         OR: [
           { teacherAssignments: { some: { teacher: { userId } } } },
           { direccaoAssignments: { some: { teacher: { userId } } } },
@@ -102,7 +110,12 @@ export async function getCoordinatorTurmas(userId: string) {
 
   const coordinator = await prisma.teacher.findUnique({
     where: { userId },
-    include: { turmaAssignments: { include: { turma: { select: turmaSelect } } } },
+    include: {
+      turmaAssignments: {
+        where: { turma: { schoolId: schoolContext.schoolId } },
+        include: { turma: { select: turmaSelect } },
+      },
+    },
   });
   if (!coordinator) return [];
   const assignedTurmas = coordinator.turmaAssignments.map((assignment) => assignment.turma);

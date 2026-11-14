@@ -2,6 +2,7 @@ import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 const allowedContentTypes = ["application/pdf", "image/jpeg", "image/png"];
@@ -9,7 +10,8 @@ const allowedContentTypes = ["application/pdf", "image/jpeg", "image/png"];
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADMIN" && session.user.role !== "COORDENADOR") {
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || (schoolContext.role !== "ADMIN" && schoolContext.role !== "COORDENADOR")) {
     return NextResponse.json({ error: "Sem permissão para anexar comprovativos." }, { status: 403 });
   }
 
@@ -35,16 +37,16 @@ export async function POST(request: Request) {
     if (uploadedFile.size > 10 * 1024 * 1024) return NextResponse.json({ error: "O comprovativo não pode exceder 10 MB." }, { status: 400 });
     if (!validAbsenceIds.length) return NextResponse.json({ error: "Selecione pelo menos uma falta." }, { status: 400 });
 
-    const isAdmin = session.user.role === "ADMIN";
+    const isAdmin = schoolContext.role === "ADMIN";
     const accessibleCount = await prisma.absence.count({
       where: isAdmin
-        ? { id: { in: validAbsenceIds } }
-        : { id: { in: validAbsenceIds }, student: { turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
+        ? { id: { in: validAbsenceIds }, student: { turma: { schoolId: schoolContext.schoolId } } }
+        : { id: { in: validAbsenceIds }, student: { turma: { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } } } },
     });
     if (accessibleCount !== new Set(validAbsenceIds).size) throw new Error("Uma ou mais faltas não foram encontradas.");
 
     const safeName = uploadedFile.name.replace(/[^a-zA-Z0-9._-]+/g, "-");
-    const result = await put(`justifications/${validAbsenceIds[0]}/${crypto.randomUUID()}-${safeName}`, uploadedFile, {
+    const result = await put(`schools/${schoolContext.schoolId}/justifications/${validAbsenceIds[0]}/${crypto.randomUUID()}-${safeName}`, uploadedFile, {
       access: "public",
       addRandomSuffix: true,
       contentType: uploadedFile.type,

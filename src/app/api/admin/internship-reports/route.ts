@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { getSchoolContext } from "@/lib/school-context";
 
 declare global {
   var prismaAdminInternshipReports: PrismaClient | undefined;
@@ -11,15 +12,16 @@ if (process.env.NODE_ENV !== "production") globalThis.prismaAdminInternshipRepor
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") {
+  const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
+  if (!session?.user || !schoolContext || schoolContext.role !== "ADMIN") {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
 
   try {
     const [turmas, students] = await Promise.all([
-      prisma.turma.findMany({ where: { isInternship: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+      prisma.turma.findMany({ where: { isInternship: true, schoolId: schoolContext.schoolId }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
       prisma.student.findMany({
-        where: { turma: { isInternship: true } },
+        where: { turma: { isInternship: true, schoolId: schoolContext.schoolId } },
         orderBy: [{ turma: { name: "asc" } }, { name: "asc" }],
         select: {
           id: true,

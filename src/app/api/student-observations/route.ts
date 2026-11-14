@@ -5,6 +5,7 @@ import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { isTurmaWeeklyPeriodClosed } from "@/lib/closed-periods";
 import { proofreadCoordinatorObservation } from "@/lib/proofread-observation";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
@@ -14,12 +15,12 @@ function parseDate(value: unknown) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-async function getAuthorizedStudent(studentId: string, session: { user: { id: string; role?: string | null } }) {
-  const isAdmin = (session.user.role ?? "COORDENADOR") === "ADMIN";
+async function getAuthorizedStudent(studentId: string, userId: string, schoolId: string, role: string) {
+  const isAdmin = role === "ADMIN";
   return prisma.student.findFirst({
     where: isAdmin
-      ? { id: studentId }
-      : { id: studentId, turma: { teacherAssignments: { some: { teacher: { userId: session.user.id } } } } },
+      ? { id: studentId, turma: { schoolId } }
+      : { id: studentId, turma: { schoolId, teacherAssignments: { some: { teacher: { userId } } } } },
     select: { id: true, turmaId: true },
   });
 }
@@ -27,6 +28,8 @@ async function getAuthorizedStudent(studentId: string, session: { user: { id: st
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const studentId = searchParams.get("studentId");
@@ -34,7 +37,7 @@ export async function GET(request: NextRequest) {
   if (!studentId || !weekStart) return NextResponse.json({ error: "studentId e weekStart são obrigatórios" }, { status: 400 });
 
   try {
-    const student = await getAuthorizedStudent(studentId, session);
+    const student = await getAuthorizedStudent(studentId, session.user.id, schoolContext.schoolId, schoolContext.role);
     if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 });
     const observation = await prisma.studentWeeklyObservation.findUnique({ where: { studentId_weekStart: { studentId, weekStart } } });
     return NextResponse.json({
@@ -49,7 +52,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADMIN" && session.user.role !== "COORDENADOR") {
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || (schoolContext.role !== "ADMIN" && schoolContext.role !== "COORDENADOR")) {
     return NextResponse.json({ error: "Sem permissão para melhorar observações." }, { status: 403 });
   }
 
@@ -69,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
     if (officialPeriod.start > new Date()) return NextResponse.json({ error: "Não é possível melhorar uma observação de um período futuro." }, { status: 400 });
 
-    const student = await getAuthorizedStudent(studentId, session);
+    const student = await getAuthorizedStudent(studentId, session.user.id, schoolContext.schoolId, schoolContext.role);
     if (!student) return NextResponse.json({ error: "Aluno não encontrado." }, { status: 404 });
     if (await isTurmaWeeklyPeriodClosed(student.turmaId, officialPeriod.start, officialPeriod.end, prisma)) {
       return NextResponse.json({ error: "Este período está fechado para esta turma." }, { status: 403 });
@@ -89,7 +93,8 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  if (session.user.role !== "ADMIN" && session.user.role !== "COORDENADOR") return NextResponse.json({ error: "Sem permissão para guardar observações." }, { status: 403 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || (schoolContext.role !== "ADMIN" && schoolContext.role !== "COORDENADOR")) return NextResponse.json({ error: "Sem permissão para guardar observações." }, { status: 403 });
 
   try {
     const body = await request.json();
@@ -106,7 +111,7 @@ export async function PUT(request: NextRequest) {
     }
     if (officialPeriod.start > new Date()) return NextResponse.json({ error: "Não é possível registar observações num período futuro." }, { status: 400 });
 
-    const student = await getAuthorizedStudent(studentId, session);
+    const student = await getAuthorizedStudent(studentId, session.user.id, schoolContext.schoolId, schoolContext.role);
     if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 });
 
     const periodClosed = await isTurmaWeeklyPeriodClosed(student.turmaId, officialPeriod.start, officialPeriod.end, prisma);

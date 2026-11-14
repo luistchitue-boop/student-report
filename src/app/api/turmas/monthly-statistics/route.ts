@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
+import { getSchoolContext } from "@/lib/school-context";
 
 const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext) return NextResponse.json({ error: "Selecione uma escola autorizada." }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const turmaId = searchParams.get("turmaId") ?? "";
@@ -27,15 +30,15 @@ export async function GET(request: NextRequest) {
   const monthSet = new Set(monthKeys);
 
   try {
-    const role = session.user.role ?? "COORDENADOR";
+    const role = schoolContext.role;
     const accessFilter = role === "ADMIN"
-      ? {}
+      ? { schoolId: schoolContext.schoolId }
       : role === "DIRECCAO"
-        ? { OR: [
+        ? { schoolId: schoolContext.schoolId, OR: [
           { teacherAssignments: { some: { teacher: { userId: session.user.id } } } },
           { direccaoAssignments: { some: { teacher: { userId: session.user.id } } } },
         ] }
-        : { teacherAssignments: { some: { teacher: { userId: session.user.id } } } };
+        : { schoolId: schoolContext.schoolId, teacherAssignments: { some: { teacher: { userId: session.user.id } } } };
 
     const turma = await prisma.turma.findFirst({
       where: { id: turmaId, ...accessFilter },

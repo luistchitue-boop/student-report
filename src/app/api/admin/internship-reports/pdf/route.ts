@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { auth } from "@/auth";
 import { generateInternshipReportPdf } from "@/lib/internship-report-pdf";
 import { isValidInternshipReportShare } from "@/lib/internship-report-share";
+import { getSchoolContext } from "@/lib/school-context";
 
 declare global {
   var prismaAdminInternshipReportPdf: PrismaClient | undefined;
@@ -28,15 +29,45 @@ export async function GET(request: NextRequest) {
   }
   if (!validShare) {
     const session = await auth();
-    if (!session?.user || (session.user.role ?? "COORDENADOR") !== "ADMIN") {
+    const schoolContext = session?.user?.id ? await getSchoolContext(session.user.id) : null;
+    if (!session?.user || !schoolContext || schoolContext.role !== "ADMIN") {
       return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 });
     }
+    const report = await prisma.internshipPerformanceReport.findFirst({
+      where: { id: reportId, student: { turma: { isInternship: true, schoolId: schoolContext.schoolId } } },
+      include: {
+        student: {
+          select: {
+            name: true,
+            avatarUrl: true,
+            turma: { select: { name: true, school: { select: { id: true, name: true, logoUrl: true, address: true, website: true } } } },
+          },
+        },
+        teacher: { select: { name: true } },
+      },
+    });
+    if (!report) return NextResponse.json({ error: "Relatório de estágio não encontrado." }, { status: 404 });
+    const pdf = await generateInternshipReportPdf(report);
+    const disposition = searchParams.get("download") === "1" ? "attachment" : "inline";
+    const filename = `relatorio-estagio-${safeFileName(report.student.name)}.pdf`;
+    return new NextResponse(new Uint8Array(pdf), {
+      headers: { "Content-Type": "application/pdf", "Content-Disposition": `${disposition}; filename="${filename}"`, "Cache-Control": "private, no-store, max-age=0", "X-Content-Type-Options": "nosniff" },
+    });
   }
 
   try {
     const report = await prisma.internshipPerformanceReport.findFirst({
       where: { id: reportId, student: { turma: { isInternship: true } } },
-      include: { student: { select: { name: true, avatarUrl: true, turma: { select: { name: true } } } }, teacher: { select: { name: true } } },
+      include: {
+        student: {
+          select: {
+            name: true,
+            avatarUrl: true,
+            turma: { select: { name: true, school: { select: { id: true, name: true, logoUrl: true, address: true, website: true } } } },
+          },
+        },
+        teacher: { select: { name: true } },
+      },
     });
     if (!report) return NextResponse.json({ error: "Relatório de estágio não encontrado." }, { status: 404 });
 
