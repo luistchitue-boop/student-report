@@ -101,7 +101,7 @@ export function ClosedPeriodsManager() {
   }
 
   useEffect(() => {
-    Promise.resolve().then(loadPeriods);
+    Promise.resolve().then(() => loadPeriods());
   }, []);
 
   async function handleTogglePeriod(period: WeeklyPeriodWithStatus) {
@@ -247,8 +247,8 @@ export function ClosedPeriodsManager() {
         </Card>
       )}
 
-      <Card className="border-primary/20 shadow-sm">
-        <CardHeader className="gap-4 border-b bg-gradient-to-r from-primary/10 via-primary/5 to-transparent sm:flex-row sm:items-center sm:justify-between">
+      <Card className="gap-0 border-primary/20 bg-gradient-to-br from-muted/70 via-muted/40 to-card py-0 shadow-sm">
+        <CardHeader className="gap-4 border-b bg-transparent py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="grid gap-1">
             <Badge variant="outline" className="w-fit gap-1.5"><CalendarDays /> Períodos semanais</Badge>
             <CardTitle className="pt-1 text-xl">Gestão dos períodos semanais</CardTitle>
@@ -259,7 +259,7 @@ export function ClosedPeriodsManager() {
             <Badge variant="destructive" className="h-7 gap-1.5 px-2.5"><ShieldCheck /> {closedCount} fechados</Badge>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-2 pt-3">
+        <CardContent className="grid gap-2 pt-3 pb-3">
           {weeklyPeriods.length ? weeklyPeriods.map((period) => {
             const startStr = formatPeriodDate(period.start);
             const endStr = formatPeriodDate(period.end);
@@ -334,13 +334,13 @@ export function ClosedPeriodsManager() {
         </CardContent>
       </Card>
 
-      <Card className="border-primary/20 shadow-sm">
-        <CardHeader className="gap-3 border-b bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+      <Card className="gap-0 border-primary/20 bg-gradient-to-br from-muted/70 via-muted/40 to-card py-0 shadow-sm">
+        <CardHeader className="gap-3 border-b bg-transparent py-4">
           <Badge variant="outline" className="w-fit gap-1.5"><CalendarDays /> Gestão mensal</Badge>
           <CardTitle className="text-xl">Fecho mensal por turma</CardTitle>
           <CardDescription>Quando fecha um mês, os professores deixam de poder alterar faltas, justificações, notas, observações ou relatórios semanais dos períodos inteiramente incluídos nesse mês.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-5 pt-5">
+        <CardContent className="grid gap-5 pt-5 pb-5">
           <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <div className="grid gap-2">
               <Label htmlFor="closed-period-month">Mês</Label>

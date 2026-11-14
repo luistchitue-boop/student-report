@@ -105,7 +105,6 @@ export function AppSidebar({
       { label: "Registo de atividade", href: "/admin/logs", icon: ScrollText },
       { label: "Relatórios", href: "/admin/relatorios", icon: FileBarChart2 },
       { label: "Estágios", href: "/admin/internships", icon: GraduationCap },
-      { label: "Relatórios de estágio", href: "/admin/internship-reports", icon: BookOpenCheck },
     );
   }
   if (appRole === "DIRECCAO") {
