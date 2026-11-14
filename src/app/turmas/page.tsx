@@ -32,6 +32,12 @@ import {
 
 const PAGE_SIZE = 6;
 
+function getCompactStudentName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 2) return name;
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
 export default async function TurmasPage({
   searchParams,
 }: {
@@ -146,10 +152,13 @@ export default async function TurmasPage({
                 {matchingStudents.length > 0 && (
                   <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {matchingStudents.map((student) => (
-                      <li key={`${student.turmaId}-${student.id}`}>
-                        <Link href={`/turmas/${student.turmaId}/${encodeURIComponent(student.id)}`} className="flex min-h-14 items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                          <span className="min-w-0 truncate font-medium">{student.name}</span>
-                          <Badge variant="outline" className="shrink-0">{student.turmaName}</Badge>
+                      <li key={`${student.turmaId}-${student.id}`} className="min-w-0">
+                        <Link href={`/turmas/${student.turmaId}/${encodeURIComponent(student.id)}`} className="flex min-h-14 min-w-0 items-center justify-between gap-2 rounded-lg border bg-background px-2 py-2 text-sm transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-3">
+                          <span className="min-w-0 truncate font-medium">
+                            <span className="sm:hidden">{getCompactStudentName(student.name)}</span>
+                            <span className="hidden sm:inline">{student.name}</span>
+                          </span>
+                          <Badge variant="outline" className="max-w-[42%] shrink-0 truncate">{student.turmaName}</Badge>
                         </Link>
                       </li>
                     ))}
