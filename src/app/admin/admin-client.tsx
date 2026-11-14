@@ -10,14 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const turmaOptions = [
-  "1A", "1B", "2A", "2B", "2C", "3A", "3B", "4A", "4B", "4C",
-  "5A", "5B", "5C", "6A", "6B", "6C", "7A", "7B", "7C", "7D",
-  "8A", "8B", "9A", "9B", "10CEJ", "10CFBA", "10CFBB", "10CG", "10ETC", "10INF", "10OCC",
-  "11CEJ", "11CFB", "11CG", "11ETC", "11INF", "11OCC", "12CEJ", "12CFB", "12CGB", "12CG", "12ETC",
-  "12INF", "12OCC", "13CGB", "13CG", "13ETC", "13INF", "13OCC"
-];
-
 type AdminClientProps = {
   title?: string;
   eyebrow?: string;
@@ -37,7 +29,7 @@ export function AdminClient({
     email: "",
     password: "",
   });
-  const [selectedTurmas, setSelectedTurmas] = useState<string[]>(["10CEJ", "10CFBA", "10CFBB"]);
+  const [selectedTurmas, setSelectedTurmas] = useState<string[]>([]);
   const [status, setStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [existingTeachers, setExistingTeachers] = useState<ExistingTeacher[]>([]);
@@ -52,11 +44,13 @@ export function AdminClient({
   const [teacherPhone, setTeacherPhone] = useState("");
 
   async function loadAssignments() {
-    const response = await fetch("/api/admin/teachers");
+    const response = await fetch("/api/admin/teachers", { cache: "no-store" });
     if (!response.ok) return;
     const data = await response.json();
     setExistingTeachers(data.teachers);
     setExistingTurmas(data.turmas);
+    const schoolTurmaNames = new Set<string>(data.turmas.map((turma: ExistingTurma) => turma.name));
+    setSelectedTurmas((current) => current.filter((turmaName) => schoolTurmaNames.has(turmaName)));
     setAssignmentState(Object.fromEntries(data.teachers.map((teacher: ExistingTeacher) => [teacher.id, teacher.turmaAssignments.map((assignment) => assignment.turmaId)])));
     const nextTeacherId = data.teachers.some((teacher: ExistingTeacher) => teacher.id === selectedTeacherId) ? selectedTeacherId : data.teachers[0]?.id || "";
     setSelectedTeacherId(nextTeacherId);
@@ -97,7 +91,7 @@ export function AdminClient({
       const roleLabel = defaultRole === "DIRECCAO" ? "Direção" : "Professor";
       setMessage(`${roleLabel} criado com sucesso: ${data.teacher.name}`);
       setForm({ name: "", email: "", password: "" });
-      setSelectedTurmas(["10CEJ", "10CFBA", "10CFBB"]);
+      setSelectedTurmas([]);
       loadAssignments();
     } catch (error) {
       setStatus("error");
@@ -203,15 +197,16 @@ export function AdminClient({
                 <CardDescription>{selectedTurmas.length} turma(s) selecionada(s)</CardDescription>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-2 px-4 pb-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                {turmaOptions.map((turma) => {
-                  const checkboxId = `new-turma-${turma}`;
+                {existingTurmas.map((turma) => {
+                  const checkboxId = `new-turma-${turma.id}`;
                   return (
-                    <div key={turma} className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
-                      <Checkbox id={checkboxId} checked={selectedTurmas.includes(turma)} onCheckedChange={() => toggleTurma(turma)} />
-                      <Label htmlFor={checkboxId} className="flex-1 cursor-pointer text-sm">{turma}</Label>
+                    <div key={turma.id} className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
+                      <Checkbox id={checkboxId} checked={selectedTurmas.includes(turma.name)} onCheckedChange={() => toggleTurma(turma.name)} />
+                      <Label htmlFor={checkboxId} className="flex-1 cursor-pointer text-sm">{turma.name}</Label>
                     </div>
                   );
                 })}
+                {!existingTurmas.length && <p className="col-span-full rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Não existem turmas nesta escola para atribuir.</p>}
               </CardContent>
             </Card>
 

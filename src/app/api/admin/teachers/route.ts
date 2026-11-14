@@ -43,7 +43,10 @@ export async function GET() {
     prisma.turma.findMany({ where: { schoolId: schoolContext.schoolId }, orderBy: { name: "asc" }, select: { id: true, name: true, coordinatorId: true } }),
   ]);
 
-  return NextResponse.json({ teachers: teachers.map(({ user, ...teacher }) => ({ ...teacher, role: user.schoolMemberships[0]?.role ?? "COORDENADOR", user })), turmas });
+  return NextResponse.json(
+    { teachers: teachers.map(({ user, ...teacher }) => ({ ...teacher, role: user.schoolMemberships[0]?.role ?? "COORDENADOR", user })), turmas },
+    { headers: { "Cache-Control": "private, no-store, max-age=0" } },
+  );
 }
 
 export async function PATCH(request: Request) {
@@ -179,7 +182,12 @@ export async function POST(request: Request) {
     const name = String(body.name || "").trim();
     const email = String(body.email || "").trim().toLowerCase();
     const password = String(body.password || "");
-    const turmaNames = Array.isArray(body.turmaNames) ? body.turmaNames : [];
+    const requestedTurmaNames: unknown[] = Array.isArray(body.turmaNames) ? body.turmaNames : [];
+    const turmaNames = [...new Set(
+      requestedTurmaNames
+        .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+        .map((value) => value.trim()),
+    )];
     const requestedRole = body.role === "DIRECCAO" ? "DIRECCAO" : "COORDENADOR";
 
     if (!name || !email || !password) {
@@ -188,6 +196,14 @@ export async function POST(request: Request) {
 
     if (turmaNames.length === 0) {
       return NextResponse.json({ error: "Selecione pelo menos uma turma" }, { status: 400 });
+    }
+
+    const turmas = await prisma.turma.findMany({
+      where: { schoolId: schoolContext.schoolId, name: { in: turmaNames } },
+      select: { id: true, name: true },
+    });
+    if (turmas.length !== turmaNames.length) {
+      return NextResponse.json({ error: "Uma ou mais turmas não pertencem à escola ativa." }, { status: 400 });
     }
 
     let user = await prisma.user.findUnique({ where: { email } });
@@ -221,11 +237,7 @@ export async function POST(request: Request) {
 
     await prisma.schoolMembership.create({ data: { schoolId: schoolContext.schoolId, userId: user.id, role: requestedRole } });
 
-    for (const turmaName of turmaNames) {
-      if (!turmaName) continue;
-
-      const turma = await prisma.turma.findFirst({ where: { name: turmaName, schoolId: schoolContext.schoolId }, select: { id: true } });
-      if (!turma) continue;
+    for (const turma of turmas) {
       await prisma.teacherTurma.upsert({ where: { teacherId_turmaId: { teacherId: teacher.id, turmaId: turma.id } }, create: { teacherId: teacher.id, turmaId: turma.id }, update: {} });
     }
 
