@@ -40,11 +40,12 @@ export default async function BiometricoPage({
 
   return (
     <AppShell active="biometrico">
-      <main className="main-content">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">COORDENAÇÃO SEMANAL / {now.getFullYear()}</p>
-            <h1>Biométrico</h1>
+      <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
+        <header className="border-b pb-5">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary">Coordenação semanal / {now.getFullYear()}</p>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Biométrico</h1>
+            <p className="text-sm text-muted-foreground">Consulte e registe a coordenação semanal das suas turmas.</p>
           </div>
         </header>
         <BiometricoClient

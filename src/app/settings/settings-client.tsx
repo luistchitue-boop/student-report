@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { KeyRound, UserRound } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { CircleAlert, CircleCheck, KeyRound, Save, UserRound } from "lucide-react";
 
 type User = { id: string; name: string; email: string };
 
@@ -96,68 +97,76 @@ export function SettingsClient() {
 
   if (isLoading) {
     return (
-      <main className="main-content settings-page"><div className="settings-loading">A carregar perfil…</div></main>
+      <main className="mx-auto flex w-full max-w-[1440px] flex-1 items-center justify-center px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <div role="status" aria-label="A carregar perfil" className="text-primary"><Spinner className="size-8" /></div>
+      </main>
     );
   }
 
   return (
-    <main className="main-content settings-page">
-      <header className="topbar">
-        <div><p className="eyebrow">CONTA</p><h1>Definições da conta</h1></div>
+    <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
+      <header className="border-b pb-5">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Conta</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Definições da conta</h1>
+          <p className="text-sm text-muted-foreground">Gira os dados do seu perfil e a segurança da sua conta.</p>
+        </div>
       </header>
 
-      {error && <p className="settings-feedback error" role="alert">{error}</p>}
-      {success && <p className="settings-feedback success" role="status">{success}</p>}
+      {error && <p className="flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive" role="alert"><CircleAlert className="mt-0.5 size-4 shrink-0" />{error}</p>}
+      {success && <p className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-primary" role="status"><CircleCheck className="mt-0.5 size-4 shrink-0" />{success}</p>}
 
-      <form onSubmit={handleSave} className="settings-form">
-        <Card className="settings-card">
+      {user && <form onSubmit={handleSave} className="flex flex-col gap-5">
+        <Card className="shadow-sm">
           <CardHeader>
-            <div className="settings-card-icon"><UserRound className="size-4" /></div>
-            <CardTitle>Perfil</CardTitle>
-            <CardDescription>Atualize o nome apresentado na plataforma.</CardDescription>
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><UserRound className="size-5" /></span>
+              <div><CardTitle>Perfil</CardTitle><CardDescription className="mt-1">Atualize o nome apresentado na plataforma.</CardDescription></div>
+            </div>
           </CardHeader>
-          <CardContent className="grid gap-5">
-            <div className="grid gap-2">
+          <CardContent className="grid items-start gap-5 md:grid-cols-2">
+            <div className="grid content-start gap-2">
               <Label htmlFor="settings-email">E-mail</Label>
-              <Input id="settings-email" value={user?.email ?? ""} readOnly aria-describedby="email-help" />
+              <Input id="settings-email" className="h-10 bg-muted/40" value={user.email ?? ""} readOnly aria-describedby="email-help" />
               <p id="email-help" className="text-xs text-muted-foreground">O e-mail de acesso não pode ser alterado.</p>
             </div>
-            <div className="grid gap-2">
+            <div className="grid content-start gap-2">
               <Label htmlFor="name">Nome</Label>
-              <Input id="name" type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder="O seu nome completo" />
+              <Input id="name" className="h-10" type="text" value={name} onChange={(event) => setName(event.target.value)} placeholder="O seu nome completo" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="settings-card">
+        <Card className="shadow-sm">
           <CardHeader>
-            <div className="settings-card-icon"><KeyRound className="size-4" /></div>
-            <CardTitle>Segurança</CardTitle>
-            <CardDescription>Para alterar a palavra-passe, confirme primeiro a atual.</CardDescription>
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><KeyRound className="size-5" /></span>
+              <div><CardTitle>Segurança</CardTitle><CardDescription className="mt-1">Para alterar a palavra-passe, confirme primeiro a atual.</CardDescription></div>
+            </div>
           </CardHeader>
           <CardContent className="grid gap-5 sm:grid-cols-2">
             <div className="grid gap-2 sm:col-span-2">
               <Label htmlFor="currentPassword">Palavra-passe atual</Label>
-              <Input id="currentPassword" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Introduza a palavra-passe atual" />
+              <Input id="currentPassword" className="h-10" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Introduza a palavra-passe atual" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="newPassword">Nova palavra-passe</Label>
-              <Input id="newPassword" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Mínimo de 6 caracteres" />
+              <Input id="newPassword" className="h-10" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Mínimo de 6 caracteres" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="confirmPassword">Confirmar palavra-passe</Label>
-              <Input id="confirmPassword" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Repita a nova palavra-passe" />
+              <Input id="confirmPassword" className="h-10" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Repita a nova palavra-passe" />
             </div>
           </CardContent>
         </Card>
 
-        <div className="settings-actions">
-          <p className="text-xs text-muted-foreground">As alterações aplicam-se à sua conta de acesso.</p>
-          <Button type="submit" disabled={isSaving} className="min-h-10">
-            {isSaving ? "A guardar…" : "Guardar alterações"}
+        <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">As alterações aplicam-se à sua conta de acesso.</p>
+          <Button type="submit" disabled={isSaving} className="h-10 w-full sm:w-auto">
+            <Save /> {isSaving ? "A guardar…" : "Guardar alterações"}
           </Button>
         </div>
-      </form>
+      </form>}
     </main>
   );
 }

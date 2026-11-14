@@ -35,14 +35,10 @@ export function TurmaDisciplinasClient({
   const [status, setStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
 
-  if (!isAdmin) {
-    return null;
-  }
-
   async function refreshSubjects() {
     const response = await fetch(`/api/turmas/${turmaId}/subjects`);
     if (!response.ok) {
-      return;
+      throw new Error("A alteração foi guardada, mas não foi possível atualizar a lista de disciplinas. Recarregue a página.");
     }
 
     const data = await response.json();
@@ -76,9 +72,9 @@ export function TurmaDisciplinasClient({
       }
 
       setNewSubject("");
+      await refreshSubjects();
       setStatus("success");
       setMessage("Disciplina criada com sucesso.");
-      await refreshSubjects();
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Erro inesperado.");
@@ -102,9 +98,9 @@ export function TurmaDisciplinasClient({
         throw new Error(data.error || "Não foi possível remover a disciplina.");
       }
 
+      await refreshSubjects();
       setStatus("success");
       setMessage("Disciplina removida.");
-      await refreshSubjects();
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Erro inesperado.");
@@ -138,9 +134,9 @@ export function TurmaDisciplinasClient({
 
       setEditingSubject(null);
       setDraftSubject("");
+      await refreshSubjects();
       setStatus("success");
       setMessage("Disciplina atualizada.");
-      await refreshSubjects();
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "Erro inesperado.");
@@ -150,33 +146,33 @@ export function TurmaDisciplinasClient({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger render={<Button type="button" variant="outline"><BookOpen /> Disciplinas <Badge variant="secondary" className="ml-1">{subjects.length}</Badge></Button>} />
-      <DialogContent className="max-h-[min(85svh,44rem)] overflow-y-auto sm:max-w-xl">
-        <DialogCloseButton />
-        <DialogHeader>
+      <DialogContent className="max-h-[calc(100dvh-1rem)] gap-3 overflow-y-auto p-4 sm:max-w-xl">
+        <DialogCloseButton aria-label="Fechar" />
+        <DialogHeader className="pr-8">
           <DialogTitle>Disciplinas da turma</DialogTitle>
-          <DialogDescription>Adicione, edite ou remova as disciplinas associadas a esta turma.</DialogDescription>
+          <DialogDescription>{isAdmin ? "Adicione, edite ou remova as disciplinas associadas a esta turma." : "Consulte as disciplinas associadas a esta turma."}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleAddSubject} className="flex flex-col gap-2 sm:flex-row">
+        {isAdmin && <form onSubmit={handleAddSubject} className="flex flex-col gap-2 sm:flex-row">
           <div className="min-w-0 flex-1">
             <Label htmlFor="new-subject" className="sr-only">Nome da nova disciplina</Label>
             <Input id="new-subject" type="text" value={newSubject} onChange={(event) => setNewSubject(event.target.value)} placeholder="Nome da disciplina" maxLength={120} />
           </div>
           <Button type="submit" disabled={status === "saving" || !newSubject.trim()}><Plus /> Adicionar</Button>
-        </form>
+        </form>}
 
-        <div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
+        <div className="grid content-start gap-1.5" aria-label="Lista de disciplinas">
           {subjects.length === 0 ? (
-            <Card className="border-dashed shadow-none"><CardContent className="py-8 text-center text-sm text-muted-foreground">Nenhuma disciplina registada.</CardContent></Card>
+            <Card size="sm" className="shadow-none"><CardContent className="py-2 text-center text-sm text-muted-foreground">Nenhuma disciplina registada.</CardContent></Card>
           ) : subjects.map((subject) => (
-            <Card key={subject} className="shadow-none">
-              <CardContent className="flex min-w-0 flex-col gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <Card key={subject} size="sm" className="py-2 shadow-none">
+              <CardContent className="flex min-w-0 items-center justify-between gap-2">
                 {editingSubject === subject ? (
                   <form
-                    className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row"
+                    className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
                     onSubmit={(event) => { event.preventDefault(); void handleEditSubject(subject); }}
                   >
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-32 flex-1">
                       <Label htmlFor={`edit-subject-${subject}`} className="sr-only">Editar {subject}</Label>
                       <Input id={`edit-subject-${subject}`} value={draftSubject} onChange={(event) => setDraftSubject(event.target.value)} maxLength={120} autoFocus />
                     </div>
@@ -187,14 +183,14 @@ export function TurmaDisciplinasClient({
                   </form>
                 ) : (
                   <>
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><BookOpen className="size-4" /></span>
-                      <span className="truncate text-sm font-medium">{subject}</span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><BookOpen className="size-4" /></span>
+                      <span className="min-w-0 break-words text-sm font-medium">{subject}</span>
                     </div>
-                    <div className="flex shrink-0 gap-2">
-                      <Button type="button" size="sm" variant="outline" onClick={() => { setEditingSubject(subject); setDraftSubject(subject); }} aria-label={`Editar ${subject}`}><Pencil /> Editar</Button>
-                      <Button type="button" size="sm" variant="destructive" onClick={() => void handleRemoveSubject(subject)} disabled={status === "saving"} aria-label={`Remover ${subject}`}><Trash2 /> Remover</Button>
-                    </div>
+                    {isAdmin && <div className="flex shrink-0 gap-1">
+                      <Button type="button" size="sm" variant="outline" onClick={() => { setEditingSubject(subject); setDraftSubject(subject); }} aria-label={`Editar ${subject}`}><Pencil /><span className="hidden sm:inline">Editar</span></Button>
+                      <Button type="button" size="sm" variant="destructive" onClick={() => void handleRemoveSubject(subject)} disabled={status === "saving"} aria-label={`Remover ${subject}`}><Trash2 /><span className="hidden sm:inline">Remover</span></Button>
+                    </div>}
                   </>
                 )}
               </CardContent>
@@ -202,7 +198,7 @@ export function TurmaDisciplinasClient({
           ))}
         </div>
 
-        {message && <p className={`rounded-lg border p-3 text-sm ${status === "error" ? "border-destructive/20 bg-destructive/5 text-destructive" : "border-primary/20 bg-primary/5 text-primary"}`} role={status === "error" ? "alert" : "status"}>{message}</p>}
+        {message && <p className={`rounded-lg border p-2 text-sm ${status === "error" ? "border-destructive/20 bg-destructive/5 text-destructive" : "border-primary/20 bg-primary/5 text-primary"}`} role={status === "error" ? "alert" : "status"}>{message}</p>}
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Fechar</Button>

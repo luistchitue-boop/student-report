@@ -2,6 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ArrowLeft, CalendarDays, CheckCheck, ClipboardCheck, History, Save, Users } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getWeeklyCoordinationPeriods, formatPeriodDate } from "@/lib/weekly-coordination";
 
 type Turma = {
@@ -55,6 +64,7 @@ export function AttendanceBookClient({ turma, lastRegisteredAbsence: initialLast
       Promise.resolve().then(() => {
         setSelectedIds([]);
         setOtherSubjectAbsences([]);
+        setIsLoading(false);
       });
       return;
     }
@@ -99,6 +109,9 @@ export function AttendanceBookClient({ turma, lastRegisteredAbsence: initialLast
     setSelectedIds((current) => availableIds.every((id) => current.includes(id)) ? [] : availableIds);
   }
 
+  const availableStudents = turma.roster.filter((student) => !otherSubjectAbsences.some((absence) => absence.studentId === student.id));
+  const allAvailableSelected = availableStudents.length > 0 && availableStudents.every((student) => selectedIds.includes(student.id));
+
   async function saveAttendance() {
     if (!date || !subject) {
       setStatus("Escolha a data e a disciplina antes de guardar.");
@@ -127,73 +140,102 @@ export function AttendanceBookClient({ turma, lastRegisteredAbsence: initialLast
   }
 
   return (
-    <main className="main-content attendance-book-shell">
-      <header className="topbar turma-topbar">
-        <div>
-          <p className="eyebrow">REGISTO DE ASSIDUIDADE</p>
-          <h1>Livro de ponto</h1>
-          <p className="attendance-book-subtitle">{turma.name}</p>
+    <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
+      <header className="flex flex-col justify-between gap-4 border-b pb-5 sm:flex-row sm:items-end">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Registo de assiduidade</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Livro de ponto</h1>
+          <p className="text-sm text-muted-foreground">Registe e acompanhe as faltas da turma {turma.name}.</p>
         </div>
-        <Link href={`/turmas/${turma.id}`} className="dashboard-link">← Voltar à turma</Link>
+        <Link href={`/turmas/${turma.id}`} className={buttonVariants({ variant: "outline", size: "lg", className: "w-fit" })}><ArrowLeft /> Voltar à turma</Link>
       </header>
 
-      <section className="attendance-book-panel">
-        <aside className="attendance-last-absence" aria-live="polite">
-          <strong>Última falta registada por si</strong>
-          {lastRegisteredAbsence ? (
-            <span>{lastRegisteredAbsence.date.split("-").reverse().join("/")} · {lastRegisteredAbsence.subject} · {lastRegisteredAbsence.tempo}</span>
-          ) : (
-            <span>Ainda não registou faltas no sistema.</span>
-          )}
-        </aside>
-        <div className="attendance-book-toolbar">
-          <label>Data<input type="date" min={datePickerMin} max={datePickerMax} value={date} onChange={(event) => { const nextDate = event.target.value; if (nextDate && isWeekend(nextDate)) { setDate(""); setSelectedIds([]); setStatus("A escola não oferece aulas aos fins de semana."); return; } setStatus(""); setDate(nextDate); }} /></label>
-          <label>Disciplina<select value={subject} onChange={(event) => setSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
-          <label>Tempo<select value={tempo} onChange={(event) => setTempo(event.target.value)}>{tempos.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
-          <fieldset className="attendance-fault-switch">
-            <legend>Tipo de falta</legend>
-            <div>
-              {faultTypes.map((entry) => (
-                <button
-                  key={entry.value}
-                  type="button"
-                  className={faultType === entry.value ? "active" : ""}
-                  onClick={() => setFaultType(entry.value)}
-                  aria-pressed={faultType === entry.value}
-                >
-                  {entry.label}
-                </button>
-              ))}
+      <Card className="bg-gradient-to-br from-primary/10 via-card to-card shadow-sm">
+        <CardContent className="flex items-start gap-3 sm:items-center" aria-live="polite">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><History className="size-5" /></div>
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm font-semibold">Última falta registada por si</p>
+            <p className="break-words text-sm text-muted-foreground">{lastRegisteredAbsence ? `${lastRegisteredAbsence.date.split("-").reverse().join("/")} · ${lastRegisteredAbsence.subject} · ${lastRegisteredAbsence.tempo}` : "Ainda não registou faltas no sistema."}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm">
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarDays className="size-5" /></div>
+            <div><CardTitle>Detalhes do registo</CardTitle><CardDescription className="mt-1">Escolha a data, a disciplina e o tempo letivo.</CardDescription></div>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label htmlFor="attendance-date">Data</Label>
+              <Input id="attendance-date" className="h-10" type="date" min={datePickerMin} max={datePickerMax} disabled={isSaving} value={date} onChange={(event) => { const nextDate = event.target.value; if (nextDate && isWeekend(nextDate)) { setDate(""); setSelectedIds([]); setStatus("A escola não oferece aulas aos fins de semana."); return; } setStatus(""); setDate(nextDate); }} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="attendance-subject">Disciplina</Label>
+              <Select value={subject || null} onValueChange={(value) => { if (value) setSubject(value); }} disabled={isSaving || !turma.subjects.length}>
+                <SelectTrigger id="attendance-subject" className="h-10 w-full"><SelectValue placeholder="Sem disciplinas">{subject || undefined}</SelectValue></SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>{turma.subjects.map((entry) => <SelectItem key={entry} value={entry}>{entry}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="attendance-tempo">Tempo letivo</Label>
+              <Select value={tempo} onValueChange={(value) => { if (value) setTempo(value); }} disabled={isSaving}>
+                <SelectTrigger id="attendance-tempo" className="h-10 w-full"><SelectValue>{tempo}</SelectValue></SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>{tempos.map((entry) => <SelectItem key={entry} value={entry}>{entry}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <fieldset className="grid gap-2">
+            <legend className="mb-2 text-sm font-medium">Tipo de falta</legend>
+            <div className="flex flex-wrap gap-2">
+              {faultTypes.map((entry) => <Button key={entry.value} type="button" variant={faultType === entry.value ? "default" : "outline"} className="h-10" onClick={() => setFaultType(entry.value)} disabled={isLoading || isSaving} aria-pressed={faultType === entry.value}>{entry.label}</Button>)}
             </div>
           </fieldset>
-        </div>
-        {status ? <p className="attendance-book-status attendance-book-status-inline">{status}</p> : null}
+          {status && <p role="status" className="rounded-lg border bg-muted/50 px-4 py-3 text-sm text-foreground">{status}</p>}
+        </CardContent>
+      </Card>
 
-        <div className="attendance-book-heading">
-          <div><p className="eyebrow">ALUNOS DA TURMA</p><h2>Marcar faltas</h2></div>
-          <button type="button" className="attendance-select-all" onClick={toggleAll}>{selectedIds.length === turma.roster.length ? "Desmarcar todos" : "Selecionar todos"}</button>
-        </div>
+      <Card className="shadow-sm">
+        <CardHeader className="gap-4 sm:flex sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Users className="size-5" /></div>
+            <div><CardTitle>Marcar faltas</CardTitle><CardDescription className="mt-1">Selecione os alunos com falta neste tempo letivo.</CardDescription></div>
+          </div>
+          <Button type="button" variant="outline" className="h-10 w-full sm:w-auto" onClick={toggleAll} disabled={isLoading || isSaving || !availableStudents.length}><CheckCheck />{allAvailableSelected ? "Desmarcar todos" : "Selecionar todos"}</Button>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          {turma.roster.length ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+              {turma.roster.map((student) => {
+                const selected = selectedIds.includes(student.id);
+                const conflict = otherSubjectAbsences.find((absence) => absence.studentId === student.id);
+                const disabled = Boolean(conflict) || isLoading || isSaving;
+                return (
+                  <label key={student.id} className={`flex min-w-0 items-center gap-3 rounded-xl border p-4 transition-colors ${selected ? "border-primary/40 bg-primary/5" : "bg-card"} ${disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:border-primary/40 hover:bg-muted/40"}`}>
+                    <Avatar className="size-12 shrink-0">
+                      {student.avatarUrl && <AvatarImage src={student.avatarUrl} alt={`Fotografia de ${displayName(student.name)}`} />}
+                      <AvatarFallback className="bg-primary/10 font-semibold text-primary">{displayName(student.name).charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <span className="min-w-0 flex-1 space-y-1">
+                      <span className="block break-words text-sm font-semibold">{displayName(student.name)}</span>
+                      <span className="block break-words text-xs text-muted-foreground">{selected ? "Falta selecionada" : conflict ? `Falta registada em ${conflict.subject}` : "Presente"}</span>
+                    </span>
+                    <Checkbox aria-label={`Marcar falta de ${student.name}`} checked={selected} disabled={disabled} onCheckedChange={() => toggleStudent(student.id)} />
+                  </label>
+                );
+              })}
+            </div>
+          ) : <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Não há alunos ativos nesta turma.</div>}
 
-        <div className="attendance-student-list">
-          {turma.roster.map((student) => (
-            <label key={student.id} className={`attendance-student-row ${selectedIds.includes(student.id) ? "selected" : ""} ${otherSubjectAbsences.some((absence) => absence.studentId === student.id) ? "slot-conflict" : ""}`}>
-              <span className="attendance-student-avatar">{student.avatarUrl ? <img src={student.avatarUrl} alt={`Fotografia de ${displayName(student.name)}`} /> : displayName(student.name).charAt(0).toUpperCase()}</span>
-              <span className="attendance-student-content">
-                <strong className="attendance-student-name">{displayName(student.name)}</strong>
-                <span className="attendance-student-selection">
-                  <input type="checkbox" checked={selectedIds.includes(student.id)} disabled={otherSubjectAbsences.some((absence) => absence.studentId === student.id)} onChange={() => toggleStudent(student.id)} />
-                  <span className="attendance-check">{selectedIds.includes(student.id) ? "Falta registada" : otherSubjectAbsences.some((absence) => absence.studentId === student.id) ? `Falta registada em ${otherSubjectAbsences.find((absence) => absence.studentId === student.id)?.subject}` : "Presente"}</span>
-                </span>
-              </span>
-            </label>
-          ))}
-        </div>
-
-        <div className="attendance-book-footer">
-          <span>{isLoading ? "A carregar registos..." : `${selectedIds.length} de ${turma.roster.length} alunos selecionados`}</span>
-          <button type="button" className="attendance-save-button" onClick={saveAttendance} disabled={isSaving || isLoading}>{isSaving ? "A guardar..." : "Guardar faltas"}</button>
-        </div>
-      </section>
+          <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite"><ClipboardCheck className="size-4 shrink-0 text-primary" />{isLoading ? "A carregar registos..." : <><Badge variant="secondary">{selectedIds.length}</Badge> de {turma.roster.length} alunos selecionados</>}</div>
+            <Button type="button" className="h-10 w-full sm:w-auto" onClick={saveAttendance} disabled={isSaving || isLoading}><Save />{isSaving ? "A guardar..." : "Guardar faltas"}</Button>
+          </div>
+        </CardContent>
+      </Card>
     </main>
   );
 }

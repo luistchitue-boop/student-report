@@ -1,6 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { CalendarDays, Save } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 type Period = {
   key: string;
@@ -22,6 +32,7 @@ function displayDate(value: string) {
 }
 
 export function BiometricoClient({ periods, turmas, selectedTurmaId }: { periods: Period[]; turmas: Turma[]; selectedTurmaId: string }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<Period | null>(null);
   const [title, setTitle] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -40,59 +51,64 @@ export function BiometricoClient({ periods, turmas, selectedTurmaId }: { periods
     event.preventDefault();
     setSaving(true);
     setStatus("");
-    const response = await fetch("/api/biometrico", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ turmaId: selectedTurmaId, weekStart: selected?.key, title, descricao }),
-    });
-    const data = await response.json();
-    setSaving(false);
-    if (!response.ok) {
-      setStatus(data.error ?? "Não foi possível guardar.");
-      return;
+    try {
+      const response = await fetch("/api/biometrico", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ turmaId: selectedTurmaId, weekStart: selected?.key, title, descricao }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setStatus(data.error ?? "Não foi possível guardar.");
+        return;
+      }
+      setSelected(null);
+      router.refresh();
+    } catch {
+      setStatus("Não foi possível guardar. Verifique a ligação e tente novamente.");
+    } finally {
+      setSaving(false);
     }
-    setSelected(null);
-    window.location.reload();
   }
 
   return (
-    <section className="biometrico-shell workspace">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">REGISTO DE PRESENÇA</p>
-          <h3>Períodos de coordenação semanal</h3>
-        </div>
-      </div>
-      <form method="get" className="biometrico-turma-switcher">
-        <label htmlFor="biometrico-turma">Turma</label>
-        <select id="biometrico-turma" name="turmaId" defaultValue={selectedTurmaId} onChange={(event) => event.currentTarget.form?.submit()}>
-          {turmas.map((turma) => <option key={turma.id} value={turma.id}>{turma.name}</option>)}
-        </select>
-      </form>
-      <div className="biometrico-list">
-        {periods.map((period) => (
-          <button key={period.key} className={`biometrico-period ${period.isCurrent ? "current" : ""} ${period.isClosed ? "closed" : ""}`} onClick={() => openPeriod(period)} disabled={period.isClosed || !period.hasActivity || new Date(period.start) > new Date()}>
-            <span className="biometrico-period-date">{period.isTest ? "Teste · " : ""}{displayDate(period.start)} - {displayDate(period.end)}</span>
-            <strong>{period.status === "registado" ? period.title : "Ausente"}</strong>
-            <span className={`biometrico-status ${period.status}`}>{period.isClosed ? "Fechado" : !period.hasActivity ? "Sem actividade semanal" : period.status === "registado" ? "Registado" : "Ausente"}</span>
-          </button>
-        ))}
-      </div>
+    <>
+      <Card className="shadow-sm">
+        <CardHeader className="gap-4 sm:flex sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarDays className="size-5" /></span>
+            <div><CardTitle>Períodos de coordenação semanal</CardTitle><CardDescription className="mt-1">Selecione uma turma e um período para consultar ou registar a coordenação.</CardDescription></div>
+          </div>
+          <div className="grid w-full gap-2 sm:w-56"><Label htmlFor="biometrico-turma">Turma</Label><Select value={selectedTurmaId || null} disabled={!turmas.length} onValueChange={(value) => { if (value) router.push(`/biometrico?turmaId=${encodeURIComponent(value)}`); }}><SelectTrigger id="biometrico-turma" className="w-full data-[size=default]:h-10"><SelectValue placeholder="Sem turmas atribuídas">{turmas.find((turma) => turma.id === selectedTurmaId)?.name}</SelectValue></SelectTrigger><SelectContent alignItemWithTrigger={false}>{turmas.map((turma) => <SelectItem key={turma.id} value={turma.id}>{turma.name}</SelectItem>)}</SelectContent></Select></div>
+        </CardHeader>
+        <CardContent className="grid gap-2">
+          {!turmas.length ? <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Não existem turmas atribuídas para coordenação.</div> : periods.length ? periods.map((period) => {
+            const future = new Date(period.start) > new Date();
+            const disabled = period.isClosed || !period.hasActivity || future;
+            const periodStatus = period.isClosed ? "Fechado" : future ? "Futuro" : !period.hasActivity ? "Sem actividade semanal" : period.status === "registado" ? "Registado" : "Ausente";
+            return (
+              <Button key={period.key} type="button" variant="outline" className={`h-auto w-full min-w-0 justify-start gap-3 whitespace-normal px-4 py-3 text-left disabled:opacity-70 ${period.isCurrent ? "border-primary/40 bg-primary/5" : ""}`} onClick={() => openPeriod(period)} disabled={disabled}>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><CalendarDays className="size-4" /></span>
+                <span className="min-w-0 flex-1"><span className="block text-xs text-muted-foreground">{period.isTest ? "Teste · " : ""}{displayDate(period.start)} - {displayDate(period.end)}{period.isCurrent ? " · Semana atual" : ""}</span><span className="block break-words text-sm font-semibold">{period.status === "registado" ? period.title : "Ausente"}</span></span>
+                <Badge variant={period.status === "registado" && !period.isClosed ? "secondary" : "outline"} className="max-w-[45%] whitespace-normal text-right">{periodStatus}</Badge>
+              </Button>
+            );
+          }) : <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Não existem períodos disponíveis.</div>}
+        </CardContent>
+      </Card>
 
-      {selected && (
-        <div className="biometrico-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setSelected(null)}>
-          <form className="biometrico-modal" onSubmit={save}>
-            <div className="panel-heading">
-              <div><p className="eyebrow">{displayDate(selected.start)} - {displayDate(selected.end)}</p><h3>Registo semanal</h3></div>
-              <button type="button" className="biometrico-close" onClick={() => setSelected(null)} aria-label="Fechar">×</button>
-            </div>
-            <label className="admin-field"><span>Título</span><input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Tema principal da semana" /></label>
-            <label className="admin-field"><span>Descrição</span><textarea required value={descricao} onChange={(event) => setDescricao(event.target.value)} placeholder="Descreva o trabalho realizado durante a semana" rows={7} /></label>
-            <div className="admin-actions"><button className="admin-submit" disabled={saving}>{saving ? "A guardar..." : "Guardar registo"}</button></div>
-            {status && <p className="admin-status error">{status}</p>}
+      <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open && !saving) setSelected(null); }}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+          <DialogHeader><DialogTitle>Registo semanal</DialogTitle><DialogDescription>{selected && `${displayDate(selected.start)} - ${displayDate(selected.end)}`} · Preencha o relatório de coordenação.</DialogDescription></DialogHeader>
+          <DialogCloseButton aria-label="Fechar" disabled={saving} />
+          <form className="grid gap-4" onSubmit={save}>
+            <div className="grid gap-2"><Label htmlFor="biometrico-title">Título</Label><Input id="biometrico-title" className="h-10" required disabled={saving} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Tema principal da semana" /></div>
+            <div className="grid gap-2"><Label htmlFor="biometrico-description">Descrição</Label><Textarea id="biometrico-description" required disabled={saving} value={descricao} onChange={(event) => setDescricao(event.target.value)} placeholder="Descreva o trabalho realizado durante a semana" rows={7} /></div>
+            {status && <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{status}</p>}
+            <DialogFooter><Button type="button" variant="outline" disabled={saving} onClick={() => setSelected(null)}>Cancelar</Button><Button type="submit" disabled={saving}><Save /> {saving ? "A guardar..." : "Guardar registo"}</Button></DialogFooter>
           </form>
-        </div>
-      )}
-    </section>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -4,6 +4,15 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, BookOpen, ClipboardList, Download, FileSpreadsheet, Save, Upload } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { importMiniPautaGrades, MiniPautaImportValidationError } from "@/lib/mini-pauta-import";
 
@@ -17,6 +26,18 @@ type Turma = {
 };
 type GradeAssessmentType = "AC2" | "NPP" | "NPT" | "";
 type Trimester = "I" | "II" | "III" | "";
+
+function GradeSelect({ id, label, value, onChange, options, disabled }: { id: string; label: string; value: string; onChange: (value: string) => void; options: Array<{ value: string; label: string; disabled?: boolean }>; disabled?: boolean }) {
+  return (
+    <div className="grid min-w-0 gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Select value={value || "__empty__"} onValueChange={(next) => { if (next !== null) onChange(next === "__empty__" ? "" : next); }} disabled={disabled}>
+        <SelectTrigger id={id} className="w-full bg-background data-[size=default]:h-10"><SelectValue placeholder="Selecione">{options.find((option) => option.value === value)?.label}</SelectValue></SelectTrigger>
+        <SelectContent alignItemWithTrigger={false}>{options.map((option) => <SelectItem key={option.value || "__empty__"} value={option.value || "__empty__"} disabled={option.disabled}>{option.label}</SelectItem>)}</SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 function displayName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -285,7 +306,6 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const imageWidth = pageWidth - 18;
-      const imageHeight = (canvas.height * imageWidth) / canvas.width;
       const printableHeight = pageHeight - 18;
       const pixelsPerMillimeter = canvas.width / imageWidth;
       const pageSliceHeight = Math.floor(printableHeight * pixelsPerMillimeter);
@@ -316,62 +336,88 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
   }
 
   return (
-    <main className="main-content mini-pauta-shell">
-      <header className="topbar turma-topbar">
-        <div>
-          <p className="eyebrow">AVALIAÇÃO SEMANAL</p>
-          <h1>Mini pauta</h1>
-          <p className="mini-pauta-subtitle">{turma.name}</p>
+    <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
+      <header className="flex flex-col justify-between gap-4 border-b pb-5 sm:flex-row sm:items-end">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Avaliação dos alunos</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Mini pauta</h1>
+          <p className="text-sm text-muted-foreground">Registe e acompanhe as notas da turma {turma.name}.</p>
         </div>
-        <Link href={`/turmas/${turma.id}`} className="dashboard-link">← Voltar à turma</Link>
+        <Link href={`/turmas/${turma.id}`} className={buttonVariants({ variant: "outline", size: "lg", className: "w-fit" })}><ArrowLeft /> Voltar à turma</Link>
       </header>
 
-      <section className="mini-pauta-panel">
-        <div className="mini-pauta-toolbar">
-          <label>Disciplina<select value={subject} onChange={(event) => { setSubject(event.target.value); setGrades({}); setIsLoading(false); }}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label>
-          {!isTrimesterAssessment && <label>Período semanal<select value={weekStart} onChange={(event) => changeWeekStart(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => {
+      <Card className="shadow-sm">
+        <CardHeader><div className="flex items-start gap-3"><div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><BookOpen className="size-5" /></div><div><CardTitle>Detalhes da avaliação</CardTitle><CardDescription className="mt-1">Selecione a disciplina e o período de avaliação.</CardDescription></div></div></CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <GradeSelect id="grade-subject" label="Disciplina" value={subject} onChange={(value) => { setSubject(value); setGrades({}); setIsLoading(false); }} disabled={isSaving || isImporting || !turma.subjects.length} options={turma.subjects.length ? turma.subjects.map((entry) => ({ value: entry, label: entry })) : [{ value: "", label: "Sem disciplinas" }]} />
+          {!isTrimesterAssessment && <GradeSelect id="grade-week" label="Período semanal" value={weekStart} onChange={changeWeekStart} disabled={isSaving || isImporting} options={[{ value: "", label: "Selecione um período" }, ...weeklyPeriods.map((period) => {
             const isClosed = closedPeriods.has(period.key);
             const isFuture = isFuturePeriod(period.key);
-            const isDisabled = isFuture || isClosed;
-            const label = `${period.start.toLocaleDateString("pt-AO")} - ${period.end.toLocaleDateString("pt-AO")}${isFuture ? " (futuro)" : ""}${isClosed ? " (fechado)" : ""}`;
-            return <option key={period.key} value={period.key} disabled={isDisabled}>{label}</option>;
-          })}</select></label>}
-          <label>Tipo de nota<select value={assessmentType} onChange={(event) => { setAssessmentType(event.target.value as GradeAssessmentType); if (!event.target.value) setTrimester(""); setGrades({}); setIsLoading(false); setStatus(event.target.value && !trimester ? "Selecione o trimestre I, II ou III para esta avaliação." : ""); }}>
-            {assessmentOptions.map((option) => <option key={option.value || "AC1"} value={option.value}>{option.label}</option>)}
-          </select></label>
-          <label>Trimestre<select value={trimester} onChange={(event) => { setTrimester(event.target.value as Trimester); setGrades({}); setIsLoading(false); }} disabled={!assessmentType}>
-            <option value="">{assessmentType ? "Selecione" : "Não aplicável · AC1"}</option><option value="I">I</option><option value="II">II</option><option value="III">III</option>
-          </select></label>
-        </div>
+            return { value: period.key, label: `${period.start.toLocaleDateString("pt-AO")} - ${period.end.toLocaleDateString("pt-AO")}${isFuture ? " (futuro)" : ""}${isClosed ? " (fechado)" : ""}`, disabled: isFuture || isClosed };
+          })]} />}
+          <GradeSelect id="grade-type" label="Tipo de nota" value={assessmentType} onChange={(value) => { setAssessmentType(value as GradeAssessmentType); if (!value) setTrimester(""); setGrades({}); setIsLoading(false); setStatus(value && !trimester ? "Selecione o trimestre I, II ou III para esta avaliação." : ""); }} disabled={isSaving || isImporting} options={assessmentOptions} />
+          <GradeSelect id="grade-trimester" label="Trimestre" value={trimester} onChange={(value) => { setTrimester(value as Trimester); setGrades({}); setIsLoading(false); }} disabled={!assessmentType || isSaving || isImporting} options={[{ value: "", label: assessmentType ? "Selecione" : "Não aplicável · AC1" }, ...["I", "II", "III"].map((value) => ({ value, label: value }))]} />
+        </CardContent>
+      </Card>
 
-        <div className="mini-pauta-heading">
-          <div><p className="eyebrow">NOTAS DOS ALUNOS · {assessmentType || "AC1"}{assessmentType && trimester ? ` · ${trimester} trimestre` : ""}</p><h2>{subject || "Escolha uma disciplina"}</h2></div>
-          <span className="mini-pauta-range">{isTrimesterAssessment ? trimester ? `${trimester} trimestre` : "Selecione o trimestre" : weekStart && weekEnd ? `${weekStart} a ${weekEnd}` : "Intervalo de 7 dias"}</span>
-        </div>
-
-        <div className="mini-pauta-list">
-          {turma.roster.map((student) => (
-            <label key={student.id} className="mini-pauta-row">
-              <span className="mini-pauta-avatar">{student.avatarUrl ? <img src={student.avatarUrl} alt={`Fotografia de ${displayName(student.name)}`} /> : displayName(student.name).charAt(0).toUpperCase()}</span>
-              <span className="mini-pauta-content">
-                <span className="mini-pauta-student"><strong>{displayName(student.name)}</strong></span>
-                <span className="mini-pauta-input-wrap"><input type="number" min="0" max={turma.gradeScale} step="0.1" value={grades[student.id] ?? ""} onChange={(event) => setGrades((current) => ({ ...current, [student.id]: event.target.value }))} placeholder="-" disabled={!gradePeriodSelected} /></span>
-              </span>
-            </label>
-          ))}
-        </div>
-
-        <div className="mini-pauta-footer">
-          <span>{isLoading ? "A carregar notas..." : isImporting ? "A importar notas..." : `${Object.values(grades).filter((value) => value.trim() !== "").length} de ${turma.roster.length} alunos avaliados`}</span>
-          <div className="mini-pauta-footer-actions"><button type="button" className="mini-pauta-export-button" onClick={() => { setExportSubject(subject); setExportAssessmentType(assessmentType); setExportTrimester(trimester); setShowExportModal(true); }}>Export</button><input ref={importInputRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void importGrades(file); }} /><button type="button" className="mini-pauta-export-button" onClick={() => importInputRef.current?.click()} disabled={!canImport}>{isImporting ? "A importar..." : "Importar"}</button><button type="button" className="mini-pauta-save-button" onClick={saveGrades} disabled={isSaving || isLoading || isImporting || !gradePeriodSelected || (!isTrimesterAssessment && isFuturePeriod(weekStart))}>{isSaving ? "A guardar..." : "Guardar notas"}</button></div>
-        </div>
-        {status ? <p className="mini-pauta-status">{status}</p> : null}
-      </section>
-      {showExportModal ? <div className="mini-pauta-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowExportModal(false); }}><form className="mini-pauta-export-modal" onSubmit={(event) => { event.preventDefault(); void exportGrades(); }}><div className="mini-pauta-modal-heading"><div><p className="eyebrow">EXPORTAR MINI PAUTA</p><h2>Gerar relatório</h2></div><button type="button" className="mini-pauta-modal-close" onClick={() => setShowExportModal(false)} aria-label="Fechar">×</button></div><label>Disciplina<select value={exportSubject} onChange={(event) => setExportSubject(event.target.value)}>{turma.subjects.map((entry) => <option key={entry}>{entry}</option>)}</select></label><label>Tipo de nota<select value={exportAssessmentType} onChange={(event) => { setExportAssessmentType(event.target.value as GradeAssessmentType); if (!event.target.value) setExportTrimester(""); }}>{assessmentOptions.map((option) => <option key={option.value || "AC1"} value={option.value}>{option.label}</option>)}</select></label>{exportAssessmentType && <label>Trimestre<select required value={exportTrimester} onChange={(event) => setExportTrimester(event.target.value as Trimester)}><option value="">Selecione</option><option value="I">I</option><option value="II">II</option><option value="III">III</option></select></label>}{!exportAssessmentType && <label>Período semanal<select required value={exportStart} onChange={(event) => changeExportPeriod(event.target.value)}><option value="">Selecione um período</option>{weeklyPeriods.map((period) => {
-            const isClosed = closedPeriods.has(period.key);
-            return <option key={period.key} value={period.key} disabled={isClosed}>{period.start.toLocaleDateString("pt-AO")} - {period.end.toLocaleDateString("pt-AO")}{isClosed ? " (fechado)" : ""}</option>;
-          })}</select></label>}<p className="mini-pauta-export-help">A média será calculada com as notas da classificação e do período selecionados.</p>{exportStatus ? <p className="mini-pauta-status">{exportStatus}</p> : null}<button type="submit" className="mini-pauta-save-button" disabled={isExporting || Boolean(exportAssessmentType ? !exportTrimester : !exportStart)}>{isExporting ? "A gerar..." : "Exportar PDF"}</button></form></div> : null}
-          {importValidationError ? <div className="mini-pauta-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setImportValidationError(null); }}><section className="mini-pauta-export-modal" role="dialog" aria-modal="true" aria-labelledby="import-validation-title"><div className="mini-pauta-modal-heading"><div><p className="eyebrow">IMPORTAÇÃO DE NPP</p><h2 id="import-validation-title">Trimestre não corresponde</h2></div><button type="button" className="mini-pauta-modal-close" onClick={() => setImportValidationError(null)} aria-label="Fechar">×</button></div><p>{importValidationError.message}</p><p>Trimestre escolhido na mini pauta: <strong>{importValidationError.selectedTrimester}</strong>.</p>{importValidationError.latestPopulatedTrimester ? <p>Trimestre mais recente com notas numéricas válidas (0–{turma.gradeScale}): <strong>{importValidationError.latestPopulatedTrimester}</strong>. Foram encontradas notas em {importValidationError.populatedStudentCount} aluno(s) nesse trimestre.</p> : <p>Não foi encontrada nenhuma nota numérica válida (0–{turma.gradeScale}) nas colunas AC1, AC2, NPP ou NPT dos trimestres I, II e III.</p>}<p>Folha analisada: <strong>{importValidationError.sheetName}</strong>.</p><p>Para evitar importar NPP do trimestre errado, escolha o trimestre mais recente indicado acima e tente importar novamente. O ficheiro não alterou as notas da mini pauta.</p><button type="button" className="mini-pauta-save-button" onClick={() => setImportValidationError(null)}>Entendi</button></section></div> : null}
+      <Card className="shadow-sm">
+        <CardHeader className="gap-4 sm:flex sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3"><div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ClipboardList className="size-5" /></div><div><p className="text-xs font-semibold uppercase tracking-wider text-primary">Notas dos alunos · {assessmentType || "AC1"}{assessmentType && trimester ? ` · ${trimester} trimestre` : ""}</p><CardTitle className="mt-1">{subject || "Escolha uma disciplina"}</CardTitle><CardDescription className="mt-1">Introduza notas entre 0 e {turma.gradeScale}.</CardDescription></div></div>
+          <Badge variant="secondary" className="w-fit">{isTrimesterAssessment ? trimester ? `${trimester} trimestre` : "Selecione o trimestre" : weekStart && weekEnd ? `${weekStart} a ${weekEnd}` : "Selecione um período"}</Badge>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          {turma.roster.length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {turma.roster.map((student) => (
+              <label key={student.id} className="flex min-w-0 items-center gap-3 rounded-xl border bg-muted/20 p-4 transition-colors focus-within:border-primary/40 focus-within:bg-primary/5">
+                <Avatar className="size-12 shrink-0">{student.avatarUrl && <AvatarImage src={student.avatarUrl} alt={`Fotografia de ${displayName(student.name)}`} />}<AvatarFallback className="bg-primary/10 font-semibold text-primary">{displayName(student.name).charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                <span className="min-w-0 flex-1"><span className="block break-words text-sm font-semibold">{displayName(student.name)}</span><span className="text-xs text-muted-foreground">Nota / {turma.gradeScale}</span></span>
+                <Input aria-label={`Nota de ${student.name}`} className="h-10 w-20 shrink-0 bg-background text-center" type="number" min="0" max={turma.gradeScale} step="0.1" value={grades[student.id] ?? ""} onChange={(event) => setGrades((current) => ({ ...current, [student.id]: event.target.value }))} placeholder="—" disabled={!gradePeriodSelected || isLoading || isSaving || isImporting} />
+              </label>
+            ))}
+          </div> : <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Não há alunos ativos nesta turma.</div>}
+          <div className="flex flex-col gap-4 border-t pt-4 xl:flex-row xl:items-center xl:justify-between">
+            <p aria-live="polite" className="text-sm text-muted-foreground">{isLoading ? "A carregar notas..." : isImporting ? "A importar notas..." : `${Object.values(grades).filter((value) => value.trim() !== "").length} de ${turma.roster.length} alunos avaliados`}</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button type="button" variant="outline" className="h-10" onClick={() => { setExportSubject(subject); setExportAssessmentType(assessmentType); setExportTrimester(trimester); setExportStatus(""); setShowExportModal(true); }}><Download /> Exportar PDF</Button>
+              <input ref={importInputRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void importGrades(file); }} />
+              <Button type="button" variant="outline" className="h-10" onClick={() => importInputRef.current?.click()} disabled={!canImport || isSaving}><Upload /> {isImporting ? "A importar..." : "Importar XLSX"}</Button>
+              <Button type="button" className="h-10" onClick={saveGrades} disabled={isSaving || isLoading || isImporting || !gradePeriodSelected || (!isTrimesterAssessment && isFuturePeriod(weekStart))}><Save /> {isSaving ? "A guardar..." : "Guardar notas"}</Button>
+            </div>
+          </div>
+          {status && <p role="status" className="rounded-lg border bg-muted/50 px-4 py-3 text-sm text-foreground">{status}</p>}
+        </CardContent>
+      </Card>
+      <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto">
+          <DialogHeader><DialogTitle>Gerar relatório</DialogTitle><DialogDescription>Exporte a mini pauta em PDF para a avaliação selecionada.</DialogDescription></DialogHeader>
+          <DialogCloseButton aria-label="Fechar" />
+          <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); void exportGrades(); }}>
+            <GradeSelect id="export-subject" label="Disciplina" value={exportSubject} onChange={setExportSubject} disabled={isExporting || !turma.subjects.length} options={turma.subjects.length ? turma.subjects.map((entry) => ({ value: entry, label: entry })) : [{ value: "", label: "Sem disciplinas" }]} />
+            <GradeSelect id="export-type" label="Tipo de nota" value={exportAssessmentType} onChange={(value) => { setExportAssessmentType(value as GradeAssessmentType); if (!value) setExportTrimester(""); }} disabled={isExporting} options={assessmentOptions} />
+            {exportAssessmentType ? <GradeSelect id="export-trimester" label="Trimestre" value={exportTrimester} onChange={(value) => setExportTrimester(value as Trimester)} disabled={isExporting} options={[{ value: "", label: "Selecione" }, ...["I", "II", "III"].map((value) => ({ value, label: value }))]} /> : <GradeSelect id="export-week" label="Período semanal" value={exportStart} onChange={changeExportPeriod} disabled={isExporting} options={[{ value: "", label: "Selecione um período" }, ...weeklyPeriods.map((period) => {
+              const isClosed = closedPeriods.has(period.key);
+              return { value: period.key, label: `${period.start.toLocaleDateString("pt-AO")} - ${period.end.toLocaleDateString("pt-AO")}${isClosed ? " (fechado)" : ""}`, disabled: isClosed };
+            })]} />}
+            <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">A média será calculada com as notas da classificação e do período selecionados.</p>
+            {exportStatus && <p role="alert" className="text-sm text-destructive">{exportStatus}</p>}
+            <DialogFooter><Button type="button" variant="outline" disabled={isExporting} onClick={() => setShowExportModal(false)}>Cancelar</Button><Button type="submit" disabled={isExporting || Boolean(exportAssessmentType ? !exportTrimester : !exportStart)}><Download /> {isExporting ? "A gerar..." : "Exportar PDF"}</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(importValidationError)} onOpenChange={(open) => { if (!open) setImportValidationError(null); }}>
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto">
+          <DialogHeader><DialogTitle>Trimestre não corresponde</DialogTitle><DialogDescription>Importação de NPP</DialogDescription></DialogHeader>
+          <DialogCloseButton aria-label="Fechar" />
+          {importValidationError && <div className="grid gap-3 text-sm">
+            <p>{importValidationError.message}</p>
+            <p>Trimestre escolhido na mini pauta: <strong>{importValidationError.selectedTrimester}</strong>.</p>
+            {importValidationError.latestPopulatedTrimester ? <p>Trimestre mais recente com notas numéricas válidas (0–{turma.gradeScale}): <strong>{importValidationError.latestPopulatedTrimester}</strong>. Foram encontradas notas em {importValidationError.populatedStudentCount} aluno(s) nesse trimestre.</p> : <p>Não foi encontrada nenhuma nota numérica válida (0–{turma.gradeScale}) nas colunas AC1, AC2, NPP ou NPT dos trimestres I, II e III.</p>}
+            <p>Folha analisada: <strong>{importValidationError.sheetName}</strong>.</p>
+            <p>Para evitar importar NPP do trimestre errado, escolha o trimestre mais recente indicado acima e tente importar novamente. O ficheiro não alterou as notas da mini pauta.</p>
+          </div>}
+          <DialogFooter><Button type="button" onClick={() => setImportValidationError(null)}><FileSpreadsheet /> Entendi</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
