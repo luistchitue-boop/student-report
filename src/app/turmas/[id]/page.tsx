@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { ArrowLeft, ArrowRight, BookOpenCheck, GraduationCap, Search, UserPlus, Users } from "lucide-react";
 
 const PAGE_SIZE = 10;
@@ -68,21 +69,14 @@ export default async function TurmaDetailPage({
   return (
     <AppShell active="turmas">
       <main className="main-content mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 sm:px-6 lg:gap-8 lg:px-8">
-        <header className="flex flex-col justify-between gap-4 pb-5 sm:flex-row sm:items-end">
-          <div className="space-y-2">
-            <Badge variant="secondary" className="gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
-              <GraduationCap className="size-3.5" /> Turma
-            </Badge>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{turma.name}</h1>
-              <Badge variant="outline">
-                {turma.educationType === "ENSINO_GERAL" ? "Ensino geral" : turma.educationType === "ENSINO_TECNICO" ? "Ensino Técnico" : "Tipo de ensino não definido"}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">Consulte os alunos, acompanhe o desempenho e aceda aos registos da turma.</p>
-          </div>
-          <Button variant="outline" render={<Link href="/turmas" />}><ArrowLeft /> Voltar às turmas</Button>
-        </header>
+        <PageHeaderCard
+          badge="Turma"
+          title={turma.name}
+          description="Consulte os alunos, acompanhe o desempenho e aceda aos registos da turma."
+          icon={GraduationCap}
+          titleAdornment={<Badge variant="outline">{turma.educationType === "ENSINO_GERAL" ? "Ensino geral" : turma.educationType === "ENSINO_TECNICO" ? "Ensino Técnico" : "Tipo de ensino não definido"}</Badge>}
+          action={<Button variant="outline" render={<Link href="/turmas" />}><ArrowLeft /> Voltar às turmas</Button>}
+        />
 
         <Card className="border-border/70 shadow-sm">
           <CardHeader className="flex flex-col gap-3 border-b bg-muted/20 sm:flex-row sm:items-center sm:justify-between">

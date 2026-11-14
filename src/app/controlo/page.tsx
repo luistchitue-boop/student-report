@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PrismaClient } from "@prisma/client";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ClipboardCheck } from "lucide-react";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,15 +76,9 @@ export default async function ControloPage({
 
   return (
     <AppShell active="controlo">
-      <main className="main-content">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">ACOMPANHAMENTO / {new Date().getFullYear()}</p>
-            <h1>Controlo</h1>
-          </div>
-        </header>
-
-        <Card className="controlo-shell w-full max-w-none gap-0 overflow-visible py-0">
+      <main className="main-content flex flex-col gap-6">
+        <PageHeaderCard badge={`Acompanhamento / ${new Date().getFullYear()}`} title="Controlo" description="Verifique os registos de coordenação semanal por turma e período." icon={ClipboardCheck} />
+        <Card className="w-full max-w-none gap-0 overflow-visible py-0">
           <CardHeader className="border-b px-5 py-5 sm:px-6">
             <p className="text-xs font-semibold tracking-widest text-muted-foreground">BIOMÉTRICO</p>
             <CardTitle className="text-lg">Verificação da coordenação semanal</CardTitle>

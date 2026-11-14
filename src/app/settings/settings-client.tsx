@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { CircleAlert, CircleCheck, KeyRound, Save, UserRound } from "lucide-react";
+import { CircleAlert, CircleCheck, KeyRound, Save, Settings2, UserRound } from "lucide-react";
 
 type User = { id: string; name: string; email: string };
 
@@ -105,13 +106,7 @@ export function SettingsClient() {
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
-      <header className="pb-5">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Conta</p>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Definições da conta</h1>
-          <p className="text-sm text-muted-foreground">Gira os dados do seu perfil e a segurança da sua conta.</p>
-        </div>
-      </header>
+      <PageHeaderCard badge="Conta" title="Definições da conta" description="Gira os dados do seu perfil e a segurança da sua conta." icon={Settings2} />
 
       {error && <p className="flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive" role="alert"><CircleAlert className="mt-0.5 size-4 shrink-0" />{error}</p>}
       {success && <p className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-primary" role="status"><CircleCheck className="mt-0.5 size-4 shrink-0" />{success}</p>}

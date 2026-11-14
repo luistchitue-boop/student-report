@@ -12,9 +12,6 @@ export default async function AdminReportDeliveryIssuesPage() {
   return (
     <AppShell active="relatorios">
       <main className="main-content">
-        <header className="topbar">
-          <div><p className="eyebrow">RELATÓRIOS</p><h1>Estado de entrega dos e-mails</h1></div>
-        </header>
         <DeliveryIssuesClient />
       </main>
     </AppShell>

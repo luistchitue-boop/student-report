@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
+import { FileBarChart2 } from "lucide-react";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { getCoordinatorTurmas } from "@/lib/teacher-data";
 import { RelatoriosClient } from "./relatorios-client";
 import { getSchoolContext } from "@/lib/school-context";
-import { Badge } from "@/components/ui/badge";
 
 export default async function AdminRelatoriosPage() {
   const session = await auth();
@@ -20,14 +21,7 @@ export default async function AdminRelatoriosPage() {
   return (
     <AppShell active="relatorios">
       <main className="main-content flex flex-col gap-6">
-        <header className="space-y-2">
-          <Badge variant="secondary">ADMINISTRAÇÃO</Badge>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Enviar relatórios</h1>
-            <p className="text-sm text-muted-foreground">Prepare, pré-visualize e acompanhe os relatórios das turmas.</p>
-          </div>
-        </header>
-
+        <PageHeaderCard badge="Administração" title="Enviar relatórios" description="Prepare, pré-visualize e acompanhe os relatórios das turmas." icon={FileBarChart2} />
         <RelatoriosClient turmas={turmas} canSend={userRole === "ADMIN"} />
       </main>
     </AppShell>

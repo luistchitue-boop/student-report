@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { Activity, ArrowLeft, ArrowRight } from "lucide-react";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -154,15 +155,10 @@ export default async function ActivityLogsPage({
 
   return (
     <AppShell active="logs">
-      <main className="main-content">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">ADMINISTRAÇÃO</p>
-            <h1>Registo de atividades</h1>
-          </div>
-        </header>
+      <main className="main-content flex flex-col gap-6">
+        <PageHeaderCard badge="Administração" title="Registo de atividades" description="Consulte as atividades registadas na escola e filtre por turma ou data." icon={Activity} />
 
-        <Card className="admin-shell w-full max-w-none gap-0 overflow-visible py-0">
+        <Card className="w-full max-w-none gap-0 overflow-visible py-0">
           <CardHeader className="border-b px-5 py-5 sm:px-6">
             <p className="text-xs font-semibold tracking-widest text-muted-foreground">AUDITORIA</p>
             <CardTitle className="text-lg">Quem registou o quê e quando</CardTitle>

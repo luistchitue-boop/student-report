@@ -5,9 +5,10 @@ import { jsPDF } from "jspdf";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, BookOpen, ClipboardList, Download, FileSpreadsheet, Save, Upload } from "lucide-react";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -337,14 +338,13 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
-      <header className="flex flex-col justify-between gap-4 pb-5 sm:flex-row sm:items-end">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Avaliação dos alunos</p>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Mini pauta</h1>
-          <p className="text-sm text-muted-foreground">Registe e acompanhe as notas da turma {turma.name}.</p>
-        </div>
-        <Link href={`/turmas/${turma.id}`} className={buttonVariants({ variant: "outline", size: "lg", className: "w-fit" })}><ArrowLeft /> Voltar à turma</Link>
-      </header>
+      <PageHeaderCard
+        badge="Avaliação dos alunos"
+        title="Mini pauta"
+        description={`Registe e acompanhe as notas da turma ${turma.name}.`}
+        icon={BookOpen}
+        action={<Button variant="outline" size="lg" render={<Link href={`/turmas/${turma.id}`} />}><ArrowLeft /> Voltar à turma</Button>}
+      />
 
       <Card className="shadow-sm">
         <CardHeader><div className="flex items-start gap-3"><div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><BookOpen className="size-5" /></div><div><CardTitle>Detalhes da avaliação</CardTitle><CardDescription className="mt-1">Selecione a disciplina e o período de avaliação.</CardDescription></div></div></CardHeader>

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { ShieldCheck } from "lucide-react";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { AdminClient } from "./admin-client";
 import { AdminRouteNav } from "./admin-route-nav";
 import { getSchoolContext } from "@/lib/school-context";
@@ -16,11 +18,7 @@ export default async function AdminPage() {
   return (
     <AppShell active="admin">
       <main className="main-content admin-page-content">
-        <header className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Administração</p>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Gestão da escola</h1>
-        </header>
-
+        <PageHeaderCard badge="Administração" title="Gestão da escola" description="Gira as contas e os acessos da sua escola." icon={ShieldCheck} />
         <AdminRouteNav current="users" />
         <AdminClient />
       </main>

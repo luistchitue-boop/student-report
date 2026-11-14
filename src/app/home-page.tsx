@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { Activity, ArrowRight, BadgeCheck, BookOpenCheck, Building2, ClipboardCheck, FileBarChart2, GraduationCap, ShieldCheck, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const actions = [
   { title: "Turmas", description: "Consultar turmas, alunos e registos.", href: "/turmas", icon: Users, roles: ["ADMIN", "DIRECCAO", "COORDENADOR"] },
@@ -36,20 +38,13 @@ export default function HomePage({
   return (
     <AppShell active="inicio">
       <main className="dashboard-content mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
-        <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div className="space-y-2">
-            <Badge variant="secondary" className="gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
-              <span className="size-1.5 rounded-full bg-primary" /> Painel escolar
-            </Badge>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Resumo geral</h1>
-            <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
-              Acompanhe a atividade da escola e aceda rapidamente às ferramentas de gestão.
-            </p>
-          </div>
-          <Link href="/turmas" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
-            <Building2 className="size-4" /> Abrir turmas <ArrowRight className="size-4" />
-          </Link>
-        </section>
+        <PageHeaderCard
+          badge="Painel escolar"
+          title="Resumo geral"
+          description="Acompanhe a atividade da escola e aceda rapidamente às ferramentas de gestão."
+          icon={Building2}
+          action={<Button render={<Link href="/turmas" />}><Building2 /> Abrir turmas <ArrowRight /></Button>}
+        />
 
         <section aria-label="Indicadores da escola" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {quickStats.map((stat, index) => {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Camera, ImagePlus, Plus, Save, Trash2, UserRound, Users } from "lucide-react";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -117,14 +118,13 @@ export function NewStudentClient({ turma, canUploadAvatar }: { turma: Turma; can
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
-      <header className="flex flex-col justify-between gap-4 pb-5 sm:flex-row sm:items-end">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">Registo de aluno</p>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Novo aluno</h1>
-          <p className="text-sm text-muted-foreground">Adicione um aluno e os contactos dos seus encarregados à turma {turma.name}.</p>
-        </div>
-        <Link href={`/turmas/${turma.id}`} className={buttonVariants({ variant: "outline", size: "lg", className: "w-fit" })}><ArrowLeft /> Voltar à turma</Link>
-      </header>
+      <PageHeaderCard
+        badge="Registo de aluno"
+        title="Novo aluno"
+        description={`Adicione um aluno e os contactos dos seus encarregados à turma ${turma.name}.`}
+        icon={UserRound}
+        action={<Button variant="outline" size="lg" render={<Link href={`/turmas/${turma.id}`} />}><ArrowLeft /> Voltar à turma</Button>}
+      />
 
       <form className="flex flex-col gap-5" onSubmit={submit}>
         <Card className="shadow-sm">

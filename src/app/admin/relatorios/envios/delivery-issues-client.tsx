@@ -7,6 +7,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, ArrowUpRight, CheckCircle2, Clock3,
 import { isSendableEmailAddress } from "@/lib/email-address";
 import { getPaginationItems } from "@/lib/pagination";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -347,24 +348,23 @@ export function DeliveryIssuesClient() {
 
   return (
     <section className="grid gap-6">
-      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div className="space-y-2">
-          <Button variant="ghost" size="sm" className="-ml-2 w-fit" render={<Link href="/admin/relatorios" />}><ArrowLeft /> Voltar aos relatórios</Button>
-          <div className="space-y-1">
-            <Badge variant="secondary" className="w-fit gap-1.5"><Mail className="size-3.5" /> Auditoria de e-mail</Badge>
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Falhas e e-mails devolvidos</h2>
-            <p className="max-w-3xl text-sm text-muted-foreground">Consulte destinatários com falhas de envio, devoluções ou notificações de atraso.</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <PageHeaderCard
+        badge="Auditoria de e-mail"
+        title="Falhas e e-mails devolvidos"
+        description="Consulte destinatários com falhas de envio, devoluções ou notificações de atraso."
+        icon={Mail}
+        action={
+          <>
+            <Button variant="ghost" size="sm" render={<Link href="/admin/relatorios" />}><ArrowLeft /> Relatórios</Button>
           <Button type="button" variant="outline" onClick={refreshDeliveryStatus} disabled={loading || refreshing || exporting || bulkSending}>
             <RefreshCw className={refreshing ? "animate-spin" : ""} /> {refreshing ? "A atualizar..." : "Atualizar lista"}
           </Button>
           <Button type="button" onClick={exportLatestIssuesPdf} disabled={loading || refreshing || exporting || bulkSending}>
             <Download /> {exporting ? "A atualizar e exportar..." : "Exportar PDF"}
           </Button>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <Card className="shadow-sm">
         <CardHeader className="pb-3">
