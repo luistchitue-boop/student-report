@@ -10,6 +10,7 @@ import {
   ClipboardCheck,
   FileBarChart2,
   Fingerprint,
+  GlobeLock,
   GraduationCap,
   House,
   Landmark,
@@ -112,7 +113,7 @@ export function AppSidebar({
     coordinationItems.push({ label: "Controlo", href: "/controlo", icon: ClipboardCheck });
     managementItems.push({ label: "Relatórios", href: "/admin/relatorios", icon: FileBarChart2 });
   }
-  if (isRoot) managementItems.push({ label: "Administração global", href: "/root", icon: ShieldCheck });
+  if (isRoot) managementItems.push({ label: "Administração global", href: "/root", icon: GlobeLock });
   managementItems.push({ label: "Definições", href: "/settings", icon: Settings });
 
   function renderItems(items: NavItem[]) {
