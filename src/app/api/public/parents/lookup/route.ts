@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     }
 
     const parents = await prisma.parent.findMany({
-      where: { student: { active: true } },
+      where: { student: { active: true, turma: { school: { isActive: true } } } },
       select: { id: true, name: true },
     });
 

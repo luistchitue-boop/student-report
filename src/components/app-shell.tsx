@@ -19,6 +19,7 @@ const sectionTitles = {
   relatorios: "Relatórios escolares",
   logs: "Registo de atividade",
   internships: "Relatórios de estágio",
+  root: "Administração global",
 } as const;
 
 export function AppShell({ children, active }: { children: ReactNode; active: keyof typeof sectionTitles }) {
@@ -27,6 +28,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
   const [schoolMemberships, setSchoolMemberships] = useState<Array<{ schoolId: string; role: string; school: { id: string; name: string } }>>([]);
   const [activeSchoolId, setActiveSchoolId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [isRoot, setIsRoot] = useState(false);
   const [switchingSchool, setSwitchingSchool] = useState(false);
   const [schoolSwitchError, setSchoolSwitchError] = useState("");
 
@@ -39,6 +41,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
         setSchoolMemberships(result.memberships ?? []);
         setActiveSchoolId(result.activeSchoolId ?? null);
         setRole(result.role ?? null);
+        setIsRoot(result.isRoot === true);
       })
       .catch(() => {
         if (activeRequest) setRole(null);
@@ -89,6 +92,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
       >
         <AppSidebar
           appRole={role}
+          isRoot={isRoot}
           memberships={schoolMemberships}
           activeSchoolId={activeSchoolId}
           switchingSchool={switchingSchool}

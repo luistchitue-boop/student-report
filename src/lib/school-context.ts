@@ -21,10 +21,10 @@ export async function getSchoolContext(userId?: string) {
   const cookieStore = await cookies();
   const requestedSchoolId = cookieStore.get(ACTIVE_SCHOOL_COOKIE)?.value;
   const memberships = await prisma.schoolMembership.findMany({
-    where: { userId: effectiveUserId },
+    where: { userId: effectiveUserId, school: { isActive: true } },
     include: {
       school: {
-        select: { id: true, name: true, logoUrl: true, address: true, website: true, reportEmailTemplate: true },
+        select: { id: true, name: true, logoUrl: true, address: true, website: true, reportEmailTemplate: true, isActive: true, reportsEnabled: true },
       },
     },
     orderBy: [{ createdAt: "asc" }, { schoolId: "asc" }],
@@ -48,7 +48,7 @@ export async function getSchoolContext(userId?: string) {
 
 export async function getSchoolMemberships(userId: string) {
   return prisma.schoolMembership.findMany({
-    where: { userId },
+    where: { userId, school: { isActive: true } },
     select: {
       schoolId: true,
       role: true,

@@ -37,6 +37,9 @@ export async function POST(request: Request) {
   if (!session?.user || !schoolContext || schoolContext.role !== "ADMIN") {
     return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
   }
+  if (!schoolContext.school.reportsEnabled) {
+    return NextResponse.json({ error: "A geração e o envio de relatórios estão desativados para esta escola." }, { status: 403 });
+  }
 
   try {
     const body = await request.json();
@@ -83,6 +86,13 @@ export async function POST(request: Request) {
     }
 
     const pdf = await generateInternshipReportPdf(report);
+    const currentSchool = await prisma.school.findUnique({
+      where: { id: schoolContext.schoolId },
+      select: { isActive: true, reportsEnabled: true },
+    });
+    if (!currentSchool?.isActive || !currentSchool.reportsEnabled) {
+      return NextResponse.json({ error: "A escola ou o envio de relatórios está desativado." }, { status: 403 });
+    }
     let providerEmailId: string | undefined;
     let providerMessageSid: string | undefined;
     let deliveryError: string | undefined;

@@ -667,6 +667,9 @@ export async function POST(request: Request) {
     if (!session?.user || !schoolContext || (userRole !== "ADMIN" && !(userRole === "DIRECCAO" && preview))) {
       return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
     }
+    if (!schoolContext.school.reportsEnabled) {
+      return NextResponse.json({ error: "A geração e o envio de relatórios estão desativados para esta escola." }, { status: 403 });
+    }
 
     const retryDeliveryId = typeof body.retryDeliveryId === "string" ? body.retryDeliveryId : "";
     const retryDelivery = retryDeliveryId ? await prisma.reportDelivery.findFirst({
@@ -1017,6 +1020,13 @@ export async function POST(request: Request) {
     const results: Array<{ email: string; studentName: string; success: boolean; error?: string }> = [];
 
     for (const recipient of recipients) {
+      const currentSchool = await prisma.school.findUnique({
+        where: { id: schoolContext.schoolId },
+        select: { isActive: true, reportsEnabled: true },
+      });
+      if (!currentSchool?.isActive || !currentSchool.reportsEnabled) {
+        return NextResponse.json({ error: "A escola ou o envio de relatórios foi desativado durante o processamento.", sent, results }, { status: 403 });
+      }
       if (channel === "WHATSAPP") {
         try {
           await twilio(TWILIO_ACCOUNT_SID!, TWILIO_AUTH_TOKEN!).messages.create({

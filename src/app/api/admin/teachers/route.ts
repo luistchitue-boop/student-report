@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 import { createActivityLog, describeActorName } from "@/lib/activity-log";
 import { getSchoolContext } from "@/lib/school-context";
+import { isReservedRootEmail } from "@/lib/root-admin";
 
 declare global {
   var prismaAdminTeachers: PrismaClient | undefined;
@@ -209,6 +210,7 @@ export async function POST(request: Request) {
     let user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
+      if (isReservedRootEmail(email)) return NextResponse.json({ error: "Não é possível criar esta conta." }, { status: 403 });
       user = await prisma.user.create({
         data: {
           email,

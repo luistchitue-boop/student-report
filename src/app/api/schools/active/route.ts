@@ -3,6 +3,7 @@ import { ACTIVE_SCHOOL_COOKIE, getSchoolMemberships } from "@/lib/school-context
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { PrismaClient } from "@prisma/client";
+import { getRootAdmin } from "@/lib/root-admin";
 
 declare global {
   var activeSchoolRoutePrisma: PrismaClient | undefined;
@@ -19,7 +20,7 @@ export async function GET() {
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
-  const memberships = await getSchoolMemberships(userId);
+  const [memberships, root] = await Promise.all([getSchoolMemberships(userId), getRootAdmin()]);
   const activeSchoolId = (await cookies()).get(ACTIVE_SCHOOL_COOKIE)?.value;
   const activeMembership = activeSchoolId
     ? memberships.find((membership) => membership.schoolId === activeSchoolId) ?? null
@@ -29,6 +30,7 @@ export async function GET() {
     memberships,
     activeSchoolId: activeMembership?.schoolId ?? null,
     role: activeMembership?.role ?? null,
+    isRoot: Boolean(root),
   }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
 
@@ -53,9 +55,9 @@ export async function POST(request: Request) {
 
   const membership = await prisma.schoolMembership.findUnique({
     where: { schoolId_userId: { schoolId, userId } },
-    select: { schoolId: true, role: true },
+    select: { schoolId: true, role: true, school: { select: { isActive: true } } },
   });
-  if (!membership) return NextResponse.json({ error: "Sem acesso a esta escola" }, { status: 403 });
+  if (!membership || !membership.school.isActive) return NextResponse.json({ error: "Sem acesso a esta escola" }, { status: 403 });
 
   const cookieStore = await cookies();
   cookieStore.set(ACTIVE_SCHOOL_COOKIE, membership.schoolId, {

@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { importMiniPautaGrades, MiniPautaImportValidationError } from "@/lib/mini-pauta-import";
+import { assertReportAccess } from "@/lib/report-access-client";
 
 type Turma = {
   id: string;
@@ -262,6 +263,7 @@ export function MiniPautaClient({ turma }: { turma: Turma }) {
     setIsExporting(true);
     setExportStatus("");
     try {
+      await assertReportAccess();
       const exportQuery = new URLSearchParams({ export: "true", turmaId: turma.id, subject: exportSubject });
       if (exportIsTrimesterAssessment) {
         exportQuery.set("assessmentType", exportAssessmentType);

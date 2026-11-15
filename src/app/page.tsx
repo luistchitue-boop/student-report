@@ -4,6 +4,8 @@ import { getCoordinatorTurmas } from "@/lib/teacher-data";
 import { PrismaClient } from "@prisma/client";
 import HomePage from "./home-page";
 import { getSchoolContext } from "@/lib/school-context";
+import { AppShell } from "@/components/app-shell";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const prisma = new PrismaClient();
 
@@ -18,6 +20,18 @@ export default async function Home() {
     getCoordinatorTurmas(session.user.id),
     getSchoolContext(session.user.id),
   ]);
+  if (!schoolContext) {
+    return (
+      <AppShell active="inicio">
+        <main className="main-content">
+          <Card className="shadow-sm">
+            <CardHeader><CardTitle>Nenhuma escola ativa</CardTitle><CardDescription>Selecione uma escola disponível no menu. Se a sua escola estiver desativada, contacte o administrador da plataforma.</CardDescription></CardHeader>
+            <CardContent className="text-sm text-muted-foreground">Pode continuar a gerir as definições da sua conta.</CardContent>
+          </Card>
+        </main>
+      </AppShell>
+    );
+  }
   const turmaIds = turmas.map((turma) => turma.id);
   const activeStudents = turmas.reduce((total, turma) => total + (turma.students ?? 0), 0);
 
@@ -47,7 +61,7 @@ export default async function Home() {
         activeStudents,
         absencesToday,
       }}
-      role={schoolContext?.role ?? "COORDENADOR"}
+      role={schoolContext.role}
     />
   );
 }

@@ -12,7 +12,7 @@ export async function GET(
 ) {
   const { parentId } = await params;
   const parent = await prisma.parent.findFirst({
-    where: { id: parentId },
+    where: { id: parentId, student: { turma: { school: { isActive: true } } } },
     select: {
       id: true,
       name: true,
@@ -26,7 +26,7 @@ export async function GET(
   }
 
   const candidateParents = await prisma.parent.findMany({
-    where: { student: { active: true } },
+    where: { student: { active: true, turma: { school: { isActive: true } } } },
     select: {
       id: true,
       name: true,
@@ -47,7 +47,7 @@ export async function GET(
       email: parent.email,
     },
     students,
-  });
+  }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
 
 export async function PATCH(
@@ -71,7 +71,7 @@ export async function PATCH(
     }
 
     const parent = await prisma.parent.findFirst({
-      where: { id: parentId },
+      where: { id: parentId, student: { turma: { school: { isActive: true } } } },
       include: { student: { select: { turma: { select: { schoolId: true } } } } },
     });
     if (!parent) {
@@ -79,7 +79,7 @@ export async function PATCH(
     }
 
     const parentGroup = await prisma.parent.findMany({
-      where: { student: { active: true } },
+      where: { student: { active: true, turma: { school: { isActive: true } } } },
       select: { id: true, name: true },
     });
     const normalizedName = normalizeParentName(parent.name);

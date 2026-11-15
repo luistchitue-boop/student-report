@@ -52,6 +52,7 @@ type SchoolMembership = {
 
 type AppSidebarProps = ComponentProps<typeof Sidebar> & {
   appRole: string | null;
+  isRoot: boolean;
   memberships: SchoolMembership[];
   activeSchoolId: string | null;
   switchingSchool: boolean;
@@ -71,6 +72,7 @@ function roleLabel(role?: string) {
 
 export function AppSidebar({
   appRole,
+  isRoot,
   memberships,
   activeSchoolId,
   switchingSchool,
@@ -110,6 +112,7 @@ export function AppSidebar({
     coordinationItems.push({ label: "Controlo", href: "/controlo", icon: ClipboardCheck });
     managementItems.push({ label: "Relatórios", href: "/admin/relatorios", icon: FileBarChart2 });
   }
+  if (isRoot) managementItems.push({ label: "Administração global", href: "/root", icon: ShieldCheck });
   managementItems.push({ label: "Definições", href: "/settings", icon: Settings });
 
   function renderItems(items: NavItem[]) {

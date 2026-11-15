@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ContactosTab } from "./contactos-tab";
 import { formatPeriodDate, getWeeklyCoordinationPeriods } from "@/lib/weekly-coordination";
 import { makeSchoolWebsiteQrTarget } from "@/lib/school-report-email";
+import { assertReportAccess } from "@/lib/report-access-client";
 
 type GradeRecord = { id: string; subject: string; value: number; term: string; assessmentType: "AC2" | "NPP" | "NPT" | null; trimester: "I" | "II" | "III" | null; createdAt: string };
 type AbsenceRecord = { id: string; subject: string; dia: string; tempo: string; faultType: string; notes: string; justified: boolean; justificationTitle: string; justificationNotes: string; hasAttachment?: boolean; attachmentName?: string | null; createdAt: string };
@@ -380,6 +381,7 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
     }
 
     try {
+      await assertReportAccess();
       const response = await fetch(`/api/student-record?studentId=${student.id}&from=${reportStart}&to=${reportEnd}`);
 
       if (!response.ok) {

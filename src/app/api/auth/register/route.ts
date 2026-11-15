@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client"
 import { hashPassword } from "@/lib/password"
 import { NextRequest, NextResponse } from "next/server"
+import { isReservedRootEmail } from "@/lib/root-admin"
 
 declare global {
   var prismaAuthRegister: PrismaClient | undefined;
@@ -14,7 +15,10 @@ if (process.env.NODE_ENV !== "production") {
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json()
+    const body = await request.json()
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
+    const password = body.password
+    const name = body.name
 
     // Validate input
     if (!email || !password) {
@@ -22,6 +26,10 @@ export async function POST(request: NextRequest) {
         { error: "O e-mail e a palavra-passe são obrigatórios" },
         { status: 400 }
       )
+    }
+
+    if (isReservedRootEmail(email)) {
+      return NextResponse.json({ error: "Não é possível registar esta conta." }, { status: 403 })
     }
 
     // Check if user already exists

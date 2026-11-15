@@ -2,7 +2,9 @@
 
 import { Download } from "lucide-react";
 import { jsPDF } from "jspdf";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { assertReportAccess } from "@/lib/report-access-client";
 
 type ExportPeriod = {
   start: string;
@@ -24,6 +26,18 @@ export function ControloExportButton({
   year: number;
   periods: ExportPeriod[];
 }) {
+  const [exportError, setExportError] = useState("");
+
+  async function runExport(exportAction: () => void) {
+    setExportError("");
+    try {
+      await assertReportAccess();
+      exportAction();
+    } catch (reason) {
+      setExportError(reason instanceof Error ? reason.message : "Não foi possível exportar o relatório.");
+    }
+  }
+
   function exportPdf() {
     const pdf = new jsPDF();
     const margin = 18;
@@ -127,10 +141,11 @@ export function ControloExportButton({
 
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      <Button type="button" variant="outline" onClick={exportPdf}>
+      {exportError && <p role="alert" className="w-full text-sm text-destructive">{exportError}</p>}
+      <Button type="button" variant="outline" onClick={() => void runExport(exportPdf)}>
         <Download aria-hidden="true" /> Exportar PDF
       </Button>
-      <Button type="button" onClick={exportReportPdf}>
+      <Button type="button" onClick={() => void runExport(exportReportPdf)}>
         <Download aria-hidden="true" /> Relatório
       </Button>
     </div>

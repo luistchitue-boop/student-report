@@ -7,6 +7,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, ArrowUpRight, CheckCircle2, Clock3,
 import { isSendableEmailAddress } from "@/lib/email-address";
 import { getPaginationItems } from "@/lib/pagination";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
+import { assertReportAccess } from "@/lib/report-access-client";
 import { PageHeaderCard } from "@/components/page-header-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -334,6 +335,7 @@ export function DeliveryIssuesClient() {
     if (!periodKey) return;
     setExporting(true);
     try {
+      await assertReportAccess();
       const latestIssues = await refreshDeliveryStatus();
       if (!latestIssues) return;
       const latestFilteredIssues = latestIssues.filter((issue) =>
@@ -341,6 +343,8 @@ export function DeliveryIssuesClient() {
         && (statusFilter === "ALL" || issue.status === statusFilter)
         && (!validEmailOnly || isSendableEmailAddress(issue.recipientEmail)));
       exportIssuesPdf(latestFilteredIssues, selectedPeriodLabel, selectedTurmaName);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível exportar o relatório.");
     } finally {
       setExporting(false);
     }

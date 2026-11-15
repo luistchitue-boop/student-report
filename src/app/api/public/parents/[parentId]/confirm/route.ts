@@ -24,19 +24,29 @@ export async function GET(
       return NextResponse.redirect(new URL("/encarregado?confirmed=invalid", request.url));
     }
 
-    const parents = await prisma.parent.findMany({
-      where: { id: { in: tokenParentIds }, student: { active: true } },
-      select: { id: true, name: true },
+    const confirmed = await prisma.$transaction(async (tx) => {
+      const parents = await tx.parent.findMany({
+        where: { id: { in: tokenParentIds }, student: { active: true, turma: { school: { isActive: true } } } },
+        select: { id: true, name: true },
+      });
+      const normalizedNames = new Set(parents.map((parent) => normalizeParentName(parent.name)));
+      if (parents.length !== new Set(tokenParentIds).size || normalizedNames.size !== 1) {
+        return false;
+      }
+
+      const result = await tx.parent.updateMany({
+        where: { id: { in: parents.map((parent) => parent.id) }, student: { active: true, turma: { school: { isActive: true } } } },
+        data: { phone, email },
+      });
+      if (result.count !== parents.length) {
+        throw new Error("Parent eligibility changed during confirmation.");
+      }
+      return true;
     });
-    const normalizedNames = new Set(parents.map((parent) => normalizeParentName(parent.name)));
-    if (parents.length !== new Set(tokenParentIds).size || normalizedNames.size !== 1) {
+
+    if (!confirmed) {
       return NextResponse.redirect(new URL("/encarregado?confirmed=invalid", request.url));
     }
-
-    await prisma.parent.updateMany({
-      where: { id: { in: parents.map((parent) => parent.id) }, student: { active: true } },
-      data: { phone, email },
-    });
 
     return NextResponse.redirect(new URL("/encarregado/confirmado", request.url));
   } catch (error) {

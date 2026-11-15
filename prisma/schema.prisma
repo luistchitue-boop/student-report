@@ -64,6 +64,8 @@ model School {
   address   String?
   website   String?
   reportEmailTemplate String? @db.Text
+  isActive Boolean @default(true)
+  reportsEnabled Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -72,6 +74,17 @@ model School {
   activityLogs        ActivityLog[]
   closedWeeklyPeriods ClosedWeeklyPeriod[]
   creationCodeRedemption SchoolCreationCodeRedemption?
+}
+
+model RootActivityLog {
+  id String @id @default(cuid())
+  actorId String
+  action String
+  schoolId String
+  details Json
+  createdAt DateTime @default(now())
+
+  @@index([schoolId, createdAt])
 }
 
 model SchoolCreationCodeRedemption {

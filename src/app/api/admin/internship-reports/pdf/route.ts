@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     if (!session?.user || !schoolContext || schoolContext.role !== "ADMIN") {
       return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 });
     }
+    if (!schoolContext.school.reportsEnabled) return NextResponse.json({ error: "Os relatórios estão desativados para esta escola." }, { status: 403 });
     const report = await prisma.internshipPerformanceReport.findFirst({
       where: { id: reportId, student: { turma: { isInternship: true, schoolId: schoolContext.schoolId } } },
       include: {
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const report = await prisma.internshipPerformanceReport.findFirst({
-      where: { id: reportId, student: { turma: { isInternship: true } } },
+      where: { id: reportId, student: { turma: { isInternship: true, school: { isActive: true, reportsEnabled: true } } } },
       include: {
         student: {
           select: {

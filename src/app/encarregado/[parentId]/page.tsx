@@ -5,6 +5,8 @@ import { normalizeParentName } from "@/lib/parent-contact";
 
 const prisma = new PrismaClient();
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Atualizar contactos",
   description: "Atualize o telefone e o e-mail dos seus alunos.",
@@ -13,7 +15,7 @@ export const metadata = {
 export default async function ParentContactPage({ params }: { params: Promise<{ parentId: string }> }) {
   const { parentId } = await params;
   const parent = await prisma.parent.findFirst({
-    where: { id: parentId },
+    where: { id: parentId, student: { turma: { school: { isActive: true } } } },
     select: { id: true, name: true, phone: true, email: true },
   });
 
@@ -22,7 +24,7 @@ export default async function ParentContactPage({ params }: { params: Promise<{ 
   }
 
   const activeParents = await prisma.parent.findMany({
-    where: { student: { active: true } },
+    where: { student: { active: true, turma: { school: { isActive: true } } } },
     select: {
       id: true,
       name: true,
@@ -43,5 +45,5 @@ export default async function ParentContactPage({ params }: { params: Promise<{ 
 
   const selectedParent = linkedParents.find((linkedParent) => linkedParent.id === parentId) ?? linkedParents[0];
 
-  return <ParentContactEditor parent={selectedParent ?? parent} linkedParents={linkedParents} />;
+  return <ParentContactEditor parent={selectedParent ?? { ...parent, student: null }} linkedParents={linkedParents} />;
 }
