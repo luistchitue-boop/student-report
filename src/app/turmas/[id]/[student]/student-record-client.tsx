@@ -566,7 +566,7 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
             <Badge variant="secondary" className="w-fit"><GraduationCap /> {turma.name}</Badge>
           </CardContent>
         </Card>
-        <Tabs value={tab} onValueChange={(value) => { if (value) setTab(value as StudentTab); }} className="gap-5">
+        <Tabs value={tab} onValueChange={(value) => { if (value) setTab(value as StudentTab); }} className="min-w-0 gap-5">
           <Card className="shadow-sm">
             <CardContent className="px-3 py-1.5 sm:px-4 sm:py-2">
               <TabsList className="flex h-auto w-full flex-wrap items-center justify-start gap-2 bg-transparent p-0" aria-label="Secções do aluno">
@@ -579,7 +579,7 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
               </TabsList>
             </CardContent>
           </Card>
-          <Card className="shadow-sm"><CardContent>
+          <Card className="min-w-0 shadow-sm"><CardContent className="min-w-0">
 
             <TabsContent value="resumo">
               <div className="student-summary-view">
@@ -672,12 +672,12 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
               </div>
             </TabsContent>
 
-            <TabsContent value="relatorio">
-              <div className="grid gap-4">
+            <TabsContent value="relatorio" className="min-w-0">
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
                 <PeriodSelector value={reportStart} onChange={selectReportPeriod} periods={weeklyPeriods} isFuture={isFuturePeriod} />
 
                 {reportStart && (
-                  <section className="grid gap-4 rounded-xl border p-4" aria-live="polite">
+                  <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 rounded-xl border p-4" aria-live="polite">
                     <header className="space-y-1">
                       <p className="text-xs font-semibold uppercase tracking-wider text-primary">Comparação mensal</p>
                       <h2 className="font-semibold">Resultados do mês e do mês anterior</h2>
@@ -708,8 +708,8 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
                   </section>
                 )}
 
-                <div className="grid gap-2">
-                  <label className="grid gap-2 text-sm font-medium">
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
+                  <label className="grid min-w-0 gap-2 text-sm font-medium">
                     Observação do professor
                     <Textarea
                       rows={4}
@@ -718,7 +718,7 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
                       value={reportNote}
                       onChange={(event) => { setReportNote(event.target.value.slice(0, 300)); setReportSaved(false); setImprovedReportNote(null); }}
                       placeholder="Escreva uma observação de até 300 caracteres"
-                      className="resize-y"
+                      className="min-w-0 max-w-full resize-y"
                     />
                   </label>
                   <div className="text-xs text-muted-foreground">
@@ -726,9 +726,9 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
                   </div>
                 </div>
 
-                <div className="grid gap-2 text-sm font-medium"><span>Comportamento</span><RecordSelect label="Comportamento" disabled={!canEdit || observationLoading} value={behavior} onChange={(value) => { setBehavior(value); setReportSaved(false); }} clearLabel="Selecione uma opção" options={[{ value: "Muito bom", label: "Muito bom" }, { value: "Bom", label: "Bom" }, { value: "Razoavel", label: "Razoável" }, { value: "Mau", label: "Mau" }]} /></div>
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 text-sm font-medium"><span>Comportamento</span><RecordSelect label="Comportamento" disabled={!canEdit || observationLoading} value={behavior} onChange={(value) => { setBehavior(value); setReportSaved(false); }} clearLabel="Selecione uma opção" options={[{ value: "Muito bom", label: "Muito bom" }, { value: "Bom", label: "Bom" }, { value: "Razoavel", label: "Razoável" }, { value: "Mau", label: "Mau" }]} /></div>
 
-                <div className="grid gap-3">
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
                   <p className="text-xs text-muted-foreground">Gerar comentário usa IA para comparar os totais de notas semanais e faltas do mês selecionado com o anterior. Reveja a sugestão antes de a guardar.</p>
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" variant="outline" onClick={generateComment} disabled={!canEdit || !reportStart || !reportEnd || observationLoading || proofreading || generatingComment}><Sparkles /> {generatingComment ? "A gerar..." : "Gerar comentário"}</Button>
@@ -738,8 +738,8 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
                     </Button>
                     <Button type="button" variant="outline" onClick={generatePdfReport} disabled={!reportStart || !reportEnd || observationLoading}><FileText /> Exportar PDF</Button>
                   </div>
-                  {improvedReportNote !== null && <div className="grid gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4"><strong>Sugestão revista</strong><p className="whitespace-pre-wrap text-sm">{improvedReportNote}</p><div className="flex flex-wrap gap-2"><Button type="button" onClick={() => { setReportNote(improvedReportNote); setImprovedReportNote(null); setReportSaved(false); setStatusMessage("Sugestão aplicada. Guarde a observação para a guardar."); }}>Aplicar sugestão</Button><Button type="button" variant="outline" onClick={() => setImprovedReportNote(null)}>Descartar</Button></div></div>}
-                  {reportSaved && nextStudent && <Link className={buttonVariants({ variant: "secondary", className: "w-fit" })} href={`/turmas/${turma.id}/${encodeURIComponent(nextStudent.id)}?week=${encodeURIComponent(reportStart)}`}>Próximo estudante: {nextStudent.name} <ArrowRight /></Link>}
+                  {improvedReportNote !== null && <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4"><strong>Sugestão revista</strong><p className="whitespace-pre-wrap break-words text-sm">{improvedReportNote}</p><div className="flex flex-wrap gap-2"><Button type="button" onClick={() => { setReportNote(improvedReportNote); setImprovedReportNote(null); setReportSaved(false); setStatusMessage("Sugestão aplicada. Guarde a observação para a guardar."); }}>Aplicar sugestão</Button><Button type="button" variant="outline" onClick={() => setImprovedReportNote(null)}>Descartar</Button></div></div>}
+                  {reportSaved && nextStudent && <Link className={buttonVariants({ variant: "secondary", className: "h-auto min-h-8 w-fit max-w-full min-w-0 whitespace-normal py-2 text-left" })} href={`/turmas/${turma.id}/${encodeURIComponent(nextStudent.id)}?week=${encodeURIComponent(reportStart)}`}><span className="min-w-0 break-words">Próximo estudante: {nextStudent.name}</span><ArrowRight className="shrink-0" /></Link>}
                   {statusMessage ? (
                     <div role="status" className="text-sm font-medium text-primary">{statusMessage}</div>
                   ) : null}
