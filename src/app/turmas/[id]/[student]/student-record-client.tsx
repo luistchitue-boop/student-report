@@ -4,7 +4,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, CalendarDays, ClipboardList, FileCheck, FileText, GraduationCap, Sparkles, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -86,6 +86,8 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
   const [reportNote, setReportNote] = useState<string>("");
   const [observationLoading, setObservationLoading] = useState(Boolean(initialReportPeriod));
   const [proofreading, setProofreading] = useState(false);
+  const [generatingComment, setGeneratingComment] = useState(false);
+  const commentRequestId = useRef(0);
   const [improvedReportNote, setImprovedReportNote] = useState<string | null>(null);
   const [reportSaved, setReportSaved] = useState(false);
   const [monthlySummary, setMonthlySummary] = useState<MonthlyStudentSummary | null>(null);
@@ -125,6 +127,8 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
   }
 
   function selectReportPeriod(value: string) {
+    commentRequestId.current += 1;
+    setGeneratingComment(false);
     const period = weeklyPeriods.find((item) => item.key === value);
     setReportStart(value);
     setReportEnd(period?.end.toISOString().slice(0, 10) ?? "");
@@ -348,6 +352,30 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
       setStatusMessage(error instanceof Error ? error.message : "Não foi possível melhorar o texto.");
     } finally {
       setProofreading(false);
+    }
+  }
+
+  async function generateComment() {
+    if (!reportStart || !reportEnd || generatingComment) return;
+    const requestId = ++commentRequestId.current;
+    setGeneratingComment(true);
+    setImprovedReportNote(null);
+    setStatusMessage("");
+    try {
+      const response = await fetch("/api/student-observations/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: student.id, weekStart: reportStart, weekEnd: reportEnd }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Não foi possível gerar o comentário.");
+      if (requestId !== commentRequestId.current) return;
+      setImprovedReportNote(result.text);
+      setStatusMessage("Comentário gerado. Reveja os dados antes de o aplicar e guardar.");
+    } catch (error) {
+      if (requestId === commentRequestId.current) setStatusMessage(error instanceof Error ? error.message : "Não foi possível gerar o comentário.");
+    } finally {
+      if (requestId === commentRequestId.current) setGeneratingComment(false);
     }
   }
 
@@ -701,9 +729,11 @@ export function StudentRecordClient({ turma, student, school, nextStudent, initi
                 <div className="grid gap-2 text-sm font-medium"><span>Comportamento</span><RecordSelect label="Comportamento" disabled={!canEdit || observationLoading} value={behavior} onChange={(value) => { setBehavior(value); setReportSaved(false); }} clearLabel="Selecione uma opção" options={[{ value: "Muito bom", label: "Muito bom" }, { value: "Bom", label: "Bom" }, { value: "Razoavel", label: "Razoável" }, { value: "Mau", label: "Mau" }]} /></div>
 
                 <div className="grid gap-3">
+                  <p className="text-xs text-muted-foreground">Gerar comentário usa IA para comparar os totais de notas semanais e faltas do mês selecionado com o anterior. Reveja a sugestão antes de a guardar.</p>
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="outline" onClick={improveWeeklyObservation} disabled={!canEdit || !reportStart || !reportEnd || !reportNote.trim() || observationLoading || proofreading}><Sparkles /> {proofreading ? "A melhorar..." : "Melhorar o texto"}</Button>
-                    <Button type="button" onClick={async () => { try { await saveWeeklyObservation(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível guardar a observação."); } }} disabled={!canEdit || !reportStart || !reportEnd || observationLoading || proofreading}>
+                    <Button type="button" variant="outline" onClick={generateComment} disabled={!canEdit || !reportStart || !reportEnd || observationLoading || proofreading || generatingComment}><Sparkles /> {generatingComment ? "A gerar..." : "Gerar comentário"}</Button>
+                    <Button type="button" variant="outline" onClick={improveWeeklyObservation} disabled={!canEdit || !reportStart || !reportEnd || !reportNote.trim() || observationLoading || proofreading || generatingComment}><Sparkles /> {proofreading ? "A melhorar..." : "Melhorar o texto"}</Button>
+                    <Button type="button" onClick={async () => { try { await saveWeeklyObservation(); } catch (error) { setStatusMessage(error instanceof Error ? error.message : "Não foi possível guardar a observação."); } }} disabled={!canEdit || !reportStart || !reportEnd || observationLoading || proofreading || generatingComment}>
                       {observationLoading ? "A carregar..." : "Guardar observação semanal"}
                     </Button>
                     <Button type="button" variant="outline" onClick={generatePdfReport} disabled={!reportStart || !reportEnd || observationLoading}><FileText /> Exportar PDF</Button>
