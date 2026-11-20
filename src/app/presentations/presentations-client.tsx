@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, Calculator, FlaskConical, Globe2, History, ImagePlus, Languages, LoaderCircle, Palette, Play, Plus, Presentation, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
+import { BookOpen, Calculator, FileImage, FlaskConical, FolderOpen, Globe2, History, ImagePlus, Languages, LoaderCircle, Palette, Play, Plus, Presentation, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { PresentationPlayer } from "./presentation-player";
 import { getPresentationTemplate, PRESENTATION_TEMPLATES, type TemplateId } from "@/lib/presentation-templates";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Turma = { id: string; name: string; subjects: string[] };
 type Slide = { title: string; bullets: string[]; speakerNotes?: string; imageData?: string };
@@ -64,6 +65,7 @@ export function PresentationsClient({ turmas }: Props) {
   const [slideCount, setSlideCount] = useState(6);
   const [design, setDesign] = useState<Design>(palettes[0]);
   const [templateId, setTemplateId] = useState<TemplateId>("general");
+  const [activeTab, setActiveTab] = useState("plano");
   const [plan, setPlan] = useState<Plan | null>(null);
   const [isPresenting, setIsPresenting] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -210,6 +212,17 @@ export function PresentationsClient({ turmas }: Props) {
       </Card>
       </div>
 
+      <Tabs value={activeTab} onValueChange={(value) => { if (value) setActiveTab(value); }} className="min-w-0 gap-5">
+      <Card className="shadow-sm">
+        <CardContent className="px-3 py-1.5 sm:px-4 sm:py-2">
+          <TabsList className="flex h-auto w-full flex-wrap items-center justify-start gap-2 bg-transparent p-0" aria-label="Secções das apresentações">
+            <TabsTrigger value="plano" className="h-10 max-w-full min-w-0 flex-none whitespace-normal border-border bg-background px-3 text-foreground data-active:border-primary/40 data-active:bg-primary/10"><BookOpen className="size-4 shrink-0" /><span className="min-w-0 break-words">Plano de aulas</span></TabsTrigger>
+            <TabsTrigger value="ficheiros" className="h-10 max-w-full min-w-0 flex-none whitespace-normal border-border bg-background px-3 text-foreground data-active:border-primary/40 data-active:bg-primary/10"><FolderOpen className="size-4 shrink-0" /><span className="min-w-0 break-words">Os meus ficheiros</span></TabsTrigger>
+            <TabsTrigger value="apresentacoes" className="h-10 max-w-full min-w-0 flex-none whitespace-normal border-border bg-background px-3 text-foreground data-active:border-primary/40 data-active:bg-primary/10"><Presentation className="size-4 shrink-0" /><span className="min-w-0 break-words">As minhas apresentações</span>{plan && <Badge variant="secondary" className="ml-1">1</Badge>}</TabsTrigger>
+          </TabsList>
+        </CardContent>
+      </Card>
+      <TabsContent value="plano" className="min-w-0">
       <section className="grid gap-4" aria-label="Pré-visualização da apresentação">
         {!plan && <Card className="flex min-h-72 items-center justify-center border-dashed bg-card/60 shadow-none"><CardContent className="flex max-w-sm flex-col items-center gap-3 pt-6 text-center"><span className="flex size-12 items-center justify-center rounded-2xl bg-secondary text-primary"><Presentation className="size-6" /></span><p className="font-medium">A apresentação aparece aqui</p><p className="text-sm text-muted-foreground">Escolha um modelo, crie o conteúdo e reveja os diapositivos antes de começar a apresentar.</p></CardContent></Card>}
         {plan && <>
@@ -249,6 +262,30 @@ export function PresentationsClient({ turmas }: Props) {
           </Card>
         </>}
       </section>
+      </TabsContent>
+      <TabsContent value="ficheiros" className="min-w-0">
+        <Card className="shadow-sm">
+          <CardHeader><CardTitle className="flex items-center gap-2"><FolderOpen className="size-5 text-primary" /> Os meus ficheiros</CardTitle><CardDescription>Imagens adicionadas à capa e aos diapositivos do rascunho desta sessão.</CardDescription></CardHeader>
+          <CardContent>
+            {[
+              ...(design.coverImageData ? [{ name: "Imagem da capa", location: plan?.title || "Apresentação atual", imageData: design.coverImageData }] : []),
+              ...(plan?.slides.flatMap((slide, index) => slide.imageData ? [{ name: slide.title || `Diapositivo ${index + 2}`, location: `Diapositivo ${index + 2}`, imageData: slide.imageData }] : []) ?? []),
+            ].length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[
+              ...(design.coverImageData ? [{ name: "Imagem da capa", location: plan?.title || "Apresentação atual", imageData: design.coverImageData }] : []),
+              ...(plan?.slides.flatMap((slide, index) => slide.imageData ? [{ name: slide.title || `Diapositivo ${index + 2}`, location: `Diapositivo ${index + 2}`, imageData: slide.imageData }] : []) ?? []),
+            ].map((file, index) => <article key={`${file.location}-${index}`} className="overflow-hidden rounded-xl border bg-card"><div role="img" aria-label={file.name} className="aspect-video bg-cover bg-center" style={{ backgroundImage: `url("${file.imageData}")` }} /><div className="grid gap-1 p-3"><p className="truncate text-sm font-medium">{file.name}</p><p className="truncate text-xs text-muted-foreground">{file.location}</p></div></article>)}</div> : <div className="grid min-h-56 place-content-center justify-items-center gap-3 rounded-xl border border-dashed p-6 text-center"><span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-primary"><FileImage className="size-5" /></span><p className="font-medium">Ainda não adicionou ficheiros</p><p className="max-w-md text-sm text-muted-foreground">As imagens escolhidas no Plano de aulas aparecem aqui. Os ficheiros ficam associados ao rascunho desta sessão e não são guardados no servidor.</p><Button type="button" variant="outline" onClick={() => setActiveTab("plano")}><ImagePlus /> Adicionar imagens</Button></div>}
+          </CardContent>
+        </Card>
+      </TabsContent>
+      <TabsContent value="apresentacoes" className="min-w-0">
+        <Card className="shadow-sm">
+          <CardHeader><CardTitle className="flex items-center gap-2"><Presentation className="size-5 text-primary" /> As minhas apresentações</CardTitle><CardDescription>Apresentações criadas nesta sessão de trabalho.</CardDescription></CardHeader>
+          <CardContent>
+            {plan ? <article className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"><div className="flex min-w-0 items-center gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: template.colors.cover, color: template.colors.accent }}><Presentation className="size-5" /></span><div className="min-w-0"><p className="truncate font-semibold">{plan.title}</p><p className="truncate text-sm text-muted-foreground">{subject || template.subject} · {template.name} · {plan.slides.length + 1} diapositivos</p><Badge variant="outline" className="mt-2">Rascunho desta sessão</Badge></div></div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setActiveTab("plano")}><BookOpen /> Editar</Button><Button type="button" onClick={startPresentation}><Play /> Apresentar</Button></div></article> : <div className="grid min-h-56 place-content-center justify-items-center gap-3 rounded-xl border border-dashed p-6 text-center"><span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-primary"><Presentation className="size-5" /></span><p className="font-medium">Ainda não criou apresentações</p><p className="max-w-md text-sm text-muted-foreground">Crie um plano de aula e gere os diapositivos. A apresentação ficará disponível aqui enquanto mantiver esta sessão aberta.</p><Button type="button" onClick={() => setActiveTab("plano")}><Plus /> Criar apresentação</Button></div>}
+          </CardContent>
+        </Card>
+      </TabsContent>
+      </Tabs>
       {isPresenting && plan && <PresentationPlayer plan={plan} template={template} design={design} onClose={() => setIsPresenting(false)} />}
     </div>
   );
