@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { getSchoolContext } from "@/lib/school-context";
-import { getCoordinatorPresentationTurmas } from "@/lib/teacher-data";
+import { getCoordinatorPresentationTurmas, hasCoordinatorPresentationAccess } from "@/lib/teacher-data";
 import { createPresentationFile, safePresentationFilename, validatePresentationPlan } from "@/lib/presentation-generator";
 
 export const runtime = "nodejs";
@@ -11,6 +11,7 @@ export async function POST(request: Request) {
   if (Number(request.headers.get("content-length") ?? 0) > 60_000) return Response.json({ error: "O pedido excede o tamanho permitido." }, { status: 413 });
   const schoolContext = await getSchoolContext(session.user.id);
   if (!schoolContext || schoolContext.role !== "COORDENADOR") return Response.json({ error: "Esta ferramenta está disponível para coordenadores." }, { status: 403 });
+  if (!await hasCoordinatorPresentationAccess(session.user.id, schoolContext.schoolId)) return Response.json({ error: "O administrador da escola ainda não ativou este recurso para a sua conta." }, { status: 403 });
 
   try {
     const body = await request.json();

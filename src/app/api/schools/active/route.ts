@@ -25,11 +25,18 @@ export async function GET() {
   const activeMembership = activeSchoolId
     ? memberships.find((membership) => membership.schoolId === activeSchoolId) ?? null
     : memberships.length === 1 ? memberships[0] : null;
+  const presentationGrant = activeMembership?.role === "COORDENADOR"
+    ? await prisma.presentationAccess.findUnique({
+        where: { schoolId_userId: { schoolId: activeMembership.schoolId, userId } },
+        select: { schoolId: true },
+      })
+    : null;
 
   return NextResponse.json({
     memberships,
     activeSchoolId: activeMembership?.schoolId ?? null,
     role: activeMembership?.role ?? null,
+    canUsePresentations: Boolean(presentationGrant),
     isRoot: Boolean(root),
   }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
@@ -68,5 +75,12 @@ export async function POST(request: Request) {
     maxAge: 60 * 60 * 24 * 365,
   });
 
-  return NextResponse.json({ activeSchoolId: membership.schoolId, role: membership.role });
+  const presentationGrant = membership.role === "COORDENADOR"
+    ? await prisma.presentationAccess.findUnique({
+        where: { schoolId_userId: { schoolId: membership.schoolId, userId } },
+        select: { schoolId: true },
+      })
+    : null;
+
+  return NextResponse.json({ activeSchoolId: membership.schoolId, role: membership.role, canUsePresentations: Boolean(presentationGrant) });
 }

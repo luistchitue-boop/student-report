@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { PageHeaderCard } from "@/components/page-header-card";
 import { AdminClient } from "./admin-client";
+import { PresentationAccessClient } from "./presentation-access-client";
 import { AdminRouteNav } from "./admin-route-nav";
 import { getSchoolContext } from "@/lib/school-context";
 
@@ -21,6 +22,7 @@ export default async function AdminPage() {
         <PageHeaderCard badge="Administração" title="Gestão da escola" description="Gira as contas e os acessos da sua escola." icon={ShieldCheck} />
         <AdminRouteNav current="users" />
         <AdminClient allowAdminCreation />
+        <PresentationAccessClient />
       </main>
     </AppShell>
   );

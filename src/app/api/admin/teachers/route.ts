@@ -99,6 +99,9 @@ export async function PATCH(request: Request) {
         where: { schoolId_userId: { schoolId: schoolContext.schoolId, userId: teacher.userId } },
         data: { role: requestedRole },
       });
+      if (requestedRole !== "COORDENADOR") {
+        await transaction.presentationAccess.deleteMany({ where: { schoolId: schoolContext.schoolId, userId: teacher.userId } });
+      }
       await transaction.teacher.update({ where: { id: teacher.id }, data: { ...(phone !== undefined ? { phone } : {}) } });
       await transaction.teacherTurma.deleteMany({ where: { teacherId: teacher.id, turma: { schoolId: schoolContext.schoolId }, turmaId: { notIn: turmaIds } } });
       await transaction.teacherTurma.updateMany({ where: { teacherId: teacher.id, turmaId: { in: turmaIds } }, data: { isMain: false } });

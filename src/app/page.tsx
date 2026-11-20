@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { getCoordinatorTurmas } from "@/lib/teacher-data";
+import { getCoordinatorTurmas, hasCoordinatorPresentationAccess } from "@/lib/teacher-data";
 import { PrismaClient } from "@prisma/client";
 import HomePage from "./home-page";
 import { getSchoolContext } from "@/lib/school-context";
@@ -33,6 +33,9 @@ export default async function Home() {
     );
   }
   const turmaIds = turmas.map((turma) => turma.id);
+  const canUsePresentations = schoolContext.role === "COORDENADOR"
+    ? await hasCoordinatorPresentationAccess(session.user.id, schoolContext.schoolId)
+    : false;
   const activeStudents = turmas.reduce((total, turma) => total + (turma.students ?? 0), 0);
 
   const dayStart = new Date();
@@ -62,6 +65,7 @@ export default async function Home() {
         absencesToday,
       }}
       role={schoolContext.role}
+      canUsePresentations={canUsePresentations}
     />
   );
 }

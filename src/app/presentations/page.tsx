@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { PageHeaderCard } from "@/components/page-header-card";
 import { getSchoolContext } from "@/lib/school-context";
-import { getCoordinatorPresentationTurmas } from "@/lib/teacher-data";
+import { getCoordinatorPresentationTurmas, hasCoordinatorPresentationAccess } from "@/lib/teacher-data";
 import { PresentationsClient } from "./presentations-client";
 
 export default async function PresentationsPage() {
@@ -12,6 +12,7 @@ export default async function PresentationsPage() {
   if (!session?.user?.id) redirect("/auth/signin");
   const schoolContext = await getSchoolContext(session.user.id);
   if (!schoolContext || schoolContext.role !== "COORDENADOR") redirect("/");
+  if (!await hasCoordinatorPresentationAccess(session.user.id, schoolContext.schoolId)) redirect("/");
 
   const availableTurmas = await getCoordinatorPresentationTurmas(session.user.id);
 

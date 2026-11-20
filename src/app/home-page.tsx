@@ -22,6 +22,7 @@ const actions = [
 export default function HomePage({
   stats,
   role,
+  canUsePresentations,
 }: {
   stats: {
     turmas: number;
@@ -29,6 +30,7 @@ export default function HomePage({
     absencesToday: number;
   };
   role: string;
+  canUsePresentations: boolean;
 }) {
   const quickStats = [
     { label: "Turmas acompanhadas", value: stats.turmas, note: "No âmbito da sua função", icon: Building2 },
@@ -81,7 +83,7 @@ export default function HomePage({
             <Badge variant="outline" className="hidden gap-1.5 sm:inline-flex"><BookOpenCheck className="size-3.5" /> Ferramentas</Badge>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {actions.filter((action) => action.roles.includes(role)).map((action) => {
+            {actions.filter((action) => action.roles.includes(role) && (action.href !== "/presentations" || canUsePresentations)).map((action) => {
               const Icon = action.icon;
               return (
                 <Link key={action.title} href={action.href} className="dashboard-action-card group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">

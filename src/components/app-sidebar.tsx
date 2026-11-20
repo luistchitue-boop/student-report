@@ -54,6 +54,7 @@ type SchoolMembership = {
 
 type AppSidebarProps = ComponentProps<typeof Sidebar> & {
   appRole: string | null;
+  canUsePresentations: boolean;
   isRoot: boolean;
   memberships: SchoolMembership[];
   activeSchoolId: string | null;
@@ -74,6 +75,7 @@ function roleLabel(role?: string) {
 
 export function AppSidebar({
   appRole,
+  canUsePresentations,
   isRoot,
   memberships,
   activeSchoolId,
@@ -98,8 +100,8 @@ export function AppSidebar({
     coordinationItems.push(
       { label: "Biométrico", href: "/biometrico", icon: Fingerprint },
       { label: "Estágios", href: "/internship-reports", icon: BookOpenCheck },
-      { label: "Apresentações", href: "/presentations", icon: Presentation },
     );
+    if (canUsePresentations) coordinationItems.push({ label: "Apresentações", href: "/presentations", icon: Presentation });
   }
   if (appRole === "ADMIN") {
     coordinationItems.push({ label: "Controlo", href: "/controlo", icon: ClipboardCheck });

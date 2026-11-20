@@ -29,6 +29,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
   const [schoolMemberships, setSchoolMemberships] = useState<Array<{ schoolId: string; role: string; school: { id: string; name: string } }>>([]);
   const [activeSchoolId, setActiveSchoolId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [canUsePresentations, setCanUsePresentations] = useState(false);
   const [isRoot, setIsRoot] = useState(false);
   const [switchingSchool, setSwitchingSchool] = useState(false);
   const [schoolSwitchError, setSchoolSwitchError] = useState("");
@@ -42,6 +43,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
         setSchoolMemberships(result.memberships ?? []);
         setActiveSchoolId(result.activeSchoolId ?? null);
         setRole(result.role ?? null);
+        setCanUsePresentations(result.canUsePresentations === true);
         setIsRoot(result.isRoot === true);
       })
       .catch(() => {
@@ -77,6 +79,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
       if (!response.ok) throw new Error(result?.error ?? "Não foi possível mudar de escola.");
       setActiveSchoolId(result.activeSchoolId ?? schoolId);
       setRole(result.role ?? null);
+      setCanUsePresentations(result.canUsePresentations === true);
       setSwitchingSchool(false);
       router.replace("/");
       return true;
@@ -93,6 +96,7 @@ export function AppShell({ children, active }: { children: ReactNode; active: ke
       >
         <AppSidebar
           appRole={role}
+          canUsePresentations={canUsePresentations}
           isRoot={isRoot}
           memberships={schoolMemberships}
           activeSchoolId={activeSchoolId}

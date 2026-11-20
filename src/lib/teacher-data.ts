@@ -149,6 +149,14 @@ export async function getCoordinatorPresentationTurmas(userId: string) {
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
+export async function hasCoordinatorPresentationAccess(userId: string, schoolId: string) {
+  const membership = await prisma.schoolMembership.findUnique({
+    where: { schoolId_userId: { schoolId, userId } },
+    select: { role: true, presentationAccess: { select: { schoolId: true } } },
+  });
+  return membership?.role === "COORDENADOR" && Boolean(membership.presentationAccess);
+}
+
 export async function getCoordinatorTurmaById(userId: string, turmaId: string) {
   const turmas = await getCoordinatorTurmas(userId);
   return turmas.find((turma) => turma.id === turmaId) ?? null;

@@ -108,8 +108,20 @@ model SchoolMembership {
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  presentationAccess PresentationAccess?
 
   @@unique([schoolId, userId])
+  @@index([userId])
+}
+
+model PresentationAccess {
+  schoolId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  schoolMembership SchoolMembership @relation(fields: [schoolId, userId], references: [schoolId, userId], onDelete: Cascade)
+
+  @@id([schoolId, userId])
   @@index([userId])
 }
 

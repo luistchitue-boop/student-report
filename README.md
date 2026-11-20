@@ -22,7 +22,7 @@ Set `AI_GATEWAY_API_KEY` in the server environment to enable automatic proofread
 
 Proofreading is limited to spelling, accents, grammar, punctuation, and capitalization. If the gateway is unavailable, the original observation is used.
 
-Coordinators can open **Apresentações** from the sidebar or dashboard to generate an editable lesson outline and download it as a PowerPoint file. The outline is not saved by the application; review its accuracy before using it in class.
+School administrators can enable **Apresentações** for selected coordinators on the school administration page. Only selected coordinators can see or use the feature in that active school. The permission migration must be applied before deploying this change. Enabled coordinators can generate an editable lesson outline and download it as a PowerPoint file; the outline is not saved by the application, and its accuracy should be reviewed before class.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
