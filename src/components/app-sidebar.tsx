@@ -101,7 +101,7 @@ export function AppSidebar({
       { label: "Biométrico", href: "/biometrico", icon: Fingerprint },
       { label: "Estágios", href: "/internship-reports", icon: BookOpenCheck },
     );
-    if (canUsePresentations) coordinationItems.push({ label: "Apresentações", href: "/presentations", icon: Presentation });
+    if (canUsePresentations) coordinationItems.push({ label: "Aulas", href: "/presentations", icon: Presentation });
   }
   if (appRole === "ADMIN") {
     coordinationItems.push({ label: "Controlo", href: "/controlo", icon: ClipboardCheck });
