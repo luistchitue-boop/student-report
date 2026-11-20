@@ -19,7 +19,7 @@ export default async function PresentationsPage() {
   return (
     <AppShell active="presentations">
       <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
-        <PageHeaderCard badge="Ferramenta pedagógica" title="Apresentações" description="Crie um guião de aula com apoio de IA, reveja o conteúdo e descarregue-o em PowerPoint." icon={Presentation} />
+        <PageHeaderCard badge="Ferramenta pedagógica" title="Apresentações" description="Escolha um modelo temático, crie os diapositivos e apresente-os com animações interativas." icon={Presentation} />
         <PresentationsClient turmas={availableTurmas} />
       </main>
     </AppShell>

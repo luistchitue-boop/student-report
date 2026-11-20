@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Download, ImagePlus, LoaderCircle, Palette, Plus, Presentation, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
+import { BookOpen, Calculator, FlaskConical, Globe2, History, ImagePlus, Languages, LoaderCircle, Palette, Play, Plus, Presentation, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { PresentationPlayer } from "./presentation-player";
+import { getPresentationTemplate, PRESENTATION_TEMPLATES, type TemplateId } from "@/lib/presentation-templates";
 
 type Turma = { id: string; name: string; subjects: string[] };
 type Slide = { title: string; bullets: string[]; speakerNotes?: string; imageData?: string };
@@ -23,6 +25,7 @@ const palettes = [
   { name: "Índigo", coverBackgroundColor: "#27234A", coverTextColor: "#FFFFFF", backgroundColor: "#F6F5FC", headingColor: "#332E68", textColor: "#333248", accentColor: "#7567C8" },
   { name: "Escuro", coverBackgroundColor: "#171C24", coverTextColor: "#FFFFFF", backgroundColor: "#202833", headingColor: "#F1F5F9", textColor: "#E2E8F0", accentColor: "#58C4A5" },
 ];
+const templateIcons = { history: History, mathematics: Calculator, english: Languages, geography: Globe2, science: FlaskConical, portuguese: BookOpen, arts: Palette, general: Presentation };
 
 async function optimizeImage(file: File) {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("Escolha uma imagem JPEG, PNG ou WebP.");
@@ -60,12 +63,14 @@ export function PresentationsClient({ turmas }: Props) {
   const [turmaId, setTurmaId] = useState("");
   const [slideCount, setSlideCount] = useState(6);
   const [design, setDesign] = useState<Design>(palettes[0]);
+  const [templateId, setTemplateId] = useState<TemplateId>("general");
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [isPresenting, setIsPresenting] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [downloading, setDownloading] = useState(false);
 
   const selectedTurma = turmas.find((turma) => turma.id === turmaId);
   const subjectOptions = Array.from(new Set(turmas.flatMap((turma) => turma.subjects)));
+  const template = getPresentationTemplate(templateId);
 
   async function uploadImage(file: File | undefined, applyImage: (imageData: string) => void) {
     if (!file) return;
@@ -84,6 +89,20 @@ export function PresentationsClient({ turmas }: Props) {
     return slideImages + (design.coverImageData ? Math.ceil(design.coverImageData.length * 0.75) : 0);
   }
 
+  function chooseTemplate(id: TemplateId) {
+    setTemplateId(id);
+    const selected = getPresentationTemplate(id);
+    setDesign((current) => ({
+      ...current,
+      coverBackgroundColor: selected.colors.cover,
+      coverTextColor: "#FFFFFF",
+      backgroundColor: selected.colors.surface,
+      headingColor: selected.colors.ink,
+      textColor: selected.colors.ink,
+      accentColor: selected.colors.accent,
+    }));
+  }
+
   async function generate() {
     if (!topic.trim() || !subject.trim() || !level.trim()) {
       toast.error("Preencha o tema, a disciplina e o nível de ensino.");
@@ -95,12 +114,12 @@ export function PresentationsClient({ turmas }: Props) {
       const response = await fetch("/api/presentations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, subject, level, objectives, turmaId, slideCount }),
+        body: JSON.stringify({ topic, subject, level, objectives, turmaId, slideCount, templateId }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Não foi possível gerar o guião.");
       setPlan({ title: result.title, slides: result.slides });
-      toast.success("Guião criado. Reveja e edite antes de descarregar.");
+      toast.success("Apresentação criada. Reveja os diapositivos e comece quando estiver pronta.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Ocorreu um erro ao gerar a apresentação.");
     } finally {
@@ -120,43 +139,30 @@ export function PresentationsClient({ turmas }: Props) {
     setPlan((current) => current ? { ...current, slides: current.slides.map((slide, slideIndex) => slideIndex === index && slide.bullets.length < 6 ? { ...slide, bullets: [...slide.bullets, ""] } : slide) } : current);
   }
 
-  async function download() {
-    if (!plan) return;
-    setDownloading(true);
-    try {
-      const response = await fetch("/api/presentations/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, subject, level, turmaId, design }),
-      });
-      if (!response.ok) {
-        const result = await response.json().catch(() => null);
-        throw new Error(result?.error ?? "Não foi possível criar o ficheiro PowerPoint.");
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${plan.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "apresentacao"}.pptx`;
-      document.body.append(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success("Apresentação descarregada.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Ocorreu um erro ao descarregar.");
-    } finally {
-      setDownloading(false);
-    }
+  function startPresentation() {
+    if (plan) setIsPresenting(true);
   }
 
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.2fr)]">
       <div className="grid gap-6">
       <Card className="shadow-sm">
+        <CardHeader><CardTitle className="flex items-center gap-2"><Presentation className="size-5 text-primary" /> Escolher modelo</CardTitle><CardDescription>Selecione um tema visual e didático para a sua disciplina. Pode trocar de modelo quando quiser.</CardDescription></CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2">
+          {PRESENTATION_TEMPLATES.map((item) => {
+            const TemplateIcon = templateIcons[item.id];
+            const selected = templateId === item.id;
+            return <button key={item.id} type="button" aria-pressed={selected} onClick={() => chooseTemplate(item.id)} className={`flex min-h-20 items-start gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-muted/50 ${selected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "bg-card"}`}>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: item.colors.cover, color: item.colors.accent }}><TemplateIcon className="size-5" /></span>
+              <span className="grid min-w-0 gap-1"><span className="flex items-center gap-2 text-sm font-semibold">{item.name}{selected && <span className="text-[10px] font-medium text-primary">ATIVO</span>}</span><span className="text-xs leading-relaxed text-muted-foreground">{item.subject} · {item.description}</span></span>
+            </button>;
+          })}
+        </CardContent>
+      </Card>
+      <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Sparkles className="size-5 text-primary" /> Preparar apresentação</CardTitle>
-          <CardDescription>Indique o contexto da aula. A IA propõe os diapositivos para rever antes do download.</CardDescription>
+          <CardDescription>Indique o contexto da aula. A IA propõe os diapositivos para rever antes de começar.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <label className="grid gap-2"><span className={labelClass}>Tema da aula <span className="text-destructive">*</span></span><input className={inputClass} maxLength={180} placeholder="Ex.: Ciclo da água" value={topic} onChange={(event) => setTopic(event.target.value)} /></label>
@@ -166,7 +172,7 @@ export function PresentationsClient({ turmas }: Props) {
           {selectedTurma && selectedTurma.subjects.length > 0 && <p className="-mt-2 text-xs text-muted-foreground">Disciplinas desta turma: {selectedTurma.subjects.join(", ")}</p>}
           <label className="grid gap-2"><span className={labelClass}>Objetivos de aprendizagem <span className="font-normal text-muted-foreground">(opcional)</span></span><Textarea maxLength={1200} rows={3} placeholder="O que os alunos deverão compreender ou conseguir fazer?" value={objectives} onChange={(event) => setObjectives(event.target.value)} /></label>
           <label className="grid gap-2"><span className={labelClass}>Diapositivos, incluindo capa</span><select className={inputClass} value={slideCount} onChange={(event) => setSlideCount(Number(event.target.value))}>{[4, 5, 6, 7, 8, 9, 10, 11, 12].map((count) => <option key={count} value={count}>{count} diapositivos</option>)}</select></label>
-          <Button type="button" className="mt-1 w-full" onClick={generate} disabled={generating || downloading}>{generating ? <LoaderCircle className="animate-spin" /> : <Sparkles />} {generating ? "A criar guião…" : plan ? "Gerar novo guião" : "Gerar guião"}</Button>
+          <Button type="button" className="mt-1 w-full" onClick={generate} disabled={generating}>{generating ? <LoaderCircle className="animate-spin" /> : <Sparkles />} {generating ? "A criar apresentação…" : plan ? "Gerar nova apresentação" : "Criar apresentação"}</Button>
           <p className="text-xs leading-relaxed text-muted-foreground">O conteúdo é uma proposta pedagógica. Reveja os factos e adapte-o à sua turma antes de utilizar.</p>
         </CardContent>
       </Card>
@@ -198,19 +204,19 @@ export function PresentationsClient({ turmas }: Props) {
               <Button type="button" variant="outline" render={<label htmlFor="presentation-cover-image" className="cursor-pointer" />}><ImagePlus /> Escolher imagem</Button>
               {design.coverImageData && <><div role="img" aria-label="Pré-visualização da imagem de capa" className="size-12 rounded-lg border bg-cover bg-center" style={{ backgroundImage: `url("${design.coverImageData}")` }} /><Button type="button" variant="ghost" size="icon-sm" aria-label="Remover imagem da capa" onClick={() => setDesign((current) => ({ ...current, coverImageData: undefined }))}><X /></Button></>}
             </div>
-            <p className="text-xs text-muted-foreground">JPEG, PNG ou WebP; será reduzida e convertida para JPEG antes do download.</p>
+              <p className="text-xs text-muted-foreground">JPEG, PNG ou WebP; será otimizada para ser apresentada.</p>
           </div>
         </CardContent>
       </Card>
       </div>
 
       <section className="grid gap-4" aria-label="Pré-visualização da apresentação">
-        {!plan && <Card className="flex min-h-72 items-center justify-center border-dashed bg-card/60 shadow-none"><CardContent className="flex max-w-sm flex-col items-center gap-3 pt-6 text-center"><span className="flex size-12 items-center justify-center rounded-2xl bg-secondary text-primary"><Presentation className="size-6" /></span><p className="font-medium">O guião aparece aqui</p><p className="text-sm text-muted-foreground">Depois de gerado, pode editar títulos e pontos de cada diapositivo antes de descarregar o PowerPoint.</p></CardContent></Card>}
+        {!plan && <Card className="flex min-h-72 items-center justify-center border-dashed bg-card/60 shadow-none"><CardContent className="flex max-w-sm flex-col items-center gap-3 pt-6 text-center"><span className="flex size-12 items-center justify-center rounded-2xl bg-secondary text-primary"><Presentation className="size-6" /></span><p className="font-medium">A apresentação aparece aqui</p><p className="text-sm text-muted-foreground">Escolha um modelo, crie o conteúdo e reveja os diapositivos antes de começar a apresentar.</p></CardContent></Card>}
         {plan && <>
           <Card className="shadow-sm">
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div><Badge variant="secondary" className="mb-2">{plan.slides.length + 1} diapositivos</Badge><CardTitle className="text-lg">Rever conteúdo</CardTitle><CardDescription>Edite os campos abaixo. A capa utiliza o título da apresentação.</CardDescription></div>
-              <Button type="button" onClick={download} disabled={downloading || generating}>{downloading ? <LoaderCircle className="animate-spin" /> : <Download />} {downloading ? "A preparar…" : "Descarregar .pptx"}</Button>
+              <div><Badge variant="secondary" className="mb-2">{plan.slides.length + 1} diapositivos · {template.name}</Badge><CardTitle className="text-lg">Rever conteúdo</CardTitle><CardDescription>Edite títulos, pontos e imagens antes de apresentar.</CardDescription></div>
+              <Button type="button" onClick={startPresentation} disabled={generating}><Play /> Apresentar</Button>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="grid gap-3 md:grid-cols-2" aria-label="Pré-visualização do design">
@@ -238,11 +244,12 @@ export function PresentationsClient({ turmas }: Props) {
                 </div>
                 <label className="grid gap-2"><span className={labelClass}>Notas do apresentador <span className="font-normal text-muted-foreground">(opcional)</span></span><Textarea rows={2} maxLength={800} value={slide.speakerNotes ?? ""} onChange={(event) => updateSlide(index, { speakerNotes: event.target.value })} /></label>
               </article>)}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><Button type="button" variant="outline" onClick={generate} disabled={generating || downloading}><RotateCcw /> {generating ? "A gerar…" : "Gerar novamente"}</Button><Button type="button" onClick={download} disabled={downloading || generating}>{downloading ? <LoaderCircle className="animate-spin" /> : <Download />} Descarregar PowerPoint</Button></div>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><Button type="button" variant="outline" onClick={generate} disabled={generating}><RotateCcw /> {generating ? "A gerar…" : "Gerar novamente"}</Button><Button type="button" onClick={startPresentation} disabled={generating}><Play /> Começar apresentação</Button></div>
             </CardContent>
           </Card>
         </>}
       </section>
+      {isPresenting && plan && <PresentationPlayer plan={plan} template={template} design={design} onClose={() => setIsPresenting(false)} />}
     </div>
   );
 }

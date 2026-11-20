@@ -18,11 +18,11 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## AI proofreading for reports
 
-Set `AI_GATEWAY_API_KEY` in the server environment to enable automatic proofreading of coordinator weekly observations before PDF reports are generated and AI-assisted PowerPoint generation for coordinators. The default model is `google/gemini-2.5-flash-lite`; set `AI_GATEWAY_MODEL` to use another chat model available in Vercel AI Gateway.
+Set `AI_GATEWAY_API_KEY` in the server environment to enable automatic proofreading of coordinator weekly observations before PDF reports are generated and AI-assisted interactive presentation creation for coordinators. The default model is `google/gemini-2.5-flash-lite`; set `AI_GATEWAY_MODEL` to use another chat model available in Vercel AI Gateway.
 
 Proofreading is limited to spelling, accents, grammar, punctuation, and capitalization. If the gateway is unavailable, the original observation is used.
 
-School administrators can enable **Apresentações** for selected coordinators on the school administration page. Only selected coordinators can see or use the feature in that active school. The permission migration must be applied before deploying this change. Enabled coordinators can generate an editable lesson outline and download it as a PowerPoint file; the outline is not saved by the application, and its accuracy should be reviewed before class.
+School administrators can enable **Apresentações** for selected coordinators on the school administration page. Only selected coordinators can see or use the feature in that active school. Enabled coordinators can choose a subject template, generate and edit lesson slides, and present them in the browser with GSAP animations. Presentations stay in the current browser session and are not saved by the application; review AI-generated content before class.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
