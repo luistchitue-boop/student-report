@@ -55,6 +55,8 @@ model User {
   closedPeriods ClosedWeeklyPeriod[]
   closedTurmaMonthlyPeriods ClosedTurmaMonthlyPeriod[]
   schoolMemberships SchoolMembership[]
+  lessonPlans LessonPlan[]
+  presentationResources PresentationResource[]
 }
 
 model School {
@@ -74,6 +76,8 @@ model School {
   activityLogs        ActivityLog[]
   closedWeeklyPeriods ClosedWeeklyPeriod[]
   creationCodeRedemption SchoolCreationCodeRedemption?
+  lessonPlans LessonPlan[]
+  presentationResources PresentationResource[]
 }
 
 model RootActivityLog {
@@ -123,6 +127,60 @@ model PresentationAccess {
 
   @@id([schoolId, userId])
   @@index([userId])
+}
+
+model LessonPlan {
+  id            String   @id @default(cuid())
+  schoolId      String
+  userId        String
+  turmaId       String?
+  title         String
+  lessonNumber  String?
+  subject       String
+  level         String
+  objectives    String   @db.Text
+  lessonDetails String   @db.Text
+  resourceUrls  String[] @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  turma  Turma? @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+  files  LessonPlanFile[]
+
+  @@index([schoolId, userId, updatedAt])
+  @@index([turmaId])
+}
+
+model PresentationResource {
+  id          String   @id @default(cuid())
+  schoolId    String
+  userId      String
+  name        String
+  url         String
+  pathname    String   @unique
+  contentType String
+  size        Int
+  createdAt   DateTime @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonPlans LessonPlanFile[]
+
+  @@index([schoolId, userId, createdAt])
+}
+
+model LessonPlanFile {
+  lessonPlanId String
+  resourceId   String
+  createdAt    DateTime @default(now())
+
+  lessonPlan LessonPlan @relation(fields: [lessonPlanId], references: [id], onDelete: Cascade)
+  resource   PresentationResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([lessonPlanId, resourceId])
+  @@index([resourceId])
 }
 
 enum FaultType {
@@ -197,6 +255,7 @@ model Turma {
   direccaoAssignments DireccaoTurma[]
   teacherAssignments TeacherTurma[]
   closedMonthlyPeriods ClosedTurmaMonthlyPeriod[]
+  lessonPlans LessonPlan[]
 
   @@unique([schoolId, code])
   @@index([schoolId])

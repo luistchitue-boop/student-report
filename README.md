@@ -22,7 +22,7 @@ Set `AI_GATEWAY_API_KEY` in the server environment to enable automatic proofread
 
 Proofreading is limited to spelling, accents, grammar, punctuation, and capitalization. If the gateway is unavailable, the original observation is used.
 
-School administrators can enable **Apresentações** for selected coordinators on the school administration page. Only selected coordinators can see or use the feature in that active school. Enabled coordinators can choose a subject template, generate and edit lesson slides, and present them in the browser with GSAP animations. Presentations stay in the current browser session and are not saved by the application; review AI-generated content before class.
+School administrators can enable **Apresentações** for selected coordinators on the school administration page. Only selected coordinators can use the feature in that active school. They can create and save lesson plans, add URL and uploaded-file resources, then select a saved lesson before choosing a subject template and creating a GSAP presentation. Lesson plans and uploaded-file metadata are stored per school and coordinator. Uploaded Blob files use public, unlisted URLs; anyone with a direct URL can access them, so do not upload sensitive personal data. Generated slide edits remain in the current browser session; review AI-generated content before class.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
@@ -45,7 +45,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Multi-school rollout
 
-The schema includes school memberships and assigns existing classes, activity logs, weekly closures, and users to the legacy school in a forward migration. A normal build does **not** apply database migrations. Before applying the new migration to any persistent database, take and verify a restorable backup and rehearse the migration against a disposable copy. Apply it only as an explicit deployment step after that review; do not use `prisma db push` or run the seed script against production.
+The schema includes school memberships and assigns existing classes, activity logs, weekly closures, and users to the legacy school in a forward migration. A normal build does **not** apply database migrations. After taking and verifying a restorable backup and rehearsing pending migrations against a disposable copy, apply them as an explicit deployment step with `npm run db:deploy`; do not use `prisma db push` or run the seed script against production.
 
 After the migration, existing users keep their current login and receive a membership in the legacy school. School administrators can add schools from the application and switch only between schools where they have a membership. Creating a school does not copy any student, class, or report data. Public guardian lookup requires choosing a school, and the seed script requires explicit `SEED_SCHOOL_ID`, `SEED_COORDINATOR_EMAIL`, and `SEED_COORDINATOR_PASSWORD` values; it never resets an existing account's password.
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { gsap } from "gsap";
-import { BookOpen, Calculator, ChevronLeft, ChevronRight, FlaskConical, Globe2, History, Languages, Maximize, Minimize, Palette, Presentation, Quote, X } from "lucide-react";
+import { BookOpen, Calculator, ChevronLeft, ChevronRight, FlaskConical, Globe2, History, Languages, Link2, Maximize, Minimize, Palette, Presentation, Quote, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PresentationPlan, PresentationSlide } from "@/lib/presentation-validation";
 import type { PresentationTemplate } from "@/lib/presentation-templates";
@@ -12,15 +12,17 @@ type Design = { coverBackgroundColor: string; coverTextColor: string; background
 
 const icons = { history: History, mathematics: Calculator, english: Languages, geography: Globe2, science: FlaskConical, portuguese: BookOpen, arts: Palette, general: Presentation };
 
-export function PresentationPlayer({ plan, template, design, onClose }: { plan: PresentationPlan; template: PresentationTemplate; design: Design; onClose: () => void }) {
+export function PresentationPlayer({ plan, template, design, resources = [], onClose }: { plan: PresentationPlan; template: PresentationTemplate; design: Design; resources?: Array<{ name: string; url: string }>; onClose: () => void }) {
   const [slideIndex, setSlideIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const Icon = icons[template.id];
-  const totalSlides = plan.slides.length + 1;
+  const hasReferences = resources.length > 0;
+  const totalSlides = plan.slides.length + 1 + Number(hasReferences);
   const isCover = slideIndex === 0;
-  const slide: PresentationSlide | undefined = isCover ? undefined : plan.slides[slideIndex - 1];
+  const isReferences = hasReferences && slideIndex === totalSlides - 1;
+  const slide: PresentationSlide | undefined = isCover || isReferences ? undefined : plan.slides[slideIndex - 1];
 
   useEffect(() => {
     const content = contentRef.current;
@@ -123,6 +125,17 @@ export function PresentationPlayer({ plan, template, design, onClose }: { plan: 
     </div>;
   }
 
+  function renderReferences() {
+    return <div className="relative h-full w-full overflow-hidden p-8 sm:p-14 lg:p-20" style={{ backgroundColor: design.backgroundColor, color: design.textColor }}>
+      <div ref={contentRef} className="relative z-10 flex h-full flex-col justify-center">
+        <div className="mb-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.24em]" style={{ color: design.accentColor }}><Link2 className="size-5" /> Materiais de apoio</div>
+        <h2 className="mb-8 text-3xl font-black tracking-tight sm:text-5xl" style={{ color: design.headingColor }}>Recursos da aula</h2>
+        <div className="grid max-h-[58%] gap-3 overflow-y-auto sm:grid-cols-2">{resources.map((resource, index) => <a key={`${resource.url}-${index}`} href={resource.url} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-3 rounded-xl border p-4 text-sm transition-colors hover:bg-black/5" style={{ borderColor: `${design.accentColor}55` }}><span className="flex size-9 shrink-0 items-center justify-center rounded-full" style={{ color: design.coverBackgroundColor, backgroundColor: design.accentColor }}><Link2 className="size-4" /></span><span className="min-w-0"><span className="block truncate font-semibold">{resource.name}</span><span className="block truncate text-xs opacity-70">{resource.url}</span></span></a>)}</div>
+        <p className="mt-6 text-sm opacity-60">Selecione um recurso para o abrir num novo separador.</p>
+      </div>
+    </div>;
+  }
+
   return <div ref={stageRef} className="fixed inset-0 z-[100] flex flex-col bg-[#101820] p-3 text-white sm:p-5" aria-label="Modo de apresentação">
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 px-1 sm:px-2">
       <div className="flex min-w-0 items-center gap-3"><span className="flex size-8 items-center justify-center rounded-lg" style={{ backgroundColor: design.accentColor, color: design.coverBackgroundColor }}><Icon className="size-4" /></span><span className="truncate text-sm font-semibold">{template.name}</span><span className="hidden text-xs text-white/50 sm:inline">· {plan.title}</span></div>
@@ -130,7 +143,7 @@ export function PresentationPlayer({ plan, template, design, onClose }: { plan: 
     </header>
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 items-center justify-center py-2">
       <div className="relative aspect-[16/9] max-h-full w-full overflow-hidden rounded-xl shadow-2xl sm:rounded-2xl" style={{ maxWidth: "calc((100svh - 8rem) * 16 / 9)" }}>
-        {isCover ? renderCover() : renderDecorativeSlide()}
+        {isCover ? renderCover() : isReferences ? renderReferences() : renderDecorativeSlide()}
       </div>
     </div>
     <footer className="flex h-14 shrink-0 items-center justify-center gap-3">
