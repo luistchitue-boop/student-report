@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { getCoordinatorTurmas } from "@/lib/teacher-data";
 import TurmaDeleteAction from "./turma-delete-action";
 import TurmasActions from "./turmas-actions";
+import { StudentSearchDialog } from "./student-search-dialog";
 import { TopTurmasMonthlyRanking } from "./top-turmas-monthly-ranking";
 import { getSchoolContext } from "@/lib/school-context";
 import { getCurrentPage, getPaginationItems } from "@/lib/pagination";
@@ -32,12 +33,6 @@ import {
 
 const PAGE_SIZE = 6;
 
-function getCompactStudentName(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 2) return name;
-  return `${parts[0]} ${parts[parts.length - 1]}`;
-}
-
 export default async function TurmasPage({
   searchParams,
 }: {
@@ -56,16 +51,7 @@ export default async function TurmasPage({
   const params = await searchParams;
   const rawPage = params?.page;
   const rawQuery = params?.q;
-  const rawStudentQuery = params?.student;
   const query = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery ?? "").trim();
-  const studentQuery = (Array.isArray(rawStudentQuery) ? rawStudentQuery[0] : rawStudentQuery ?? "").trim();
-  const normalizeSearch = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
-  const normalizedStudentQuery = normalizeSearch(studentQuery);
-  const matchingStudents = studentQuery.length >= 2
-    ? allTurmas.flatMap((turma) => turma.roster
-      .filter((student) => normalizeSearch(student.name).includes(normalizedStudentQuery))
-      .map((student) => ({ ...student, turmaId: turma.id, turmaName: turma.name })))
-    : [];
   const turmas = query
     ? allTurmas.filter((turma) => turma.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     : allTurmas;
@@ -120,54 +106,7 @@ export default async function TurmasPage({
           })}
         </section>
 
-        <Card className="border-border/70 shadow-sm">
-          <CardHeader className="pb-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-base"><Search className="size-4 text-primary" /> Pesquisar aluno</CardTitle>
-              <CardDescription>Encontre um aluno em todas as turmas supervisionadas.</CardDescription>
-            </div>
-            <Badge variant="outline" className="w-fit">Pesquisa global</Badge>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form method="get" className="flex flex-col gap-3 sm:flex-row">
-              <div className="min-w-0 flex-1 space-y-2">
-                <Label htmlFor="global-student-search" className="sr-only">Nome do aluno</Label>
-                <Input id="global-student-search" name="student" type="search" minLength={2} defaultValue={studentQuery} placeholder="Introduza o nome do aluno…" />
-                {query && <input type="hidden" name="q" value={query} />}
-              </div>
-              <Button type="submit" className="sm:self-start"><Search /> Pesquisar aluno</Button>
-              {studentQuery && (
-                <Button type="button" variant="ghost" render={<Link href={query ? `/turmas?q=${encodeURIComponent(query)}` : "/turmas"} />}>
-                  Limpar
-                </Button>
-              )}
-            </form>
-            {studentQuery.length === 1 && <p className="text-sm text-muted-foreground">Introduza pelo menos 2 caracteres para pesquisar.</p>}
-            {studentQuery.length >= 2 && (
-              <div className="rounded-lg border bg-muted/30 p-4" aria-live="polite">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium">{matchingStudents.length ? `${matchingStudents.length} aluno(s) encontrado(s)` : "Nenhum aluno encontrado"}</p>
-                  {matchingStudents.length > 0 && <Badge variant="secondary">{matchingStudents.length} resultados</Badge>}
-                </div>
-                {matchingStudents.length > 0 && (
-                  <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {matchingStudents.map((student) => (
-                      <li key={`${student.turmaId}-${student.id}`} className="min-w-0">
-                        <Link href={`/turmas/${student.turmaId}/${encodeURIComponent(student.id)}`} className="flex min-h-14 min-w-0 items-center justify-between gap-2 rounded-lg border bg-background px-2 py-2 text-sm transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:px-3">
-                          <span className="min-w-0 truncate font-medium">
-                            <span className="sm:hidden">{getCompactStudentName(student.name)}</span>
-                            <span className="hidden sm:inline">{student.name}</span>
-                          </span>
-                          <Badge variant="outline" className="max-w-[42%] shrink-0 truncate">{student.turmaName}</Badge>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <StudentSearchDialog />
 
         <section className="space-y-4" aria-labelledby="turmas-list-title">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
