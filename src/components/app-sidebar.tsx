@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   ChevronRight,
   Plus,
+  Presentation,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -97,6 +98,7 @@ export function AppSidebar({
     coordinationItems.push(
       { label: "Biométrico", href: "/biometrico", icon: Fingerprint },
       { label: "Estágios", href: "/internship-reports", icon: BookOpenCheck },
+      { label: "Apresentações", href: "/presentations", icon: Presentation },
     );
   }
   if (appRole === "ADMIN") {

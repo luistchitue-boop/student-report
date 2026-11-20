@@ -18,9 +18,11 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## AI proofreading for reports
 
-Set `AI_GATEWAY_API_KEY` in the server environment to enable automatic proofreading of coordinator weekly observations before PDF reports are generated. The default model is `google/gemini-2.5-flash-lite`; set `AI_GATEWAY_MODEL` to use another chat model available in Vercel AI Gateway.
+Set `AI_GATEWAY_API_KEY` in the server environment to enable automatic proofreading of coordinator weekly observations before PDF reports are generated and AI-assisted PowerPoint generation for coordinators. The default model is `google/gemini-2.5-flash-lite`; set `AI_GATEWAY_MODEL` to use another chat model available in Vercel AI Gateway.
 
 Proofreading is limited to spelling, accents, grammar, punctuation, and capitalization. If the gateway is unavailable, the original observation is used.
+
+Coordinators can open **Apresentações** from the sidebar or dashboard to generate an editable lesson outline and download it as a PowerPoint file. The outline is not saved by the application; review its accuracy before using it in class.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, ArrowRight, BadgeCheck, BookOpenCheck, Building2, ClipboardCheck, FileBarChart2, GraduationCap, ShieldCheck, Users } from "lucide-react";
+import { Activity, ArrowRight, BadgeCheck, BookOpenCheck, Building2, ClipboardCheck, FileBarChart2, GraduationCap, Presentation, ShieldCheck, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeaderCard } from "@/components/page-header-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ const actions = [
   { title: "Coordenação", description: "Rever a atividade semanal.", href: "/controlo", icon: ClipboardCheck, roles: ["ADMIN", "DIRECCAO"] },
   { title: "Biométrico", description: "Registar a coordenação semanal.", href: "/biometrico", icon: ClipboardCheck, roles: ["COORDENADOR"] },
   { title: "Estágios", description: "Acompanhar o percurso de estágio.", href: "/internship-reports", icon: GraduationCap, roles: ["COORDENADOR"] },
+  { title: "Apresentações", description: "Criar materiais de aula em PowerPoint.", href: "/presentations", icon: Presentation, roles: ["COORDENADOR"] },
   { title: "Administração", description: "Gerir contas e turmas da escola.", href: "/admin", icon: ShieldCheck, roles: ["ADMIN"] },
   { title: "Estágios", description: "Configurar turmas e relatórios.", href: "/admin/internships", icon: GraduationCap, roles: ["ADMIN"] },
 ];

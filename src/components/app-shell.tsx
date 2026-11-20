@@ -19,6 +19,7 @@ const sectionTitles = {
   relatorios: "Relatórios escolares",
   logs: "Registo de atividade",
   internships: "Relatórios de estágio",
+  presentations: "Apresentações",
   root: "Administração global",
 } as const;
 

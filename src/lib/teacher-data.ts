@@ -122,6 +122,33 @@ export async function getCoordinatorTurmas(userId: string) {
   return assignedTurmas.map(mapTurmaForCoordinator);
 }
 
+export async function getCoordinatorPresentationTurmas(userId: string) {
+  const schoolContext = await getSchoolContext(userId);
+  if (!schoolContext || schoolContext.role !== "COORDENADOR") return [];
+
+  const coordinator = await prisma.teacher.findUnique({
+    where: { userId },
+    select: {
+      turmaAssignments: {
+        where: { turma: { schoolId: schoolContext.schoolId } },
+        select: {
+          turma: {
+            select: {
+              id: true,
+              name: true,
+              subjects: { orderBy: { name: "asc" }, select: { name: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return (coordinator?.turmaAssignments ?? [])
+    .map(({ turma }) => ({ id: turma.id, name: turma.name, subjects: turma.subjects.map(({ name }) => name) }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
 export async function getCoordinatorTurmaById(userId: string, turmaId: string) {
   const turmas = await getCoordinatorTurmas(userId);
   return turmas.find((turma) => turma.id === turmaId) ?? null;

@@ -1,0 +1,26 @@
+import { redirect } from "next/navigation";
+import { Presentation } from "lucide-react";
+import { auth } from "@/auth";
+import { AppShell } from "@/components/app-shell";
+import { PageHeaderCard } from "@/components/page-header-card";
+import { getSchoolContext } from "@/lib/school-context";
+import { getCoordinatorPresentationTurmas } from "@/lib/teacher-data";
+import { PresentationsClient } from "./presentations-client";
+
+export default async function PresentationsPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/auth/signin");
+  const schoolContext = await getSchoolContext(session.user.id);
+  if (!schoolContext || schoolContext.role !== "COORDENADOR") redirect("/");
+
+  const availableTurmas = await getCoordinatorPresentationTurmas(session.user.id);
+
+  return (
+    <AppShell active="presentations">
+      <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:gap-8 lg:px-8 lg:py-8">
+        <PageHeaderCard badge="Ferramenta pedagógica" title="Apresentações" description="Crie um guião de aula com apoio de IA, reveja o conteúdo e descarregue-o em PowerPoint." icon={Presentation} />
+        <PresentationsClient turmas={availableTurmas} />
+      </main>
+    </AppShell>
+  );
+}
