@@ -19,9 +19,10 @@ export function PresentationPlayer({ plan, template, design, resources = [], onC
   const contentRef = useRef<HTMLDivElement>(null);
   const Icon = icons[template.id];
   const hasReferences = resources.length > 0;
-  const totalSlides = plan.slides.length + 1 + Number(hasReferences);
+  const isMathTemplate = template.id === "mathematics";
+  const totalSlides = plan.slides.length + 1 + Number(isMathTemplate || hasReferences);
   const isCover = slideIndex === 0;
-  const isReferences = hasReferences && slideIndex === totalSlides - 1;
+  const isReferences = (isMathTemplate || hasReferences) && slideIndex === totalSlides - 1;
   const slide: PresentationSlide | undefined = isCover || isReferences ? undefined : plan.slides[slideIndex - 1];
 
   useEffect(() => {
@@ -88,6 +89,64 @@ export function PresentationPlayer({ plan, template, design, resources = [], onC
     </div>;
   }
 
+  function renderMathSlide() {
+    const imageIndex = [3, 4, 5, 6, 7, 8, 9, 10, 11][(slideIndex - 1) % 9];
+    const content = slide;
+    const panelClass = "absolute grid content-center gap-4 overflow-hidden border-2 border-dashed border-white/75 bg-[#181716]/95 p-5 text-white shadow-[0_8px_30px_#0009] sm:gap-5 sm:p-8 lg:p-10";
+    const chalkFont = { fontFamily: '"Comic Sans MS", "Trebuchet MS", cursive' };
+
+    if (isCover) {
+      return <div className="relative h-full w-full bg-cover bg-center" style={{ backgroundImage: "url('/math-template/1.png')" }}>
+        <div ref={contentRef} className={`${panelClass} inset-[20%_18%] text-center`} style={chalkFont}>
+          <span className="text-xs font-bold uppercase tracking-[0.3em] text-white/70">{template.subject} · {template.name}</span>
+          <h1 className="text-4xl font-black leading-tight sm:text-6xl lg:text-7xl">{plan.title}</h1>
+          <p className="text-base text-white/80 sm:text-xl">{plan.slides.length} tópicos · Plano de aula</p>
+        </div>
+      </div>;
+    }
+
+    if (isReferences) {
+      return <div className="relative h-full w-full bg-cover bg-center" style={{ backgroundImage: "url('/math-template/12.png')" }}>
+        <div ref={contentRef} className={`${panelClass} inset-[18%_18%] text-center`} style={chalkFont}>
+          <h2 className="text-5xl font-black sm:text-7xl">Obrigado!</h2>
+          <p className="text-lg text-white/75">{plan.title}</p>
+          {resources.length > 0 && <div className="mt-1 grid max-h-32 gap-2 overflow-auto text-left sm:max-h-40">{resources.map((resource, index) => <a key={`${resource.url}-${index}`} href={resource.url} target="_blank" rel="noreferrer" className="truncate border-b border-dashed border-white/40 py-1 text-sm underline underline-offset-4 sm:text-base">{resource.name}</a>)}</div>}
+        </div>
+      </div>;
+    }
+
+    if (!content) return null;
+
+    const panels: Record<number, string> = {
+      3: "inset-[14%_22%_13%_22%] text-center",
+      4: "inset-[15%_8%_14%_8%] md:inset-[17%_7%_15%_7%]",
+      5: "inset-[12%_8%_12%_8%]",
+      6: "inset-[12%_8%_12%_8%]",
+      7: "inset-[14%_20%_13%_20%] text-center",
+      8: "inset-[14%_52%_14%_7%]",
+      9: "inset-[14%_52%_14%_7%]",
+      10: "inset-[14%_8%_14%_8%]",
+      11: "inset-[12%_18%_12%_18%]",
+    };
+    const isThreeColumn = imageIndex === 6;
+    return <div className="relative h-full w-full bg-cover bg-center" style={{ backgroundImage: `url('/math-template/${imageIndex}.png')` }}>
+      <article ref={contentRef} className={`${panelClass} ${panels[imageIndex] ?? "inset-[13%_12%]"}`} style={chalkFont}>
+        <div className="flex items-center justify-between gap-3 border-b border-dashed border-white/45 pb-3">
+          <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/65 sm:text-xs">{String(slideIndex).padStart(2, "0")} · {template.subject}</span>
+          {imageIndex === 8 && <span className="rounded-full border border-white/60 px-3 py-1 text-xs">Dados</span>}
+        </div>
+        <h2 className="text-2xl font-black leading-tight sm:text-4xl lg:text-5xl">{content.title}</h2>
+        {content.imageData && <div className="relative mx-auto aspect-video max-h-28 w-full max-w-sm overflow-hidden border border-dashed border-white/70 sm:max-h-36"><Image src={content.imageData} alt={`Ilustração: ${content.title}`} fill unoptimized sizes="(max-width: 768px) 90vw, 35vw" className="object-cover" /></div>}
+        <div className={`grid gap-3 ${isThreeColumn ? "sm:grid-cols-3" : imageIndex === 5 || imageIndex === 11 ? "sm:grid-cols-2" : ""}`}>
+          {content.bullets.map((bullet, index) => <div key={`${index}-${bullet}`} className="flex items-start gap-3 border-l-2 border-white/70 pl-3 text-sm leading-relaxed sm:text-base lg:text-lg">
+            <span className="shrink-0 font-bold text-white/65">{String(index + 1).padStart(2, "0")}</span><span>{bullet}</span>
+          </div>)}
+        </div>
+        {content.speakerNotes && <p className="border-t border-dashed border-white/40 pt-2 text-xs italic text-white/65 sm:text-sm">{content.speakerNotes}</p>}
+      </article>
+    </div>;
+  }
+
   function renderDecorativeSlide() {
     if (!slide) return null;
     const isDark = template.layout === "formula" || template.layout === "lab";
@@ -142,8 +201,8 @@ export function PresentationPlayer({ plan, template, design, resources = [], onC
       <div className="flex items-center gap-1"><span className="mr-2 text-xs tabular-nums text-white/60">{slideIndex + 1} / {totalSlides}</span><Button variant="ghost" size="icon-sm" className="text-white hover:bg-white/10 hover:text-white" onClick={toggleFullscreen} aria-label={isFullscreen ? "Sair do ecrã inteiro" : "Ecrã inteiro"}>{isFullscreen ? <Minimize /> : <Maximize />}</Button><Button variant="ghost" size="icon-sm" className="text-white hover:bg-white/10 hover:text-white" onClick={onClose} aria-label="Fechar apresentação"><X /></Button></div>
     </header>
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 items-center justify-center py-2">
-      <div className="relative aspect-[16/9] max-h-full w-full overflow-hidden rounded-xl shadow-2xl sm:rounded-2xl" style={{ maxWidth: "calc((100svh - 8rem) * 16 / 9)" }}>
-        {isCover ? renderCover() : isReferences ? renderReferences() : renderDecorativeSlide()}
+      <div className={`relative aspect-[16/9] max-h-full w-full overflow-hidden shadow-2xl ${isMathTemplate ? "" : "rounded-xl sm:rounded-2xl"}`} style={{ maxWidth: "calc((100svh - 8rem) * 16 / 9)" }}>
+        {isMathTemplate ? renderMathSlide() : isCover ? renderCover() : isReferences ? renderReferences() : renderDecorativeSlide()}
       </div>
     </div>
     <footer className="flex h-14 shrink-0 items-center justify-center gap-3">

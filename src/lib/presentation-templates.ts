@@ -11,7 +11,7 @@ export type PresentationTemplate = {
 
 export const PRESENTATION_TEMPLATES: PresentationTemplate[] = [
   { id: "history", name: "Linha do tempo", subject: "História", description: "Marcos, datas e acontecimentos ligados por uma linha narrativa.", layout: "timeline", colors: { cover: "#34251E", accent: "#D79A52", surface: "#F8F0E3", ink: "#382E25" } },
-  { id: "mathematics", name: "Laboratório de Matemática", subject: "Matemática", description: "Fórmulas em destaque, passos numerados e exemplos resolvidos.", layout: "formula", colors: { cover: "#12263A", accent: "#52D6C7", surface: "#F0F7F8", ink: "#152C3C" } },
+  { id: "mathematics", name: "Quadro de Matemática", subject: "Matemática", description: "Um quadro de giz com fórmulas, diagramas e páginas inspiradas no modelo enviado.", layout: "formula", colors: { cover: "#252321", accent: "#FFFFFF", surface: "#302E2B", ink: "#FFFFFF" } },
   { id: "english", name: "English Studio", subject: "Inglês", description: "Vocabulário, expressões e prática de conversação em cartões.", layout: "editorial", colors: { cover: "#282448", accent: "#FF8D70", surface: "#F6F2FA", ink: "#292344" } },
   { id: "geography", name: "Atlas", subject: "Geografia", description: "Regiões, lugares e paisagens com foco visual e espacial.", layout: "atlas", colors: { cover: "#13352F", accent: "#72C69B", surface: "#EFF7F0", ink: "#18362D" } },
   { id: "science", name: "Caderno de Ciências", subject: "Ciências", description: "Conceitos, observações e experiências organizados por etapas.", layout: "lab", colors: { cover: "#102F38", accent: "#70D8D1", surface: "#EFF8F8", ink: "#17343B" } },
