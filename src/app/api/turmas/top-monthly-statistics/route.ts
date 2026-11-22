@@ -36,10 +36,19 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         gradeScale: true,
+        educationType: true,
         students: {
           where: { active: true },
           select: {
-            grades: { where: { assessmentType: null, term: { startsWith: `Semanal:${monthKey}` } }, select: { value: true, term: true } },
+            grades: {
+              where: {
+                OR: [
+                  { assessmentType: null, term: { startsWith: `Semanal:${monthKey}` } },
+                  { assessmentType: { in: ["AC2", "NPP", "NPT"] } },
+                ],
+              },
+              select: { subject: true, value: true, term: true, assessmentType: true },
+            },
             absences: { where: { dia: { gte: monthStart, lt: nextMonthStart } }, select: { justified: true } },
           },
         },
@@ -53,8 +62,27 @@ export async function GET(request: NextRequest) {
           const match = weeklyTermPattern.exec(grade.term);
           return match?.[1].slice(0, 7) === monthKey;
         });
+        const applicableAssessmentTypes = turma.educationType === "ENSINO_GERAL" ? ["AC2", "NPT"] : ["NPP", "NPT"];
+        const averageBySubject = (grades: typeof student.grades) => {
+          const subjectGrades = new Map<string, number[]>();
+          grades.forEach((grade) => {
+            const values = subjectGrades.get(grade.subject) ?? [];
+            values.push(Number(grade.value));
+            subjectGrades.set(grade.subject, values);
+          });
+          const subjectAverages = [...subjectGrades.values()]
+            .filter((values) => values.length > 0)
+            .map((values) => values.reduce((sum, value) => sum + value, 0) / values.length);
+          return subjectAverages.length
+            ? subjectAverages.reduce((sum, average) => sum + average, 0) / subjectAverages.length
+            : null;
+        };
+        const componentAverages = [
+          averageBySubject(monthGrades.filter((grade) => grade.assessmentType === null)),
+          ...applicableAssessmentTypes.map((assessmentType) => averageBySubject(student.grades.filter((grade) => grade.assessmentType === assessmentType))),
+        ].filter((average): average is number => average !== null);
         return {
-          gradeAverage: monthGrades.length ? monthGrades.reduce((sum, grade) => sum + Number(grade.value), 0) / monthGrades.length : null,
+          gradeAverage: componentAverages.length ? componentAverages.reduce((sum, average) => sum + average, 0) / componentAverages.length : null,
           absenceCount: student.absences.length,
         };
       });
