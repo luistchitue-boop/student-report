@@ -306,7 +306,7 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
                 <ToggleGroupItem value="general" className="min-w-0 flex-1 sm:flex-none"><BarChart3 /> Estatísticas gerais</ToggleGroupItem>
               </ToggleGroup>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                {classification === "grades" ? "Classificação baseada na média de todas as notas semanais registadas nos meses selecionados: melhor média primeiro e pior média primeiro. Alunos sem notas nesses meses não entram nestas listas." : classification === "absences" ? "Classificação baseada no total de faltas dos meses selecionados: menos faltas primeiro e mais faltas primeiro. Inclui todos os alunos ativos; faltas justificadas e injustificadas contam igualmente." : "Contagens baseadas nas médias individuais por disciplina nos meses selecionados. Cada disciplina conta uma vez, independentemente do número de notas registadas."}
+                {classification === "grades" ? "Classificação baseada na média por disciplina dos componentes AC1 e da avaliação aplicável à turma nos meses selecionados. Cada disciplina conta uma vez; componentes em falta são ignorados." : classification === "absences" ? "Classificação baseada no total de faltas dos meses selecionados: menos faltas primeiro e mais faltas primeiro. Inclui todos os alunos ativos; faltas justificadas e injustificadas contam igualmente." : "Contagens baseadas nas médias individuais por disciplina nos meses selecionados. Cada disciplina conta uma vez, independentemente do número de notas registadas."}
               </p>
             </div>
 

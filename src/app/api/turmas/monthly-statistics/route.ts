@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         gradeScale: true,
+        educationType: true,
         students: {
           where: { active: true },
           orderBy: { name: "asc" },
@@ -54,8 +55,13 @@ export async function GET(request: NextRequest) {
             name: true,
             avatarUrl: true,
             grades: {
-              where: { assessmentType: null, OR: monthKeys.map((monthKey) => ({ term: { startsWith: `Semanal:${monthKey}` } })) },
-              select: { subject: true, value: true, term: true },
+              where: {
+                OR: [
+                  { assessmentType: null, OR: monthKeys.map((monthKey) => ({ term: { startsWith: `Semanal:${monthKey}` } })) },
+                  { assessmentType: { in: ["AC2", "NPP", "NPT"] } },
+                ],
+              },
+              select: { subject: true, value: true, term: true, assessmentType: true },
             },
             absences: {
               where: { OR: selectedMonths.map(({ start, end }) => ({ dia: { gte: start, lt: end } })) },
@@ -73,15 +79,24 @@ export async function GET(request: NextRequest) {
         const match = weeklyTermPattern.exec(grade.term);
         return Boolean(match && monthSet.has(match[1].slice(0, 7)));
       });
-      const subjectGrades = new Map<string, number[]>();
-      monthGrades.forEach((grade) => {
-        const values = subjectGrades.get(grade.subject) ?? [];
+      const applicableAssessmentTypes = turma.educationType === "ENSINO_GERAL" ? ["AC2", "NPT"] : ["NPP", "NPT"];
+      const subjectComponents = new Map<string, Map<string, number[]>>();
+      student.grades.forEach((grade) => {
+        const component = grade.assessmentType ?? "AC1";
+        if (component === "AC1" && !monthGrades.includes(grade)) return;
+        if (component !== "AC1" && !applicableAssessmentTypes.includes(component)) return;
+        const components = subjectComponents.get(grade.subject) ?? new Map<string, number[]>();
+        const values = components.get(component) ?? [];
         values.push(Number(grade.value));
-        subjectGrades.set(grade.subject, values);
+        components.set(component, values);
+        subjectComponents.set(grade.subject, components);
       });
-      const subjectAverages = [...subjectGrades.values()].map((values) => values.reduce((sum, value) => sum + value, 0) / values.length);
-      const gradeAverage = monthGrades.length
-        ? monthGrades.reduce((sum, grade) => sum + Number(grade.value), 0) / monthGrades.length
+      const subjectAverages = [...subjectComponents.values()].flatMap((components) => {
+        const componentAverages = [...components.values()].map((values) => values.reduce((sum, value) => sum + value, 0) / values.length);
+        return componentAverages.length ? [componentAverages.reduce((sum, average) => sum + average, 0) / componentAverages.length] : [];
+      });
+      const gradeAverage = subjectAverages.length
+        ? subjectAverages.reduce((sum, average) => sum + average, 0) / subjectAverages.length
         : null;
       const justifiedAbsences = student.absences.filter((absence) => absence.justified).length;
       return {
