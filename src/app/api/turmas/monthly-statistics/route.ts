@@ -91,10 +91,11 @@ export async function GET(request: NextRequest) {
         components.set(component, values);
         subjectComponents.set(grade.subject, components);
       });
-      const subjectAverages = [...subjectComponents.values()].flatMap((components) => {
+      const subjectAverageEntries = [...subjectComponents.entries()].flatMap(([subject, components]) => {
         const componentAverages = [...components.values()].map((values) => values.reduce((sum, value) => sum + value, 0) / values.length);
-        return componentAverages.length ? [componentAverages.reduce((sum, average) => sum + average, 0) / componentAverages.length] : [];
+        return componentAverages.length ? [{ subject, average: componentAverages.reduce((sum, average) => sum + average, 0) / componentAverages.length }] : [];
       });
+      const subjectAverages = subjectAverageEntries.map(({ average }) => average);
       const gradeAverage = subjectAverages.length
         ? subjectAverages.reduce((sum, average) => sum + average, 0) / subjectAverages.length
         : null;
@@ -103,6 +104,7 @@ export async function GET(request: NextRequest) {
         id: student.id,
         name: student.name,
         avatarUrl: student.avatarUrl,
+        subjectAverageEntries,
         subjectAverages,
         gradeAverage: gradeAverage === null ? null : Math.round(gradeAverage * 10) / 10,
         gradeCount: monthGrades.length,
@@ -114,12 +116,20 @@ export async function GET(request: NextRequest) {
 
     const negativeThreshold = turma.gradeScale * 0.5;
     const highAverageThreshold = turma.gradeScale * 0.7;
-    const studentsWithNegativeSubjectCounts = students.map((student) => student.subjectAverages.filter((average) => average < negativeThreshold).length);
+    const studentsWithNegativeSubjectCounts = students.map((student) => ({
+      student,
+      negativeSubjects: student.subjectAverageEntries.filter(({ average }) => average < negativeThreshold).map(({ subject }) => subject),
+    }));
+    const highSubjectAverageStudents = students.filter((student) => student.subjectAverageEntries.length > 0 && student.subjectAverageEntries.every(({ average }) => average > highAverageThreshold));
     const generalStatistics = {
-      highSubjectAverageStudentCount: students.filter((student) => student.subjectAverages.length > 0 && student.subjectAverages.every((average) => average > highAverageThreshold)).length,
-      oneOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter((count) => count >= 1).length,
-      twoOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter((count) => count >= 2).length,
-      threeOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter((count) => count >= 3).length,
+      highSubjectAverageStudentCount: highSubjectAverageStudents.length,
+      highSubjectAverageStudents: highSubjectAverageStudents.map(({ id, name, avatarUrl, subjectAverageEntries }) => ({ id, name, avatarUrl, subjects: subjectAverageEntries.map(({ subject }) => subject) })),
+      oneOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter(({ negativeSubjects }) => negativeSubjects.length >= 1).length,
+      oneOrMoreNegativeSubjectAverageStudents: studentsWithNegativeSubjectCounts.filter(({ negativeSubjects }) => negativeSubjects.length >= 1).map(({ student: { id, name, avatarUrl }, negativeSubjects }) => ({ id, name, avatarUrl, subjects: negativeSubjects })),
+      twoOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter(({ negativeSubjects }) => negativeSubjects.length >= 2).length,
+      twoOrMoreNegativeSubjectAverageStudents: studentsWithNegativeSubjectCounts.filter(({ negativeSubjects }) => negativeSubjects.length >= 2).map(({ student: { id, name, avatarUrl }, negativeSubjects }) => ({ id, name, avatarUrl, subjects: negativeSubjects })),
+      threeOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter(({ negativeSubjects }) => negativeSubjects.length >= 3).length,
+      threeOrMoreNegativeSubjectAverageStudents: studentsWithNegativeSubjectCounts.filter(({ negativeSubjects }) => negativeSubjects.length >= 3).map(({ student: { id, name, avatarUrl }, negativeSubjects }) => ({ id, name, avatarUrl, subjects: negativeSubjects })),
     };
 
     const assessedStudents = students.filter((student) => student.gradeAverage !== null);

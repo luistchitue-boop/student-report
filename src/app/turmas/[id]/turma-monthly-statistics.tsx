@@ -2,14 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useId } from "react";
+import Link from "next/link";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
-import { AlertCircle, Award, BarChart3, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertCircle, Award, BarChart3, CircleAlert, TrendingDown, TrendingUp } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Bar,
   BarChart,
@@ -37,6 +41,18 @@ type RankedStudent = {
   unjustifiedAbsenceCount: number;
 };
 
+type GeneralStatisticStudent = { id: string; name: string; avatarUrl: string | null; subjects: string[] };
+type GeneralStatistics = {
+  highSubjectAverageStudentCount: number;
+  highSubjectAverageStudents: GeneralStatisticStudent[];
+  oneOrMoreNegativeSubjectAverageStudentCount: number;
+  oneOrMoreNegativeSubjectAverageStudents: GeneralStatisticStudent[];
+  twoOrMoreNegativeSubjectAverageStudentCount: number;
+  twoOrMoreNegativeSubjectAverageStudents: GeneralStatisticStudent[];
+  threeOrMoreNegativeSubjectAverageStudentCount: number;
+  threeOrMoreNegativeSubjectAverageStudents: GeneralStatisticStudent[];
+};
+
 type MonthlyStatistics = {
   turmaName: string;
   months: string[];
@@ -51,13 +67,44 @@ type MonthlyStatistics = {
   worstGradeStudents: RankedStudent[];
   fewestAbsenceStudents: RankedStudent[];
   mostAbsenceStudents: RankedStudent[];
-  generalStatistics: {
-    highSubjectAverageStudentCount: number;
-    oneOrMoreNegativeSubjectAverageStudentCount: number;
-    twoOrMoreNegativeSubjectAverageStudentCount: number;
-    threeOrMoreNegativeSubjectAverageStudentCount: number;
-  };
+  generalStatistics: GeneralStatistics;
 };
+
+type GeneralStatisticKey = "high" | "oneNegative" | "twoNegative" | "threeNegative";
+
+const generalStatisticCards: Array<{ key: GeneralStatisticKey; title: string; description: string }> = [
+  { key: "high", title: "Média por disciplina acima do limite", description: "Alunos acima do limite em todas as disciplinas avaliadas" },
+  { key: "oneNegative", title: "1 ou mais médias negativas", description: "Alunos com pelo menos uma média negativa" },
+  { key: "twoNegative", title: "2 ou mais médias negativas", description: "Alunos com pelo menos duas médias negativas" },
+  { key: "threeNegative", title: "3 ou mais médias negativas", description: "Alunos com pelo menos três médias negativas" },
+];
+
+function getGeneralStatisticStudents(statistics: GeneralStatistics, key: GeneralStatisticKey) {
+  if (key === "high") return statistics.highSubjectAverageStudents;
+  if (key === "oneNegative") return statistics.oneOrMoreNegativeSubjectAverageStudents;
+  if (key === "twoNegative") return statistics.twoOrMoreNegativeSubjectAverageStudents;
+  return statistics.threeOrMoreNegativeSubjectAverageStudents;
+}
+
+function studentInitials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
+}
+
+function GeneralStatisticCard({ card, statistics, threshold, onOpen }: { card: typeof generalStatisticCards[number]; statistics: GeneralStatistics; threshold: number; onOpen: () => void }) {
+  const students = getGeneralStatisticStudents(statistics, card.key);
+  return (
+    <Card className="relative border-border/70 bg-muted/20 shadow-none">
+      <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 size-8 text-muted-foreground hover:text-foreground" onClick={onOpen} aria-label={`Ver alunos: ${card.title}`} title="Ver alunos">
+        <CircleAlert className="size-4" />
+      </Button>
+      <CardContent className="space-y-1 pt-4 pr-12">
+        <p className="text-sm font-medium text-muted-foreground">{card.title}</p>
+        <p className="text-3xl font-semibold tabular-nums tracking-tight">{students.length}</p>
+        <p className="text-xs text-muted-foreground">{card.key === "high" ? `Acima de ${threshold} em todas as disciplinas avaliadas` : `Abaixo de ${threshold / 2}`}</p>
+      </CardContent>
+    </Card>
+  );
+}
 
 function getAvailableMonths() {
   const now = new Date();
@@ -190,6 +237,7 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
   const [selectedMonths, setSelectedMonths] = useState(() => months[0] ? [months[0].start.toISOString().slice(0, 7)] : []);
   const [statistics, setStatistics] = useState<MonthlyStatistics | null>(null);
   const [classification, setClassification] = useState<"grades" | "absences" | "general">("grades");
+  const [selectedGeneralStatistic, setSelectedGeneralStatistic] = useState<GeneralStatisticKey | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const selectedMonthsKey = selectedMonths.join(",");
@@ -306,39 +354,12 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
                 <ToggleGroupItem value="general" className="min-w-0 flex-1 sm:flex-none"><BarChart3 /> Estatísticas gerais</ToggleGroupItem>
               </ToggleGroup>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                {classification === "grades" ? "Classificação baseada na média por disciplina dos componentes AC1 e da avaliação aplicável à turma nos meses selecionados. Cada disciplina conta uma vez; componentes em falta são ignorados." : classification === "absences" ? "Classificação baseada no total de faltas dos meses selecionados: menos faltas primeiro e mais faltas primeiro. Inclui todos os alunos ativos; faltas justificadas e injustificadas contam igualmente." : "Contagens baseadas nas médias individuais por disciplina nos meses selecionados. Cada disciplina conta uma vez, independentemente do número de notas registadas."}
+                {classification === "grades" ? "Classificação baseada na média por disciplina de AC1, AC2 (ensino geral) ou NPP (ensino técnico), e NPT, nos meses selecionados. Cada disciplina conta uma vez; componentes em falta são ignorados." : classification === "absences" ? "Classificação baseada no total de faltas dos meses selecionados: menos faltas primeiro e mais faltas primeiro. Inclui todos os alunos ativos; faltas justificadas e injustificadas contam igualmente." : "Contagens baseadas nas médias individuais por disciplina nos meses selecionados. Cada disciplina conta uma vez, independentemente do número de notas registadas."}
               </p>
             </div>
 
             {classification === "general" ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <Card className="border-border/70 bg-muted/20 shadow-none">
-                <CardContent className="space-y-1 pt-4">
-                  <p className="text-sm font-medium text-muted-foreground">Média por disciplina acima do limite</p>
-                  <p className="text-3xl font-semibold tabular-nums tracking-tight">{statistics.generalStatistics.highSubjectAverageStudentCount}</p>
-                  <p className="text-xs text-muted-foreground">Acima de {statistics.gradeScale === 20 ? 14 : 7} em todas as disciplinas avaliadas</p>
-                </CardContent>
-              </Card>
-              <Card className="border-border/70 bg-muted/20 shadow-none">
-                <CardContent className="space-y-1 pt-4">
-                  <p className="text-sm font-medium text-muted-foreground">1 ou mais médias negativas</p>
-                  <p className="text-3xl font-semibold tabular-nums tracking-tight">{statistics.generalStatistics.oneOrMoreNegativeSubjectAverageStudentCount}</p>
-                  <p className="text-xs text-muted-foreground">Abaixo de {statistics.gradeScale / 2}</p>
-                </CardContent>
-              </Card>
-              <Card className="border-border/70 bg-muted/20 shadow-none">
-                <CardContent className="space-y-1 pt-4">
-                  <p className="text-sm font-medium text-muted-foreground">2 ou mais médias negativas</p>
-                  <p className="text-3xl font-semibold tabular-nums tracking-tight">{statistics.generalStatistics.twoOrMoreNegativeSubjectAverageStudentCount}</p>
-                  <p className="text-xs text-muted-foreground">Abaixo de {statistics.gradeScale / 2}</p>
-                </CardContent>
-              </Card>
-              <Card className="border-border/70 bg-muted/20 shadow-none">
-                <CardContent className="space-y-1 pt-4">
-                  <p className="text-sm font-medium text-muted-foreground">3 ou mais médias negativas</p>
-                  <p className="text-3xl font-semibold tabular-nums tracking-tight">{statistics.generalStatistics.threeOrMoreNegativeSubjectAverageStudentCount}</p>
-                  <p className="text-xs text-muted-foreground">Abaixo de {statistics.gradeScale / 2}</p>
-                </CardContent>
-              </Card>
+              {generalStatisticCards.map((card) => <GeneralStatisticCard key={card.key} card={card} statistics={statistics.generalStatistics} threshold={statistics.gradeScale === 20 ? 14 : 7} onOpen={() => setSelectedGeneralStatistic(card.key)} />)}
             </div> : <div className="grid gap-4 xl:grid-cols-2">
               {classification === "grades" ? <>
                 <StudentRanking title="Top 5 · melhores notas" students={statistics.bestGradeStudents} emptyText="Ainda não há alunos avaliados nos meses selecionados." criterion="grades" />
@@ -348,6 +369,26 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
                 <StudentRanking title="Bottom 5 · mais faltas" students={statistics.mostAbsenceStudents} emptyText="Não há alunos ativos nesta turma." criterion="absences" />
               </>}
             </div>}
+
+            <Dialog open={selectedGeneralStatistic !== null} onOpenChange={(open) => { if (!open) setSelectedGeneralStatistic(null); }}>
+              <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
+                <DialogCloseButton aria-label="Fechar" />
+                <DialogHeader className="pr-8">
+                  <DialogTitle>{generalStatisticCards.find((card) => card.key === selectedGeneralStatistic)?.title ?? "Alunos"}</DialogTitle>
+                  <DialogDescription>Alunos que correspondem a esta condição no período selecionado.</DialogDescription>
+                </DialogHeader>
+                {selectedGeneralStatistic && statistics ? (getGeneralStatisticStudents(statistics.generalStatistics, selectedGeneralStatistic).length ? (
+                  <ul className="grid max-h-[min(54dvh,32rem)] gap-1 overflow-y-auto" aria-label="Lista de alunos">
+                    {getGeneralStatisticStudents(statistics.generalStatistics, selectedGeneralStatistic).map((student) => <li key={student.id} className="min-w-0">
+                      <Link href={`/turmas/${turmaId}/${encodeURIComponent(student.id)}`} onClick={() => setSelectedGeneralStatistic(null)} className="flex min-h-16 w-full min-w-0 items-center gap-3 overflow-hidden rounded-lg px-2 py-2 transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none sm:px-3">
+                        <Avatar className="size-11"><AvatarImage src={student.avatarUrl ?? undefined} alt={student.name} /><AvatarFallback>{studentInitials(student.name)}</AvatarFallback></Avatar>
+                        <span className="grid min-w-0 flex-1 gap-1"><span className="line-clamp-2 whitespace-normal break-words text-sm font-medium leading-snug sm:truncate sm:whitespace-nowrap sm:leading-normal">{student.name}</span><span className="block truncate text-xs text-muted-foreground" title={selectedGeneralStatistic === "high" ? "Todas as disciplinas" : student.subjects.join(", ")}>{selectedGeneralStatistic === "high" ? "Todas as disciplinas" : student.subjects.join(", ")}</span></span>
+                      </Link>
+                    </li>)}
+                  </ul>
+                ) : <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Nenhum aluno corresponde a esta condição.</p>) : null}
+              </DialogContent>
+            </Dialog>
           </>
         ) : (
           <p className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">Sem dados disponíveis para os meses selecionados.</p>
