@@ -73,6 +73,13 @@ export async function GET(request: NextRequest) {
         const match = weeklyTermPattern.exec(grade.term);
         return Boolean(match && monthSet.has(match[1].slice(0, 7)));
       });
+      const subjectGrades = new Map<string, number[]>();
+      monthGrades.forEach((grade) => {
+        const values = subjectGrades.get(grade.subject) ?? [];
+        values.push(Number(grade.value));
+        subjectGrades.set(grade.subject, values);
+      });
+      const subjectAverages = [...subjectGrades.values()].map((values) => values.reduce((sum, value) => sum + value, 0) / values.length);
       const gradeAverage = monthGrades.length
         ? monthGrades.reduce((sum, grade) => sum + Number(grade.value), 0) / monthGrades.length
         : null;
@@ -81,6 +88,7 @@ export async function GET(request: NextRequest) {
         id: student.id,
         name: student.name,
         avatarUrl: student.avatarUrl,
+        subjectAverages,
         gradeAverage: gradeAverage === null ? null : Math.round(gradeAverage * 10) / 10,
         gradeCount: monthGrades.length,
         absenceCount: student.absences.length,
@@ -88,6 +96,16 @@ export async function GET(request: NextRequest) {
         unjustifiedAbsenceCount: student.absences.length - justifiedAbsences,
       };
     });
+
+    const negativeThreshold = turma.gradeScale * 0.5;
+    const highAverageThreshold = turma.gradeScale * 0.7;
+    const studentsWithNegativeSubjectCounts = students.map((student) => student.subjectAverages.filter((average) => average < negativeThreshold).length);
+    const generalStatistics = {
+      highSubjectAverageStudentCount: students.filter((student) => student.subjectAverages.length > 0 && student.subjectAverages.every((average) => average > highAverageThreshold)).length,
+      oneOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter((count) => count >= 1).length,
+      twoOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter((count) => count >= 2).length,
+      threeOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter((count) => count >= 3).length,
+    };
 
     const assessedStudents = students.filter((student) => student.gradeAverage !== null);
     const classAverage = assessedStudents.length
@@ -116,6 +134,7 @@ export async function GET(request: NextRequest) {
       worstGradeStudents: [...assessedStudents].sort(compareWorstGrades).slice(0, 5),
       fewestAbsenceStudents: [...students].sort(compareFewestAbsences).slice(0, 5),
       mostAbsenceStudents: [...students].sort(compareMostAbsences).slice(0, 5),
+      generalStatistics,
     });
   } catch (error) {
     console.error("Turma monthly statistics error:", error);

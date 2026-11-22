@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useId } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getMonthlyCoordinationPeriods, getPeriodLabel } from "@/lib/weekly-coordination";
-import { AlertCircle, Award, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertCircle, Award, BarChart3, TrendingDown, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -51,6 +51,12 @@ type MonthlyStatistics = {
   worstGradeStudents: RankedStudent[];
   fewestAbsenceStudents: RankedStudent[];
   mostAbsenceStudents: RankedStudent[];
+  generalStatistics: {
+    highSubjectAverageStudentCount: number;
+    oneOrMoreNegativeSubjectAverageStudentCount: number;
+    twoOrMoreNegativeSubjectAverageStudentCount: number;
+    threeOrMoreNegativeSubjectAverageStudentCount: number;
+  };
 };
 
 function getAvailableMonths() {
@@ -183,7 +189,7 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
   const months = useMemo(() => getAvailableMonths(), []);
   const [selectedMonths, setSelectedMonths] = useState(() => months[0] ? [months[0].start.toISOString().slice(0, 7)] : []);
   const [statistics, setStatistics] = useState<MonthlyStatistics | null>(null);
-  const [classification, setClassification] = useState<"grades" | "absences">("grades");
+  const [classification, setClassification] = useState<"grades" | "absences" | "general">("grades");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const selectedMonthsKey = selectedMonths.join(",");
@@ -291,19 +297,49 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
               <ToggleGroup
                 variant="outline"
                 value={[classification]}
-                onValueChange={(value) => { if (value[0] === "grades" || value[0] === "absences") setClassification(value[0]); }}
+                onValueChange={(value) => { if (value[0] === "grades" || value[0] === "absences" || value[0] === "general") setClassification(value[0]); }}
                 aria-label="Critério da classificação"
                 className="w-full sm:w-fit"
               >
                 <ToggleGroupItem value="grades" className="min-w-0 flex-1 sm:flex-none"><TrendingUp /> Por notas</ToggleGroupItem>
                 <ToggleGroupItem value="absences" className="min-w-0 flex-1 sm:flex-none"><TrendingDown /> Por faltas</ToggleGroupItem>
+                <ToggleGroupItem value="general" className="min-w-0 flex-1 sm:flex-none"><BarChart3 /> Estatísticas gerais</ToggleGroupItem>
               </ToggleGroup>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                {classification === "grades" ? "Classificação baseada na média de todas as notas semanais registadas nos meses selecionados: melhor média primeiro e pior média primeiro. Alunos sem notas nesses meses não entram nestas listas." : "Classificação baseada no total de faltas dos meses selecionados: menos faltas primeiro e mais faltas primeiro. Inclui todos os alunos ativos; faltas justificadas e injustificadas contam igualmente."}
+                {classification === "grades" ? "Classificação baseada na média de todas as notas semanais registadas nos meses selecionados: melhor média primeiro e pior média primeiro. Alunos sem notas nesses meses não entram nestas listas." : classification === "absences" ? "Classificação baseada no total de faltas dos meses selecionados: menos faltas primeiro e mais faltas primeiro. Inclui todos os alunos ativos; faltas justificadas e injustificadas contam igualmente." : "Contagens baseadas nas médias individuais por disciplina nos meses selecionados. Cada disciplina conta uma vez, independentemente do número de notas registadas."}
               </p>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-2">
+            {classification === "general" ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <Card className="border-border/70 bg-muted/20 shadow-none">
+                <CardContent className="space-y-1 pt-4">
+                  <p className="text-sm font-medium text-muted-foreground">Média por disciplina acima do limite</p>
+                  <p className="text-3xl font-semibold tabular-nums tracking-tight">{statistics.generalStatistics.highSubjectAverageStudentCount}</p>
+                  <p className="text-xs text-muted-foreground">Acima de {statistics.gradeScale === 20 ? 14 : 7} em todas as disciplinas avaliadas</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/70 bg-muted/20 shadow-none">
+                <CardContent className="space-y-1 pt-4">
+                  <p className="text-sm font-medium text-muted-foreground">1 ou mais médias negativas</p>
+                  <p className="text-3xl font-semibold tabular-nums tracking-tight">{statistics.generalStatistics.oneOrMoreNegativeSubjectAverageStudentCount}</p>
+                  <p className="text-xs text-muted-foreground">Abaixo de {statistics.gradeScale / 2}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/70 bg-muted/20 shadow-none">
+                <CardContent className="space-y-1 pt-4">
+                  <p className="text-sm font-medium text-muted-foreground">2 ou mais médias negativas</p>
+                  <p className="text-3xl font-semibold tabular-nums tracking-tight">{statistics.generalStatistics.twoOrMoreNegativeSubjectAverageStudentCount}</p>
+                  <p className="text-xs text-muted-foreground">Abaixo de {statistics.gradeScale / 2}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/70 bg-muted/20 shadow-none">
+                <CardContent className="space-y-1 pt-4">
+                  <p className="text-sm font-medium text-muted-foreground">3 ou mais médias negativas</p>
+                  <p className="text-3xl font-semibold tabular-nums tracking-tight">{statistics.generalStatistics.threeOrMoreNegativeSubjectAverageStudentCount}</p>
+                  <p className="text-xs text-muted-foreground">Abaixo de {statistics.gradeScale / 2}</p>
+                </CardContent>
+              </Card>
+            </div> : <div className="grid gap-4 xl:grid-cols-2">
               {classification === "grades" ? <>
                 <StudentRanking title="Top 5 · melhores notas" students={statistics.bestGradeStudents} emptyText="Ainda não há alunos avaliados nos meses selecionados." criterion="grades" />
                 <StudentRanking title="Bottom 5 · piores notas" students={statistics.worstGradeStudents} emptyText="Ainda não há alunos avaliados nos meses selecionados." criterion="grades" />
@@ -311,7 +347,7 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
                 <StudentRanking title="Top 5 · menos faltas" students={statistics.fewestAbsenceStudents} emptyText="Não há alunos ativos nesta turma." criterion="absences" />
                 <StudentRanking title="Bottom 5 · mais faltas" students={statistics.mostAbsenceStudents} emptyText="Não há alunos ativos nesta turma." criterion="absences" />
               </>}
-            </div>
+            </div>}
           </>
         ) : (
           <p className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">Sem dados disponíveis para os meses selecionados.</p>
