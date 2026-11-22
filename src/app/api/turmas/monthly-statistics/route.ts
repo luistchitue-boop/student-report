@@ -118,12 +118,12 @@ export async function GET(request: NextRequest) {
     const highAverageThreshold = turma.gradeScale * 0.7;
     const studentsWithNegativeSubjectCounts = students.map((student) => ({
       student,
-      negativeSubjects: student.subjectAverageEntries.filter(({ average }) => average < negativeThreshold).map(({ subject }) => subject),
+      negativeSubjects: student.subjectAverageEntries.filter(({ average }) => average < negativeThreshold),
     }));
     const highSubjectAverageStudents = students.filter((student) => student.subjectAverageEntries.length > 0 && student.subjectAverageEntries.every(({ average }) => average > highAverageThreshold));
     const generalStatistics = {
       highSubjectAverageStudentCount: highSubjectAverageStudents.length,
-      highSubjectAverageStudents: highSubjectAverageStudents.map(({ id, name, avatarUrl, subjectAverageEntries }) => ({ id, name, avatarUrl, subjects: subjectAverageEntries.map(({ subject }) => subject) })),
+      highSubjectAverageStudents: highSubjectAverageStudents.map(({ id, name, avatarUrl, subjectAverageEntries }) => ({ id, name, avatarUrl, subjects: subjectAverageEntries })),
       oneOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter(({ negativeSubjects }) => negativeSubjects.length >= 1).length,
       oneOrMoreNegativeSubjectAverageStudents: studentsWithNegativeSubjectCounts.filter(({ negativeSubjects }) => negativeSubjects.length >= 1).map(({ student: { id, name, avatarUrl }, negativeSubjects }) => ({ id, name, avatarUrl, subjects: negativeSubjects })),
       twoOrMoreNegativeSubjectAverageStudentCount: studentsWithNegativeSubjectCounts.filter(({ negativeSubjects }) => negativeSubjects.length >= 2).length,

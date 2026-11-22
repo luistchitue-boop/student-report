@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Bar,
   BarChart,
@@ -41,7 +42,8 @@ type RankedStudent = {
   unjustifiedAbsenceCount: number;
 };
 
-type GeneralStatisticStudent = { id: string; name: string; avatarUrl: string | null; subjects: string[] };
+type SubjectAverage = { subject: string; average: number };
+type GeneralStatisticStudent = { id: string; name: string; avatarUrl: string | null; subjects: SubjectAverage[] };
 type GeneralStatistics = {
   highSubjectAverageStudentCount: number;
   highSubjectAverageStudents: GeneralStatisticStudent[];
@@ -88,6 +90,10 @@ function getGeneralStatisticStudents(statistics: GeneralStatistics, key: General
 
 function studentInitials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase();
+}
+
+function formatSubjectAverage(subject: SubjectAverage) {
+  return `${subject.subject} (${subject.average.toFixed(1)})`;
 }
 
 function GeneralStatisticCard({ card, statistics, threshold, onOpen }: { card: typeof generalStatisticCards[number]; statistics: GeneralStatistics; threshold: number; onOpen: () => void }) {
@@ -382,7 +388,7 @@ export function TurmaMonthlyStatistics({ turmaId }: { turmaId: string }) {
                     {getGeneralStatisticStudents(statistics.generalStatistics, selectedGeneralStatistic).map((student) => <li key={student.id} className="min-w-0">
                       <Link href={`/turmas/${turmaId}/${encodeURIComponent(student.id)}`} onClick={() => setSelectedGeneralStatistic(null)} className="flex min-h-16 w-full min-w-0 items-center gap-3 overflow-hidden rounded-lg px-2 py-2 transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none sm:px-3">
                         <Avatar className="size-11"><AvatarImage src={student.avatarUrl ?? undefined} alt={student.name} /><AvatarFallback>{studentInitials(student.name)}</AvatarFallback></Avatar>
-                        <span className="grid min-w-0 flex-1 gap-1"><span className="line-clamp-2 whitespace-normal break-words text-sm font-medium leading-snug sm:truncate sm:whitespace-nowrap sm:leading-normal">{student.name}</span><span className="block truncate text-xs text-muted-foreground" title={selectedGeneralStatistic === "high" ? "Todas as disciplinas" : student.subjects.join(", ")}>{selectedGeneralStatistic === "high" ? "Todas as disciplinas" : student.subjects.join(", ")}</span></span>
+                        <span className="grid min-w-0 flex-1 gap-1"><span className="line-clamp-2 whitespace-normal break-words text-sm font-medium leading-snug sm:truncate sm:whitespace-nowrap sm:leading-normal">{student.name}</span><Tooltip><TooltipTrigger render={<span className="block min-w-0 truncate text-left text-xs text-muted-foreground" />}>{student.subjects.map(formatSubjectAverage).join(", ")}</TooltipTrigger><TooltipContent className="max-w-sm">{student.subjects.map(formatSubjectAverage).join(", ")}</TooltipContent></Tooltip></span>
                       </Link>
                     </li>)}
                   </ul>
