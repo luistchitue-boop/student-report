@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
+import { StudentIdCards } from "./student-id-cards";
 
 type SchoolProfile = {
   id: string;
@@ -168,7 +169,7 @@ export function MySchoolManager() {
               <div className="grid gap-2">
                 <Label htmlFor="my-school-website">Website</Label>
                 <Input id="my-school-website" type="url" value={website} onChange={(event) => setWebsite(event.target.value)} maxLength={300} placeholder="https://escola.ao" />
-                <p className="text-xs text-muted-foreground">O website será usado para gerar o código QR nos relatórios PDF.</p>
+                <p className="text-xs text-muted-foreground">O website será usado para gerar o código QR nos relatórios e cartões de aluno em PDF.</p>
               </div>
             </div>
 
@@ -209,6 +210,7 @@ export function MySchoolManager() {
           </CardContent>
         </Card>
       </form>
+      <StudentIdCards />
     </section>
   );
 }

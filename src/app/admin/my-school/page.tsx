@@ -15,7 +15,7 @@ export default async function MySchoolPage() {
   return (
     <AppShell active="admin">
       <main className="main-content admin-page-content">
-        <PageHeaderCard badge="Administração" title="Minha escola" description="Edite os dados, o logótipo e as mensagens dos relatórios da escola ativa." icon={Building2} />
+        <PageHeaderCard badge="Administração" title="Minha escola" description="Edite os dados da escola e personalize os relatórios e cartões de aluno." icon={Building2} />
         <AdminRouteNav current="my-school" />
         <MySchoolManager />
       </main>
