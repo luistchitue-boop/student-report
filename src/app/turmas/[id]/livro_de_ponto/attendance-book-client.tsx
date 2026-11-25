@@ -160,18 +160,18 @@ export function AttendanceBookClient({ turma, lastRegisteredAbsence: initialLast
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card className="min-w-0 shadow-sm">
         <CardHeader>
           <div className="flex items-start gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarDays className="size-5" /></div>
             <div><CardTitle>Detalhes do registo</CardTitle><CardDescription className="mt-1">Escolha a data, a disciplina e o tempo letivo.</CardDescription></div>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-5">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="grid gap-2">
+        <CardContent className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
               <Label htmlFor="attendance-date">Data</Label>
-              <Input id="attendance-date" className="h-10" type="date" min={datePickerMin} max={datePickerMax} disabled={isSaving} value={date} onChange={(event) => { const nextDate = event.target.value; if (nextDate && isWeekend(nextDate)) { setDate(""); setSelectedIds([]); setStatus("A escola não oferece aulas aos fins de semana."); return; } setStatus(""); setDate(nextDate); }} />
+              <Input id="attendance-date" className="block h-10 w-full min-w-0 max-w-full appearance-none" type="date" min={datePickerMin} max={datePickerMax} disabled={isSaving} value={date} onChange={(event) => { const nextDate = event.target.value; if (nextDate && isWeekend(nextDate)) { setDate(""); setSelectedIds([]); setStatus("A escola não oferece aulas aos fins de semana."); return; } setStatus(""); setDate(nextDate); }} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="attendance-subject">Disciplina</Label>
