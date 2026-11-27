@@ -525,7 +525,7 @@ async function generateStudentReportPdf({
   detailY += 8;
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
-  const ac1NoteLines = doc.splitTextToSize("* AC1: média calculada com todas as notas semanais registadas, não apenas as semanas apresentadas.", tableWidth);
+  const ac1NoteLines = doc.splitTextToSize("* AC1: média acumulada de todas as notas semanais normais registadas até ao fim do período apresentado.", tableWidth);
   ensureDetailSpace(ac1NoteLines.length * 10 + 4);
   doc.setTextColor(96, 113, 104);
   doc.text(ac1NoteLines, margin, detailY + 9, { lineHeightFactor: 1.2 });
@@ -862,7 +862,12 @@ export async function POST(request: Request) {
             : grade.term === previousTerm).filter((grade) => grade.assessmentType === null)
           : [];
         const weeklyGrades = student.grades.filter((grade) => grade.assessmentType === null && weeklyPeriodTerms.includes(grade.term));
-        const globalGrades = student.grades.filter((grade) => grade.assessmentType === null);
+        const globalGrades = student.grades.filter((grade) => {
+          if (grade.assessmentType !== null) return false;
+          const termMatch = /^Semanal:(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/.exec(grade.term);
+          if (!termMatch) return false;
+          return termMatch[2] <= currentPeriodEnd;
+        });
         const currentAbsences = student.absences;
         const reportTeacherName = turma.teacherAssignments[0]?.teacher.name ?? turma.coordinator?.name ?? "";
         const reportTeacherPhone = turma.teacherAssignments[0]?.teacher.phone ?? null;
